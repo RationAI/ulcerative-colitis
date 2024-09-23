@@ -6,8 +6,8 @@ from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import Trainer, autolog
 
-from project_name.data import DataModule
-from project_name.project_name_model import ProjectNameModel
+from ulcerative_colitis.data import DataModule
+from ulcerative_colitis.project_name_model import ProjectNameModel
 
 
 OmegaConf.register_new_resolver(
