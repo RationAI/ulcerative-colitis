@@ -1,0 +1,4 @@
+from preprocessing.paths import DATAFRAME_PATH, SLIDES_PATH, TISSUE_MASKS_PATH
+
+
+__all__ = ["DATAFRAME_PATH", "SLIDES_PATH", "TISSUE_MASKS_PATH"]
