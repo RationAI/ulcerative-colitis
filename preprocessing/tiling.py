@@ -11,7 +11,10 @@ from rationai.tiling.typing import TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
-from preprocessing.paths import DATAFRAME_PATH, SLIDES_PATH, TISSUE_MASKS_PATH
+
+SLIDES_PATH = Path("/mnt/data/Projects/IKEM/ulcerative_colitis_test_cohort/tiff/")
+DATAFRAME_PATH = SLIDES_PATH.parent / "IBD_AI_test_Fabian.csv"
+TISSUE_MASKS_PATH = Path("data/tissue_masks")
 
 
 @dataclass
@@ -63,12 +66,6 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
     tissue_mask_path = TISSUE_MASKS_PATH / slide_path.name
 
     tiles = tissue_mask(tissue_mask_path, slide.extent, tiles)
-    # tiles = map(
-    #     lambda tile: NancyIndexTileMetadata(
-    #         **asdict(tile), nancy_index=get_nancy_index(slide_path, df)
-    #     ),
-    #     tiles,
-    # )
     tiles = (
         NancyIndexTileMetadata(
             **asdict(tile), nancy_index=get_nancy_index(slide_path, df)
