@@ -1,8 +1,14 @@
-from typing import TypeAlias
+from typing import TypeAlias, TypedDict
+
+from torch import Tensor
 
 
-Sample: TypeAlias = ...  # TODO define the type returned by Dataset
+class Metadata(TypedDict):
+    slide: str
+    x: int
+    y: int
 
-Input: TypeAlias = ...  # TODO define the model input type
 
-Outputs: TypeAlias = ...  # TODO define the model output type
+Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
+Input: TypeAlias = Sample
+Outputs: TypeAlias = Tensor
