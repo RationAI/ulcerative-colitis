@@ -1,0 +1,5 @@
+defaults:
+  - /data/transforms@transforms: train
+
+_target_: breast_cancer.data.datasets.BreastCancer
+uris: ["mlflow-artifacts:/27/91908b2ddeeb41009351e6c3bfb88236/artifacts/Ulcerative Colitis - train"]
