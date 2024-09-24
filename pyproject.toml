@@ -9,9 +9,10 @@ dependencies = [
     "torch>=2.4.0",
     "lightning>=2.4.0",
     "torchmetrics>=1.4.1",
+    "albumentations>=1.4.14",
     "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git",
     "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git@refactor/polygon-mask",
-    "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git@refactor/modular-tiling",    
+    "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git@refactor/modular-tiling",
 ]
 
 [tool.pdm.dev-dependencies]

@@ -66,12 +66,12 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
     tissue_mask_path = TISSUE_MASKS_PATH / slide_path.name
 
     tiles = tissue_mask(tissue_mask_path, slide.extent, tiles)
-    tiles = (
+    tiles = [
         NancyIndexTileMetadata(
             **asdict(tile), nancy_index=get_nancy_index(slide_path, df)
         )
         for tile in tiles
-    )
+    ]
 
     return slide, tiles
 
