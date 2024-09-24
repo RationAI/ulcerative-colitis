@@ -1,31 +1,39 @@
 from lightning import LightningModule
+from rationai.mlkit.metrics import LazyMetricDict
 from torch import Tensor, nn
+from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
-from torchmetrics import MetricCollection
+from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
 
+from ulcerative_colitis.modeling import ClassificationHead
 from ulcerative_colitis.typing import Input, Outputs
 
 
-class ProjectNameModel(LightningModule):
-    def __init__(self, backbone: nn.Module, decode_head: nn.Module) -> None:
+class UlcerativeColitisModel(LightningModule):
+    def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         self.backbone = backbone
-        self.decode_head = decode_head
-        self.criterion = ...  # TODO add your loss function
+        self.decode_head = ClassificationHead()
+        self.criterion = nn.CrossEntropyLoss()
 
         self.val_metrics = MetricCollection(
-            {...},  # TODO add metrics you want to compute
+            {
+                "AUC": AUROC("binary"),
+                "accuracy": Accuracy("binary"),
+                "precision": Precision("binary"),
+                "recall": Recall("binary"),
+            },
             prefix="validation/",
         )
 
-        self.test_mterics = self.val_metrics.clone(prefix="test/")
+        self.test_mterics = LazyMetricDict(self.val_metrics.clone(prefix="test/"))
 
     def forward(self, x: Input) -> Outputs:
         features = self.backbone(x)
         return self.decode_head(features)
 
     def training_step(self, batch: Input) -> Tensor:
-        inputs, targets = batch
+        inputs, targets, _ = batch
         outputs = self(inputs)
 
         loss = self.criterion(outputs, targets)
@@ -34,7 +42,7 @@ class ProjectNameModel(LightningModule):
         return loss
 
     def validation_step(self, batch: Input) -> None:
-        inputs, targets = batch
+        inputs, targets, _ = batch
         outputs = self(inputs)
 
         loss = self.criterion(outputs, targets)
@@ -44,11 +52,13 @@ class ProjectNameModel(LightningModule):
         self.log_dict(self.val_metrics, on_epoch=True)
 
     def test_step(self, batch: Input) -> None:
-        inputs, targets = batch
+        inputs, targets, metadata = batch
         outputs = self(inputs)
-        self.test_metrics.update(outputs, targets)
+        for output, target, slide in zip(
+            outputs, targets, metadata["slide"], strict=False
+        ):
+            self.test_metrics.update(output, target, key=slide)
         self.log_dict(self.test_metrics, on_epoch=True)
 
     def configure_optimizers(self) -> Optimizer:
-        # TODO add your optimizer
-        ...
+        return Adam(self.parameters(), lr=0.0001)
