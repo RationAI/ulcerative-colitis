@@ -20,10 +20,10 @@ dependencies = [
 dev = ["mypy", "pre-commit", "ruff"]
 
 [tool.pdm.scripts]
-train = "python -m project_name mode=fit"
-validate = "python -m project_name mode=validate"
-test = "python -m project_name mode=test"
-predict = "python -m project_name mode=predict"
+train = "python -m ulcerative_colitis mode=fit"
+validate = "python -m ulcerative_colitis mode=validate"
+test = "python -m ulcerative_colitis mode=test"
+predict = "python -m ulcerative_colitis mode=predict"
 l = { composite = ["lint", "format", "mypy"] }
 lint = "ruff check --fix"
 format = "ruff format"

@@ -2,6 +2,7 @@ from collections.abc import Iterable
 
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from albumentations import TransformType
 from albumentations.pytorch import ToTensorV2
 from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
@@ -64,5 +65,6 @@ class _UlcerativeColitisSlideTiles(Dataset[Sample]):
 
         image = self.to_tensor(image=image)["image"]
 
-        label = torch.tensor([self.slide_tiles.tiles.iloc[idx]["nancy_index"]]).float()
+        label_index = torch.tensor([self.slide_tiles.tiles.iloc[idx]["nancy_index"]])
+        label = F.one_hot(label_index, num_classes=5).float()
         return image, label, metadata

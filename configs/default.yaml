@@ -28,7 +28,7 @@ model:
   backbone: vgg16
 
 metadata:
-  experiment_name: ???
-  run_name: ???
-  description: ???
+  experiment_name: IKEM
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis'
+  description: Trail training of ulcerative colitis dataset
   hyperparams: {}

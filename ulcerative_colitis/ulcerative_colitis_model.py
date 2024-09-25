@@ -18,10 +18,10 @@ class UlcerativeColitisModel(LightningModule):
 
         self.val_metrics = MetricCollection(
             {
-                "AUC": AUROC("binary"),
-                "accuracy": Accuracy("binary"),
-                "precision": Precision("binary"),
-                "recall": Recall("binary"),
+                "AUC": AUROC("multiclass"),
+                "accuracy": Accuracy("multiclass"),
+                "precision": Precision("multiclass"),
+                "recall": Recall("multiclass"),
             },
             prefix="validation/",
         )
