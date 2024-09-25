@@ -1,2 +1,2 @@
-_target_: breast_cancer.modeling.backbone.vgg16
+_target_: ulcerative_colitis.modeling.backbone.vgg16
 weights: IMAGENET1K_V1
