@@ -24,9 +24,6 @@ data:
   batch_size: 256
   num_workers: 8
 
-model:
-  backbone: vgg16
-
 metadata:
   experiment_name: IKEM
   run_name: '🏋️‍♂️ Training: Ulcerative Colitis'
