@@ -66,5 +66,5 @@ class _UlcerativeColitisSlideTiles(Dataset[Sample]):
         image = self.to_tensor(image=image)["image"]
 
         label_index = torch.tensor([self.slide_tiles.tiles.iloc[idx]["nancy_index"]])
-        label = F.one_hot(label_index, num_classes=5).float()
+        label = F.one_hot(label_index, num_classes=5).squeeze(0).float()
         return image, label, metadata

@@ -48,7 +48,7 @@ class UlcerativeColitisModel(LightningModule):
         loss = self.criterion(outputs, targets)
         self.log("validation/loss", loss, on_epoch=True, prog_bar=True)
 
-        self.val_metrics.update(outputs, targets)
+        self.val_metrics.update(outputs, targets.argmax(dim=1))
         self.log_dict(self.val_metrics, on_epoch=True)
 
     def test_step(self, batch: Input) -> None:
@@ -57,7 +57,7 @@ class UlcerativeColitisModel(LightningModule):
         for output, target, slide in zip(
             outputs, targets, metadata["slide"], strict=False
         ):
-            self.test_metrics.update(output, target, key=slide)
+            self.test_metrics.update(output, target.argmax(dim=1), key=slide)
         self.log_dict(self.test_metrics, on_epoch=True)
 
     def configure_optimizers(self) -> Optimizer:

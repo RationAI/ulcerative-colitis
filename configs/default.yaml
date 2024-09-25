@@ -22,8 +22,8 @@ trainer:
       mode: min
 
 data:
-  batch_size: 256
-  num_workers: 8
+  batch_size: 32
+  num_workers: 4
 
 model: {}
 
