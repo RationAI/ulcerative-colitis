@@ -33,4 +33,5 @@ metadata:
   experiment_name: IKEM
   run_name: '🏋️‍♂️ Training: Ulcerative Colitis'
   description: Trail training of ulcerative colitis dataset
+  user: AdamK
   hyperparams: {}
