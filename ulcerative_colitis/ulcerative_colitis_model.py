@@ -30,7 +30,7 @@ class UlcerativeColitisModel(LightningModule):
             prefix="validation/",
         )
 
-        self.test_mterics = LazyMetricDict(self.val_metrics.clone(prefix="test/"))
+        self.test_metrics = LazyMetricDict(self.val_metrics.clone(prefix="test/"))
 
     def forward(self, x: Tensor) -> Outputs:
         x = self.backbone(x)
