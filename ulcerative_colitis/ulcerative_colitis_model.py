@@ -5,7 +5,9 @@ from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
 from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
 
-from ulcerative_colitis.modeling import ClassificationHead
+from ulcerative_colitis.loss import CumulativeLinkLoss
+from ulcerative_colitis.modeling import LogisticCumulativeLink
+from ulcerative_colitis.modeling.regression_head import RegressionHead
 from ulcerative_colitis.typing import Input, Outputs
 
 
@@ -13,24 +15,28 @@ class UlcerativeColitisModel(LightningModule):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         self.backbone = backbone
-        self.decode_head = ClassificationHead()
-        self.criterion = nn.CrossEntropyLoss()
+        self.num_classes = 5
+        self.decode_head = RegressionHead()
+        self.cumulative_link = LogisticCumulativeLink(num_classes=self.num_classes)
+        self.criterion = CumulativeLinkLoss()
 
         self.val_metrics = MetricCollection(
             {
-                "AUC": AUROC("multiclass", num_classes=5),
-                "accuracy": Accuracy("multiclass", num_classes=5),
-                "precision": Precision("multiclass", num_classes=5),
-                "recall": Recall("multiclass", num_classes=5),
+                "AUC": AUROC("multiclass", num_classes=self.num_classes),
+                "accuracy": Accuracy("multiclass", num_classes=self.num_classes),
+                "precision": Precision("multiclass", num_classes=self.num_classes),
+                "recall": Recall("multiclass", num_classes=self.num_classes),
             },
             prefix="validation/",
         )
 
         self.test_mterics = LazyMetricDict(self.val_metrics.clone(prefix="test/"))
 
-    def forward(self, x: Input) -> Outputs:
-        features = self.backbone(x)
-        return self.decode_head(features)
+    def forward(self, x: Tensor) -> Outputs:
+        x = self.backbone(x)
+        x = self.decode_head(x)
+        x = self.cumulative_link(x)
+        return x
 
     def training_step(self, batch: Input) -> Tensor:
         inputs, targets, _ = batch
