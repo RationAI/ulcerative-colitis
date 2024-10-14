@@ -3,7 +3,7 @@ defaults:
   - logger: mlflow
   - /data/datasets@data.train: ulcerative_colitis/train
   - /data/datasets@data.val: ulcerative_colitis/val
-  - /data/datasets@data.test: ulcerative_colitis/test
+  - /data/datasets@data.test: ulcerative_colitis/val  # TODO: change to test later
   - model/backbone: vgg16
   - _self_
 
@@ -24,6 +24,7 @@ trainer:
       monitor: validation/loss
       mode: min
       patience: 5
+    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
 
 data:
   batch_size: 16

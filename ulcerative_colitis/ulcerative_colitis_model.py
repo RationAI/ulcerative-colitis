@@ -8,7 +8,7 @@ from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
 from ulcerative_colitis.loss import CumulativeLinkLoss
 from ulcerative_colitis.modeling import LogisticCumulativeLink
 from ulcerative_colitis.modeling.regression_head import RegressionHead
-from ulcerative_colitis.typing import Input, Outputs
+from ulcerative_colitis.typing import Input, Output
 
 
 class UlcerativeColitisModel(LightningModule):
@@ -32,7 +32,7 @@ class UlcerativeColitisModel(LightningModule):
 
         self.test_metrics = LazyMetricDict(self.val_metrics.clone(prefix="test/"))
 
-    def forward(self, x: Tensor) -> Outputs:
+    def forward(self, x: Tensor) -> Output:
         x = self.backbone(x)
         x = self.decode_head(x)
         x = self.cumulative_link(x)
@@ -65,6 +65,10 @@ class UlcerativeColitisModel(LightningModule):
         ):
             self.test_metrics.update(output, target.argmax(dim=1), key=slide)
         self.log_dict(self.test_metrics, on_epoch=True)
+
+    def predict_step(self, batch: Input) -> Output:
+        inputs, _, _ = batch
+        return self(inputs)
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=0.0001)

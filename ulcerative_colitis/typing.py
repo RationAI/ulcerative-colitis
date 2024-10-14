@@ -11,4 +11,4 @@ class Metadata(TypedDict):
 
 Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
 Input: TypeAlias = Sample
-Outputs: TypeAlias = Tensor
+Output: TypeAlias = Tensor

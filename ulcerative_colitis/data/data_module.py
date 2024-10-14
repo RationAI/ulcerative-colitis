@@ -49,3 +49,6 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.test, batch_size=self.batch_size, num_workers=self.num_workers
         )
+
+    def predict_dataloader(self) -> Iterable[Input]:
+        return self.test_dataloader()
