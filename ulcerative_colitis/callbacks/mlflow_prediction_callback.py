@@ -1,12 +1,11 @@
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import Callback
+import lightning.pytorch as pl
 from rationai.mlkit import Trainer
 from rationai.mlkit.lightning.loggers.mlflow import MLFlowLogger
 
 from ulcerative_colitis.typing import Input, Output
 
 
-class MLFlowPredictionCallback(Callback):
+class MLFlowPredictionCallback(pl.Callback):
     def on_predict_batch_end(
         self,
         trainer: Trainer,
