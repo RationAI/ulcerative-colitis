@@ -26,6 +26,8 @@ class DataModule(LightningDataModule):
                 self.val = instantiate(self.datasets["val"])
             case "test":
                 self.test = instantiate(self.datasets["test"])
+            case "predict":
+                self.predict = instantiate(self.datasets["predict"])
 
     def train_dataloader(self) -> Iterable[Input]:
         return DataLoader(
@@ -51,4 +53,6 @@ class DataModule(LightningDataModule):
         )
 
     def predict_dataloader(self) -> Iterable[Input]:
-        return self.test_dataloader()
+        return DataLoader(
+            self.predict, batch_size=self.batch_size, num_workers=self.num_workers
+        )
