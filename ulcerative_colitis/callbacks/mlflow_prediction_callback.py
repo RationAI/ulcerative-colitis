@@ -24,8 +24,9 @@ class MLFlowPredictionCallback(pl.Callback):
             "slide": metadata["slide"],
             "x": metadata["x"].cpu(),
             "y": metadata["y"].cpu(),
-            "prediction": outputs.cpu(),
             "target": target.cpu().flatten(),
         }
+        for i in range(outputs.shape[1]):
+            table[f"pred_{i}"] = outputs[:, i].cpu()
         print(table)
         trainer.logger.log_table(table, artifact_file="predictions.parquet")
