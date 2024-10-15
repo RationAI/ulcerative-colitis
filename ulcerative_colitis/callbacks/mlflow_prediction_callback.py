@@ -13,7 +13,7 @@ class MLFlowPredictionCallback(pl.Callback):
         outputs: Output,
         batch: Input,
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         if not isinstance(trainer.logger, MLFlowLogger):
             return
