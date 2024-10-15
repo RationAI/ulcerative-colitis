@@ -11,6 +11,7 @@ dependencies = [
     "torchmetrics>=1.4.1",
     "torchvision>=0.17.2",
     "albumentations>=1.4.14",
+    "ipykernel",
     "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git",
     "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git@refactor/polygon-mask",
     "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git@refactor/modular-tiling",
