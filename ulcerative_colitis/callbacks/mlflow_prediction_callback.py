@@ -18,14 +18,13 @@ class MLFlowPredictionCallback(pl.Callback):
         if not isinstance(trainer.logger, MLFlowLogger):
             return
 
-        _, _, metadata = batch
-
-        print(metadata)
+        _, target, metadata = batch
 
         table = {
-            "slide": metadata["slide"].cpu(),
+            "slide": metadata["slide"],
             "x": metadata["x"].cpu(),
             "y": metadata["y"].cpu(),
             "prediction": outputs.cpu(),
+            "target": target.cpu(),
         }
         trainer.logger.log_table(table, artifact_file="predictions.parquet")
