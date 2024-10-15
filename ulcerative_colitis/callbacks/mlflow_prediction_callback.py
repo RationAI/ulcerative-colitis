@@ -26,4 +26,4 @@ class MLFlowPredictionCallback(pl.Callback):
             "y": metadata["y"],
             "prediction": outputs,
         }
-        trainer.logger.log_table(table, artifact_file="")
+        trainer.logger.log_table(table, artifact_file="predictions.parquet")
