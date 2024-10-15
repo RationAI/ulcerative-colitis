@@ -20,10 +20,12 @@ class MLFlowPredictionCallback(pl.Callback):
 
         _, _, metadata = batch
 
+        print(metadata)
+
         table = {
-            "slide": metadata["slide"],
-            "x": metadata["x"],
-            "y": metadata["y"],
+            "slide": metadata["slide"].cpu(),
+            "x": metadata["x"].cpu(),
+            "y": metadata["y"].cpu(),
             "prediction": outputs.cpu(),
         }
         trainer.logger.log_table(table, artifact_file="predictions.parquet")
