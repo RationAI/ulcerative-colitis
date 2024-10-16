@@ -5,6 +5,7 @@ from lightning import LightningDataModule
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
+from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
 from ulcerative_colitis.typing import Input, PredictInput
 
 
@@ -35,7 +36,7 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.train,
             batch_size=self.batch_size,
-            shuffle=True,
+            sampler=AutoWeightedRandomSampler(self.train),
             drop_last=True,
             num_workers=self.num_workers,
             persistent_workers=self.num_workers > 0,
