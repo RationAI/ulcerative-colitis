@@ -13,8 +13,8 @@ dependencies = [
     "albumentations>=1.4.14",
     "ipykernel",
     "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git",
-    "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git@refactor/polygon-mask",
-    "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git@refactor/modular-tiling",
+    "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git",
+    "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git",
 ]
 
 [tool.pdm.dev-dependencies]

@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:28cec45e876f21beb1d9a28baa20a773a6b71fdc0d37192666293f82045b8df7"
+content_hash = "sha256:35ae2b37937e7ebc9cfa97c3e30592a85251314f7e2bf74a3d7840b704842571"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -97,9 +97,9 @@ files = [
 
 [[package]]
 name = "albumentations"
-version = "1.4.16"
+version = "1.4.18"
 requires_python = ">=3.8"
-summary = "An efficient library for image augmentation, providing extensive transformations to support machine learning and computer vision tasks."
+summary = "Fast, flexible, and advanced image augmentation library for deep learning and computer vision. Albumentations offers a wide range of transformations for images, masks, bounding boxes, and keypoints, with optimized performance and seamless integration into ML workflows."
 groups = ["default"]
 dependencies = [
     "PyYAML",
@@ -112,8 +112,8 @@ dependencies = [
     "scipy>=1.10.0",
 ]
 files = [
-    {file = "albumentations-1.4.16-py3-none-any.whl", hash = "sha256:a8e90f8d1500e82abf46dfa10f67a8662b335fbc90fccfaeb16a7d30c764b8db"},
-    {file = "albumentations-1.4.16.tar.gz", hash = "sha256:d1b959ef0a20552226b7787529a29aab239ba71ef5024974082b1cd01bf424de"},
+    {file = "albumentations-1.4.18-py3-none-any.whl", hash = "sha256:57ed0a634de9d3b34d003585aa90e9164e164ccc4ecb797eee8fbad8da1e9eaf"},
+    {file = "albumentations-1.4.18.tar.gz", hash = "sha256:701a9405f059f761f00ce00e187954d01276bdb78b33abcf864e79727db3bf1a"},
 ]
 
 [[package]]
@@ -1287,7 +1287,7 @@ files = [
 
 [[package]]
 name = "mypy"
-version = "1.11.1"
+version = "1.12.0"
 requires_python = ">=3.8"
 summary = "Optional static typing for Python"
 groups = ["dev"]
@@ -1296,18 +1296,9 @@ dependencies = [
     "typing-extensions>=4.6.0",
 ]
 files = [
-    {file = "mypy-1.11.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:7b6343d338390bb946d449677726edf60102a1c96079b4f002dedff375953fc5"},
-    {file = "mypy-1.11.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e4fe9f4e5e521b458d8feb52547f4bade7ef8c93238dfb5bbc790d9ff2d770ca"},
-    {file = "mypy-1.11.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:886c9dbecc87b9516eff294541bf7f3655722bf22bb898ee06985cd7269898de"},
-    {file = "mypy-1.11.1-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:fca4a60e1dd9fd0193ae0067eaeeb962f2d79e0d9f0f66223a0682f26ffcc809"},
-    {file = "mypy-1.11.1-cp311-cp311-win_amd64.whl", hash = "sha256:0bd53faf56de9643336aeea1c925012837432b5faf1701ccca7fde70166ccf72"},
-    {file = "mypy-1.11.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:f39918a50f74dc5969807dcfaecafa804fa7f90c9d60506835036cc1bc891dc8"},
-    {file = "mypy-1.11.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0bc71d1fb27a428139dd78621953effe0d208aed9857cb08d002280b0422003a"},
-    {file = "mypy-1.11.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b868d3bcff720dd7217c383474008ddabaf048fad8d78ed948bb4b624870a417"},
-    {file = "mypy-1.11.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:a707ec1527ffcdd1c784d0924bf5cb15cd7f22683b919668a04d2b9c34549d2e"},
-    {file = "mypy-1.11.1-cp312-cp312-win_amd64.whl", hash = "sha256:64f4a90e3ea07f590c5bcf9029035cf0efeae5ba8be511a8caada1a4893f5525"},
-    {file = "mypy-1.11.1-py3-none-any.whl", hash = "sha256:0624bdb940255d2dd24e829d99a13cfeb72e4e9031f9492148f410ed30bcab54"},
-    {file = "mypy-1.11.1.tar.gz", hash = "sha256:f404a0b069709f18bbdb702eb3dcfe51910602995de00bd39cea3050b5772d08"},
+    {file = "mypy-1.12.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a64ee25f05fc2d3d8474985c58042b6759100a475f8237da1f4faf7fcd7e6309"},
+    {file = "mypy-1.12.0-py3-none-any.whl", hash = "sha256:fd313226af375d52e1e36c383f39bf3836e1f192801116b31b090dfcd3ec5266"},
+    {file = "mypy-1.12.0.tar.gz", hash = "sha256:65a22d87e757ccd95cbbf6f7e181e6caa87128255eb2b6be901bb71b26d8a99d"},
 ]
 
 [[package]]
@@ -1765,7 +1756,7 @@ files = [
 
 [[package]]
 name = "pre-commit"
-version = "3.8.0"
+version = "4.0.1"
 requires_python = ">=3.9"
 summary = "A framework for managing and maintaining multi-language pre-commit hooks."
 groups = ["dev"]
@@ -1777,8 +1768,8 @@ dependencies = [
     "virtualenv>=20.10.0",
 ]
 files = [
-    {file = "pre_commit-3.8.0-py2.py3-none-any.whl", hash = "sha256:9a90a53bf82fdd8778d58085faf8d83df56e40dfe18f45b19446e26bf1b3a63f"},
-    {file = "pre_commit-3.8.0.tar.gz", hash = "sha256:8bb6494d4a20423842e198980c9ecf9f96607a07ea29549e180eef9ae80fe7af"},
+    {file = "pre_commit-4.0.1-py2.py3-none-any.whl", hash = "sha256:efde913840816312445dc98787724647c65473daefe420785f885e8ed9a06878"},
+    {file = "pre_commit-4.0.1.tar.gz", hash = "sha256:80905ac375958c0444c65e9cebebd948b3cdb518f335a091a670a89d652139d2"},
 ]
 
 [[package]]
@@ -2070,8 +2061,7 @@ name = "rationai-masks"
 version = "1.0.0"
 requires_python = ">=3.11"
 git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git"
-ref = "refactor/polygon-mask"
-revision = "e0540a9a56b6e70125565259f4ad2a69bfb67209"
+revision = "7d56f2ba3c7b411bdf6043ae1224676c745317d2"
 summary = ""
 groups = ["default"]
 dependencies = [
@@ -2089,7 +2079,7 @@ name = "rationai-mlkit"
 version = "0.2.0"
 requires_python = ">=3.11"
 git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git"
-revision = "95bced93c044d425a33f29845df814216d605453"
+revision = "aaeca87ea83b0d6444d17bffc3a3517efd526516"
 summary = ""
 groups = ["default"]
 dependencies = [
@@ -2106,8 +2096,7 @@ name = "rationai-tiling"
 version = "1.0.0"
 requires_python = ">=3.11"
 git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git"
-ref = "refactor/modular-tiling"
-revision = "416cbdeef2b37f51e2b25f8bb1f4e7effc927cdf"
+revision = "5889fc70093e097684f6014dab8ad5d0616e14fd"
 summary = ""
 groups = ["default"]
 dependencies = [
@@ -2201,29 +2190,13 @@ files = [
 
 [[package]]
 name = "ruff"
-version = "0.6.0"
+version = "0.6.9"
 requires_python = ">=3.7"
 summary = "An extremely fast Python linter and code formatter, written in Rust."
 groups = ["dev"]
 files = [
-    {file = "ruff-0.6.0-py3-none-linux_armv6l.whl", hash = "sha256:92dcce923e5df265781e5fc76f9a1edad52201a7aafe56e586b90988d5239013"},
-    {file = "ruff-0.6.0-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:31b90ff9dc79ed476c04e957ba7e2b95c3fceb76148f2079d0d68a908d2cfae7"},
-    {file = "ruff-0.6.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:6d834a9ec9f8287dd6c3297058b3a265ed6b59233db22593379ee38ebc4b9768"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f2089267692696aba342179471831a085043f218706e642564812145df8b8d0d"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:aa62b423ee4bbd8765f2c1dbe8f6aac203e0583993a91453dc0a449d465c84da"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:7344e1a964b16b1137ea361d6516ce4ee61a0403fa94252a1913ecc1311adcae"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:487f3a35c3f33bf82be212ce15dc6278ea854e35573a3f809442f73bec8b2760"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:75db409984077a793cf344d499165298a6f65449e905747ac65983b12e3e64b1"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:84908bd603533ecf1db456d8fc2665d1f4335d722e84bc871d3bbd2d1116c272"},
-    {file = "ruff-0.6.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f1749a0aef3ec41ed91a0e2127a6ae97d2e2853af16dbd4f3c00d7a3af726c5"},
-    {file = "ruff-0.6.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:016fea751e2bcfbbd2f8cb19b97b37b3fd33148e4df45b526e87096f4e17354f"},
-    {file = "ruff-0.6.0-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:6ae80f141b53b2e36e230017e64f5ea2def18fac14334ffceaae1b780d70c4f7"},
-    {file = "ruff-0.6.0-py3-none-musllinux_1_2_i686.whl", hash = "sha256:eaaaf33ea4b3f63fd264d6a6f4a73fa224bbfda4b438ffea59a5340f4afa2bb5"},
-    {file = "ruff-0.6.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:7667ddd1fc688150a7ca4137140867584c63309695a30016880caf20831503a0"},
-    {file = "ruff-0.6.0-py3-none-win32.whl", hash = "sha256:ae48365aae60d40865a412356f8c6f2c0be1c928591168111eaf07eaefa6bea3"},
-    {file = "ruff-0.6.0-py3-none-win_amd64.whl", hash = "sha256:774032b507c96f0c803c8237ce7d2ef3934df208a09c40fa809c2931f957fe5e"},
-    {file = "ruff-0.6.0-py3-none-win_arm64.whl", hash = "sha256:a5366e8c3ae6b2dc32821749b532606c42e609a99b0ae1472cf601da931a048c"},
-    {file = "ruff-0.6.0.tar.gz", hash = "sha256:272a81830f68f9bd19d49eaf7fa01a5545c5a2e86f32a9935bb0e4bb9a1db5b8"},
+    {file = "ruff-0.6.9-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a67267654edc23c97335586774790cde402fb6bbdb3c2314f1fc087dee320bfa"},
+    {file = "ruff-0.6.9.tar.gz", hash = "sha256:b076ef717a8e5bc819514ee1d602bbdca5b4420ae13a9cf61a0c0a4f53a2baa2"},
 ]
 
 [[package]]
@@ -2467,7 +2440,7 @@ files = [
 
 [[package]]
 name = "torchmetrics"
-version = "1.4.1"
+version = "1.4.3"
 requires_python = ">=3.8"
 summary = "PyTorch native Metrics"
 groups = ["default"]
@@ -2478,7 +2451,8 @@ dependencies = [
     "torch>=1.10.0",
 ]
 files = [
-    {file = "torchmetrics-1.4.1-py3-none-any.whl", hash = "sha256:c2e7cd56dd8bdc60ae63d712f3bdce649f23bd174d9180bdd0b746e0230b865a"},
+    {file = "torchmetrics-1.4.3-py3-none-any.whl", hash = "sha256:76e67490231acef7f70cf36ab129df72fb2b0256dada7051001ab3b9f8699bf4"},
+    {file = "torchmetrics-1.4.3.tar.gz", hash = "sha256:5554a19167e91f543afe82ff58a01059c8eec854359ad22896449c2c8fb0ad89"},
 ]
 
 [[package]]
