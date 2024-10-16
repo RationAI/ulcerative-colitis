@@ -5,7 +5,7 @@ from lightning import LightningDataModule
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
-from ulcerative_colitis.typing import Input
+from ulcerative_colitis.typing import Input, PredictInput
 
 
 class DataModule(LightningDataModule):
@@ -16,6 +16,8 @@ class DataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.datasets = datasets
+
+        self.setup("")  # fix W0201 [attribute-defined-outside-init]
 
     def setup(self, stage: str) -> None:
         match stage:
@@ -52,7 +54,10 @@ class DataModule(LightningDataModule):
             self.test, batch_size=self.batch_size, num_workers=self.num_workers
         )
 
-    def predict_dataloader(self) -> Iterable[Input]:
-        return DataLoader(
-            self.predict, batch_size=self.batch_size, num_workers=self.num_workers
-        )
+    def predict_dataloader(self) -> list[Iterable[PredictInput]]:
+        return [
+            DataLoader(
+                dataset, batch_size=self.batch_size, num_workers=self.num_workers
+            )
+            for dataset in self.predict.datasets
+        ]
