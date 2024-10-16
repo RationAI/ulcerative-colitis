@@ -22,10 +22,14 @@ class UlcerativeColitisModel(LightningModule):
 
         self.val_metrics = MetricCollection(
             {
-                "AUC": AUROC("multiclass", num_classes=self.num_classes),
+                "AUC": AUROC("multiclass", num_classes=self.num_classes, average=None),
                 "accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-                "precision": Precision("multiclass", num_classes=self.num_classes),
-                "recall": Recall("multiclass", num_classes=self.num_classes),
+                "precision": Precision(
+                    "multiclass", num_classes=self.num_classes, average=None
+                ),
+                "recall": Recall(
+                    "multiclass", num_classes=self.num_classes, average=None
+                ),
             },
             prefix="validation/",
         )
