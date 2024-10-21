@@ -112,6 +112,8 @@ class UlcerativeColitisModel(LightningModule):
         targets: Tensor,
         metadata: MetadataBatch,
     ) -> None:
+        print("outputs", outputs)
+        print("targets", targets)
         metrics["tiles_all"].update(outputs, targets)
         for output, target, scene in zip(
             outputs, targets, metadata["slide"], strict=True
