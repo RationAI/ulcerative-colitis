@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Self, cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
@@ -30,19 +30,12 @@ class UlcerativeColitisModel(LightningModule):
         self.cumulative_link = LogisticCumulativeLink(num_classes=self.n_classes)
         self.criterion = CumulativeLinkLoss()
 
-        self.metric_test = MulticlassAUROC(num_classes=self.n_classes, average=None)
-        print(self.metric_test.device)
         metrics: dict[str, Metric] = {
             "AUC": MulticlassAUROC(num_classes=self.n_classes, average=None),
             "accuracy": MulticlassAccuracy(num_classes=self.n_classes),
             "precision": MulticlassPrecision(num_classes=self.n_classes, average=None),
             "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
         }
-        for metric in metrics.values():
-            print(metric)
-            print(metric.device)
-            metric.to(self.device)
-            print(metric.device)
 
         self.val_metrics: dict[str, MetricCollection] = {
             "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
@@ -73,6 +66,17 @@ class UlcerativeColitisModel(LightningModule):
             self.test_metrics["tiles_all"].clone(prefix="test/tiles/")
         )
 
+    def to(self, *args, **kwargs) -> Self:
+        model = super().to(*args, **kwargs)
+        print("DEVICE IN TO", self.device)
+        model.val_metrics = {
+            name: metric.to(self.device) for name, metric in self.val_metrics.items()
+        }
+        model.test_metrics = {
+            name: metric.to(self.device) for name, metric in self.test_metrics.items()
+        }
+        return model
+
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
         x = self.backbone(x)
         x = self.decode_head(x)
@@ -89,9 +93,6 @@ class UlcerativeColitisModel(LightningModule):
         return loss
 
     def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
-        print("device", self.device)
-        print("test_metric device", self.metric_test.device)
-        print("val_metri device", self.val_metrics["tiles_all"]["AUC"].device)
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
