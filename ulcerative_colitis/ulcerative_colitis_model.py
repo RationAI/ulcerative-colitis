@@ -89,8 +89,9 @@ class UlcerativeColitisModel(LightningModule):
         return loss
 
     def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
-        print(self.device)
-        print(self.metric_test.device)
+        print("device", self.device)
+        print("test_metric device", self.metric_test.device)
+        print("val_metri device", self.val_metrics["tiles_all"]["AUC"].device)
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
