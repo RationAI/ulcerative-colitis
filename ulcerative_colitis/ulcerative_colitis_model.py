@@ -1,4 +1,4 @@
-from typing import Self, cast
+from typing import cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
@@ -66,15 +66,21 @@ class UlcerativeColitisModel(LightningModule):
             self.test_metrics["tiles_all"].clone(prefix="test/tiles/")
         )
 
-    def to(self, *args, **kwargs) -> Self:
-        model = super().to(*args, **kwargs)
-        model.val_metrics = {
-            name: metric.to(self.device) for name, metric in self.val_metrics.items()
-        }
-        model.test_metrics = {
-            name: metric.to(self.device) for name, metric in self.test_metrics.items()
-        }
-        return model
+        # Register each MetricCollection as an attribute
+        for name, metric in self.val_metrics.items():
+            setattr(self, f"val_metrics_{name}", metric)
+        for name, metric in self.test_metrics.items():
+            setattr(self, f"test_metrics_{name}", metric)
+
+    # def to(self, *args, **kwargs) -> Self:
+    #     model = super().to(*args, **kwargs)
+    #     model.val_metrics = {
+    #         name: metric.to(self.device) for name, metric in self.val_metrics.items()
+    #     }
+    #     model.test_metrics = {
+    #         name: metric.to(self.device) for name, metric in self.test_metrics.items()
+    #     }
+    #     return model
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
         x = self.backbone(x)
@@ -146,3 +152,5 @@ class UlcerativeColitisModel(LightningModule):
                 self.logger.log_table(metric.compute(), f"{name}.parquet")
             else:
                 self.log_dict(metric, on_epoch=True)
+
+            metric.reset()
