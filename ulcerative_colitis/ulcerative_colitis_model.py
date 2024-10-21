@@ -37,7 +37,10 @@ class UlcerativeColitisModel(LightningModule):
             "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
         }
         for metric in metrics.values():
+            print(metric)
+            print(metric.device)
             metric.to(self.device)
+            print(metric.device)
 
         self.val_metrics: dict[str, MetricCollection] = {
             "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
