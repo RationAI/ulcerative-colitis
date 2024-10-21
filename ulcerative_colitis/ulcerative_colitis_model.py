@@ -68,7 +68,6 @@ class UlcerativeColitisModel(LightningModule):
 
     def to(self, *args, **kwargs) -> Self:
         model = super().to(*args, **kwargs)
-        print("DEVICE IN TO", self.device)
         model.val_metrics = {
             name: metric.to(self.device) for name, metric in self.val_metrics.items()
         }
@@ -132,14 +131,13 @@ class UlcerativeColitisModel(LightningModule):
             outputs, targets, metadata["slide"], strict=True
         ):
             slide = scene.split("_scene_")[0]
-
-            metrics["tiles_scene"].update(output, target, key=scene)
-            metrics["scene_max"].update(output, target, key=scene)
-            metrics["scene_mean"].update(output, target, key=scene)
-
-            metrics["tiles_slide"].update(output, target, key=slide)
-            metrics["slide_max"].update(output, target, key=slide)
-            metrics["slide_mean"].update(output, target, key=slide)
+            for name, metric in metrics.items():
+                if name == "tiles_all":
+                    continue
+                if "scene" in name:
+                    metric.update(output, target, key=scene)
+                if "slide" in name:
+                    metric.update(output, target, key=slide)
 
     def _log_metrics(self, metrics: dict[str, MetricCollection]) -> None:
         for name, metric in metrics.items():
