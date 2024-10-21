@@ -84,7 +84,7 @@ class UlcerativeColitisModel(LightningModule):
         loss = self.criterion(outputs, targets)
         self.log("validation/loss", loss, on_epoch=True, prog_bar=True)
 
-        self._update_metrics(self.val_metrics, outputs, targets, metadata)
+        self._update_metrics(self.val_metrics, outputs, targets.reshape(-1), metadata)
 
     def on_validation_epoch_end(self) -> None:
         self._log_metrics(self.val_metrics)
@@ -93,7 +93,7 @@ class UlcerativeColitisModel(LightningModule):
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
-        self._update_metrics(self.test_metrics, outputs, targets, metadata)
+        self._update_metrics(self.test_metrics, outputs, targets.reshape(-1), metadata)
 
     def on_test_epoch_end(self) -> None:
         self._log_metrics(self.test_metrics)
@@ -112,8 +112,6 @@ class UlcerativeColitisModel(LightningModule):
         targets: Tensor,
         metadata: MetadataBatch,
     ) -> None:
-        print("outputs", outputs)
-        print("targets", targets)
         metrics["tiles_all"].update(outputs, targets)
         for output, target, scene in zip(
             outputs, targets, metadata["slide"], strict=True
