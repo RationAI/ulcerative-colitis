@@ -6,7 +6,13 @@ from rationai.mlkit.metrics import LazyMetricDict
 from torch import Tensor, nn
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
-from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
+from torchmetrics import Metric, MetricCollection
+from torchmetrics.classification import (
+    MulticlassAccuracy,
+    MulticlassAUROC,
+    MulticlassPrecision,
+    MulticlassRecall,
+)
 
 from ulcerative_colitis.loss import CumulativeLinkLoss
 from ulcerative_colitis.metrics import MetricAggregator
@@ -19,19 +25,19 @@ class UlcerativeColitisModel(LightningModule):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         self.backbone = backbone
-        self.num_classes = 5
+        self.n_classes = 5
         self.decode_head = RegressionHead()
-        self.cumulative_link = LogisticCumulativeLink(num_classes=self.num_classes)
+        self.cumulative_link = LogisticCumulativeLink(num_classes=self.n_classes)
         self.criterion = CumulativeLinkLoss()
 
-        metrics = {
-            "AUC": AUROC("multiclass", num_classes=self.num_classes, average=None),
-            "accuracy": Accuracy("multiclass", num_classes=self.num_classes),
-            "precision": Precision(
-                "multiclass", num_classes=self.num_classes, average=None
-            ),
-            "recall": Recall("multiclass", num_classes=self.num_classes, average=None),
+        metrics: dict[str, Metric] = {
+            "AUC": MulticlassAUROC(num_classes=self.n_classes, average=None),
+            "accuracy": MulticlassAccuracy(num_classes=self.n_classes),
+            "precision": MulticlassPrecision(num_classes=self.n_classes, average=None),
+            "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
         }
+        for metric in metrics.values():
+            metric.to(self.device)
 
         self.val_metrics: dict[str, MetricCollection] = {
             "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
@@ -112,9 +118,6 @@ class UlcerativeColitisModel(LightningModule):
         targets: Tensor,
         metadata: MetadataBatch,
     ) -> None:
-        print("outputs", outputs)
-        print("targets", targets)
-        print(outputs.device == targets.device)
         metrics["tiles_all"].update(outputs, targets)
         for output, target, scene in zip(
             outputs, targets, metadata["slide"], strict=True
