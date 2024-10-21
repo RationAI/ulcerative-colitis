@@ -30,8 +30,8 @@ class UlcerativeColitisModel(LightningModule):
         self.cumulative_link = LogisticCumulativeLink(num_classes=self.n_classes)
         self.criterion = CumulativeLinkLoss()
 
-        metric_test = MulticlassAUROC(num_classes=self.n_classes, average=None)
-        print(metric_test.device)
+        self.metric_test = MulticlassAUROC(num_classes=self.n_classes, average=None)
+        print(self.metric_test.device)
         metrics: dict[str, Metric] = {
             "AUC": MulticlassAUROC(num_classes=self.n_classes, average=None),
             "accuracy": MulticlassAccuracy(num_classes=self.n_classes),
@@ -90,6 +90,7 @@ class UlcerativeColitisModel(LightningModule):
 
     def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
         print(self.device)
+        print(self.metric_test.device)
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
