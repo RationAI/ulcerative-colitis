@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 
 import pandas as pd
 import torch
-from albumentations import TransformType
+from albumentations.core.composition import TransformType
 from albumentations.pytorch import ToTensorV2
 from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
 from torch.utils.data import Dataset

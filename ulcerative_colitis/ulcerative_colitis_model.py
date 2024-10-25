@@ -1,9 +1,10 @@
+from collections.abc import Mapping
 from typing import cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from rationai.mlkit.metrics import LazyMetricDict
-from torch import Tensor, nn
+from torch import Tensor
+from torch.nn import Module, ModuleDict
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
 from torchmetrics import Metric, MetricCollection
@@ -15,14 +16,17 @@ from torchmetrics.classification import (
 )
 
 from ulcerative_colitis.loss import CumulativeLinkLoss
-from ulcerative_colitis.metrics import MetricAggregator
+from ulcerative_colitis.metrics import (
+    AggregatedMetricCollection,
+    NestedMetricCollection,
+)
 from ulcerative_colitis.modeling import LogisticCumulativeLink
 from ulcerative_colitis.modeling.regression_head import RegressionHead
-from ulcerative_colitis.typing import Input, MetadataBatch, Output
+from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
 
 
 class UlcerativeColitisModel(LightningModule):
-    def __init__(self, backbone: nn.Module) -> None:
+    def __init__(self, backbone: Module) -> None:
         super().__init__()
         self.backbone = backbone
         self.n_classes = 5
@@ -37,50 +41,54 @@ class UlcerativeColitisModel(LightningModule):
             "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
         }
 
-        self.val_metrics: dict[str, MetricCollection] = {
-            "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
-            "scene_max": MetricAggregator(
-                metrics, agg="max", prefix="validation/scenes_max/"
+        self.val_metrics: dict[str, MetricCollection] = cast(
+            dict,
+            ModuleDict(
+                {
+                    "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
+                    "scene_max": AggregatedMetricCollection(
+                        metrics, agg="max", prefix="validation/scenes/max/"
+                    ),
+                    "slide_max": AggregatedMetricCollection(
+                        metrics, agg="max", prefix="validation/slides/max/"
+                    ),
+                    "scene_mean": AggregatedMetricCollection(
+                        metrics, agg="mean", prefix="validation/scenes/mean/"
+                    ),
+                    "slide_mean": AggregatedMetricCollection(
+                        metrics, agg="mean", prefix="validation/slides/mean/"
+                    ),
+                }
             ),
-            "slide_max": MetricAggregator(
-                metrics, agg="max", prefix="validation/slides_max/"
-            ),
-            "scene_mean": MetricAggregator(
-                metrics, agg="mean", prefix="validation/scenes_mean/"
-            ),
-            "slide_mean": MetricAggregator(
-                metrics, agg="mean", prefix="validation/slides_mean/"
-            ),
-        }
-
-        self.test_metrics: dict[str, MetricCollection] = {
-            name: metric.clone(
-                prefix=cast(str, metric.prefix).replace("validation", "test")
-            )
-            for name, metric in self.val_metrics.items()
-        }
-        self.test_metrics["tiles_scene"] = LazyMetricDict(
-            self.test_metrics["tiles_all"].clone(prefix="test/tiles/")
-        )
-        self.test_metrics["tiles_slide"] = LazyMetricDict(
-            self.test_metrics["tiles_all"].clone(prefix="test/tiles/")
         )
 
-        # Register each MetricCollection as an attribute
-        for name, metric in self.val_metrics.items():
-            setattr(self, f"val_metrics_{name}", metric)
-        for name, metric in self.test_metrics.items():
-            setattr(self, f"test_metrics_{name}", metric)
+        self.test_metrics: dict[str, MetricCollection] = cast(
+            dict,
+            ModuleDict(
+                {
+                    name: metric.clone(
+                        prefix=cast(str, metric.prefix).replace("validation", "test")
+                    )
+                    for name, metric in self.val_metrics.items()
+                }
+            ),
+        )
 
-    # def to(self, *args, **kwargs) -> Self:
-    #     model = super().to(*args, **kwargs)
-    #     model.val_metrics = {
-    #         name: metric.to(self.device) for name, metric in self.val_metrics.items()
-    #     }
-    #     model.test_metrics = {
-    #         name: metric.to(self.device) for name, metric in self.test_metrics.items()
-    #     }
-    #     return model
+        self.test_metrics_nested: dict[str, NestedMetricCollection] = cast(
+            dict,
+            ModuleDict(
+                {
+                    "tiles_scene": NestedMetricCollection(
+                        self.test_metrics["tiles_all"].clone(),
+                        key_name="slide",
+                    ),
+                    "tiles_slide": NestedMetricCollection(
+                        self.test_metrics["tiles_all"].clone(),
+                        key_name="scene",
+                    ),
+                }
+            ),
+        )
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
         x = self.backbone(x)
@@ -104,53 +112,71 @@ class UlcerativeColitisModel(LightningModule):
         loss = self.criterion(outputs, targets)
         self.log("validation/loss", loss, on_epoch=True, prog_bar=True)
 
-        self._update_metrics(self.val_metrics, outputs, targets.reshape(-1), metadata)
-
-    def on_validation_epoch_end(self) -> None:
-        self._log_metrics(self.val_metrics)
+        targets = targets.reshape(-1)
+        self.update_metrics(self.val_metrics, outputs, targets, metadata)
+        self.log_metrics(self.val_metrics)
 
     def test_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
-        self._update_metrics(self.test_metrics, outputs, targets.reshape(-1), metadata)
+        targets = targets.reshape(-1)
+        self.update_metrics(self.test_metrics, outputs, targets, metadata)
+        self.update_metrics(self.test_metrics_nested, outputs, targets, metadata)
+        self.log_metrics(self.test_metrics)
 
     def on_test_epoch_end(self) -> None:
-        self._log_metrics(self.test_metrics)
+        for name, metric in self.test_metrics_nested.items():
+            assert isinstance(self.logger, MLFlowLogger)
+            self.logger.log_table(metric.compute(), f"{name}.json")
+            metric.reset()
 
-    def predict_step(self, batch: Input) -> Output:  # pylint: disable=arguments-differ
-        inputs, _, _ = batch
-        return self(inputs)
+    def predict_step(self, batch: PredictInput) -> Output:  # pylint: disable=arguments-differ
+        inputs, metadata = batch
+        outputs = self(inputs)
+
+        table = {
+            "slide": metadata["slide"],
+            "x": metadata["x"].cpu(),
+            "y": metadata["y"].cpu(),
+        }
+        for i in range(outputs.shape[1]):
+            table[f"pred_{i}"] = outputs[:, i].cpu()
+        assert isinstance(self.logger, MLFlowLogger)
+        self.logger.log_table(table, artifact_file="predictions.parquet")
+
+        return outputs
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=0.00001)
 
-    def _update_metrics(
+    def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
+        for name, metric in dictionary.items():
+            result = cast(Tensor, metric.compute())
+            if result.shape:
+                for i, value in enumerate(result):
+                    self.log(f"{name}/{i}", value, *args, **kwargs)
+            else:
+                self.log(name, result, *args, **kwargs)
+
+    def update_metrics(
         self,
-        metrics: dict[str, MetricCollection],
+        metrics: Mapping[str, MetricCollection],
         outputs: Tensor,
         targets: Tensor,
         metadata: MetadataBatch,
     ) -> None:
-        metrics["tiles_all"].update(outputs, targets)
-        for output, target, scene in zip(
-            outputs, targets, metadata["slide"], strict=True
-        ):
-            slide = scene.split("_scene_")[0]
-            for name, metric in metrics.items():
-                if name == "tiles_all":
-                    continue
-                if "scene" in name:
-                    metric.update(output, target, key=scene)
-                if "slide" in name:
-                    metric.update(output, target, key=slide)
+        scenes = metadata["slide"]
+        slides = [scene.split("_scene_")[0] for scene in scenes]
 
-    def _log_metrics(self, metrics: dict[str, MetricCollection]) -> None:
         for name, metric in metrics.items():
-            if isinstance(metric, LazyMetricDict):
-                assert isinstance(self.logger, MLFlowLogger)
-                self.logger.log_table(metric.compute(), f"{name}.parquet")
+            if "scene" in name:
+                metric.update(outputs, targets, key=scenes)
+            elif "slide" in name:
+                metric.update(outputs, targets, key=slides)
             else:
-                self.log_dict(metric, on_epoch=True)
+                metric.update(outputs, targets)
 
-            metric.reset()
+    def log_metrics(self, metrics: dict[str, MetricCollection]) -> None:
+        for metric in metrics.values():
+            self.log_dict(metric, on_epoch=True)
