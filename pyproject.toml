@@ -1,7 +1,9 @@
 [project]
-name = "project-name"
+name = "ulcerative-colitis"
 version = "0.1.0"
-authors = []
+authors = [
+    {name = "Adam Kukučka", email = "524905@muni.cz"},
+]
 requires-python = ">=3.11"
 readme = "README.md"
 license = { file = "LICENSE" }
