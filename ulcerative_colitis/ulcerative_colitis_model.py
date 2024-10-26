@@ -19,6 +19,9 @@ from ulcerative_colitis.loss import CumulativeLinkLoss
 from ulcerative_colitis.metrics import (
     AggregatedMetricCollection,
     NestedMetricCollection,
+    max_aggregation,
+    mean_aggregation,
+    targets_aggregation,
 )
 from ulcerative_colitis.modeling import LogisticCumulativeLink
 from ulcerative_colitis.modeling.regression_head import RegressionHead
@@ -47,16 +50,28 @@ class UlcerativeColitisModel(LightningModule):
                 {
                     "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
                     "scene_max": AggregatedMetricCollection(
-                        metrics, agg="max", prefix="validation/scenes/max/"
+                        metrics,
+                        aggregation_preds=max_aggregation,
+                        aggregation_targets=targets_aggregation,
+                        prefix="validation/scenes/max/",
                     ),
                     "slide_max": AggregatedMetricCollection(
-                        metrics, agg="max", prefix="validation/slides/max/"
+                        metrics,
+                        aggregation_preds=max_aggregation,
+                        aggregation_targets=targets_aggregation,
+                        prefix="validation/slides/max/",
                     ),
                     "scene_mean": AggregatedMetricCollection(
-                        metrics, agg="mean", prefix="validation/scenes/mean/"
+                        metrics,
+                        aggregation_preds=mean_aggregation,
+                        aggregation_targets=targets_aggregation,
+                        prefix="validation/scenes/mean/",
                     ),
                     "slide_mean": AggregatedMetricCollection(
-                        metrics, agg="mean", prefix="validation/slides/mean/"
+                        metrics,
+                        aggregation_preds=mean_aggregation,
+                        aggregation_targets=targets_aggregation,
+                        prefix="validation/slides/mean/",
                     ),
                 }
             ),
