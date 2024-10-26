@@ -7,6 +7,34 @@ from torchmetrics import Metric, MetricCollection
 
 
 class NestedMetricCollection(MetricCollection):
+    """NestedMetricCollection is a MetricCollection that creates a "MetricCollection" for each key passed to the update method.
+
+    Attributes:
+        metrics (dict[str, Metric]): Dictionary containing the metrics to be computed.
+        key_name (str): Name of the key used to group the metrics.
+        class_names (list[str] | None): List of class names for multi-class metrics
+
+    Example:
+        >>> from torchmetrics import Accuracy, Precision, Recall
+        >>> metrics = {
+        ...     "accuracy": Accuracy(),
+        ...     "precision": Precision(),
+        ...     "recall": Recall(),
+        ... }
+        >>> nested_metrics = NestedMetricCollection(metrics, key_name="slide")
+        >>> preds = torch.tensor([[0.1, 0.9], [0.8, 0.2]])
+        >>> targets = torch.tensor([1, 1])
+        >>> key = ["slide1", "slide2"]
+        >>> nested_metrics.update(preds, targets, key)
+        >>> nested_metrics.compute()
+        {
+            "slide": ["slide1", "slide2"],
+            "accuracy": [1.0, 0.0],
+            "precision": [1.0, 0.0],
+            "recall": [1.0, 0.0],
+        }
+    """
+
     def __init__(
         self,
         metrics: Metric | MetricCollection,
@@ -41,17 +69,17 @@ class NestedMetricCollection(MetricCollection):
             if not value.shape:
                 divided_metrics[key][subkey] = value.item()
             else:
+                # handle multi-class metrics without averaging
                 assert len(value.shape) == 1
                 if self.class_names is None:
-                    for i, v in enumerate(value):
-                        divided_metrics[key][f"{subkey}/{i}"] = v.item()
-                else:
-                    if len(value) != len(self.class_names):
-                        raise ValueError(
-                            f"Expected {len(self.class_names)} classes, got {len(value)}"
-                        )
-                    for class_name, v in zip(self.class_names, value, strict=True):
-                        divided_metrics[key][f"{subkey}/{class_name}"] = v.item()
+                    self.class_names = list(range(len(value)))
+
+                if len(value) != len(self.class_names):
+                    raise ValueError(
+                        f"Expected {len(self.class_names)} classes, got {len(value)}"
+                    )
+                for class_name, v in zip(self.class_names, value, strict=True):
+                    divided_metrics[key][f"{subkey}/{class_name}"] = v.item()
 
         out = defaultdict(list)
         for key, metrics in divided_metrics.items():
