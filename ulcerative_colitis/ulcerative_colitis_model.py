@@ -3,6 +3,7 @@ from typing import cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
+from rationai.mlkit.metrics import AggregatedMetricCollection, NestedMetricCollection
 from torch import Tensor
 from torch.nn import Module, ModuleDict
 from torch.optim.adam import Adam
@@ -17,8 +18,6 @@ from torchmetrics.classification import (
 
 from ulcerative_colitis.loss import CumulativeLinkLoss
 from ulcerative_colitis.metrics import (
-    AggregatedMetricCollection,
-    NestedMetricCollection,
     max_aggregation,
     mean_aggregation,
     targets_aggregation,
