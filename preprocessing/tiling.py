@@ -39,13 +39,15 @@ df = pd.read_csv(DATAFRAME_PATH, index_col=0)
 
 
 def train_test_split_cases(
-    slides: list[Path], test_size: float
+    slides: list[Path], test_size: float, random_state: int = 42
 ) -> tuple[list[Path], list[Path]]:
     cases = set()
     for slide in slides:
         cases.add(slide.stem[:7])
 
-    train_cases, test_cases = train_test_split(list(cases), test_size=test_size)
+    train_cases, test_cases = train_test_split(
+        list(cases), test_size=test_size, random_state=random_state
+    )
 
     return (
         [slide for slide in slides if slide.stem[:7] in train_cases],
