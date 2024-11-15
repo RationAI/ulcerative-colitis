@@ -12,11 +12,10 @@ from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
 
-SLIDES_PATH = Path(
-    "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/tiff/"
-)
-DATAFRAME_PATH = SLIDES_PATH.parent / "test_cohort" / "IBD_AI_test_Fabian.csv"
-TISSUE_MASKS_PATH = Path("data/tissue_masks")
+BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
+SLIDES_PATH = BASE_FOLDER / "tiff"
+DATAFRAME_PATH = BASE_FOLDER / "test_cohort" / "IBD_AI_test_Fabian.csv"
+TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks"
 
 
 @dataclass
