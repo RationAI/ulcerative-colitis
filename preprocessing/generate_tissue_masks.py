@@ -10,8 +10,9 @@ from rationai.masks import (
 )
 
 
-SLIDES_PATH = Path("/mnt/data/Projects/IKEM/ulcerative_colitis_test_cohort/tiff/")
-TISSUE_MASKS_PATH = Path("data/tissue_masks")
+BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
+SLIDES_PATH = BASE_FOLDER / "tiff"
+TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks"
 LEVEL = 3
 
 
@@ -19,8 +20,8 @@ LEVEL = 3
 def process_slide(slide_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
         downsample = slide.level_downsamples[LEVEL]
-        xres = 1000 / (float(slide.properties[PROPERTY_NAME_MPP_X]) * downsample)
-        yres = 1000 / (float(slide.properties[PROPERTY_NAME_MPP_Y]) * downsample)
+        xres = float(slide.properties[PROPERTY_NAME_MPP_X]) * downsample
+        yres = float(slide.properties[PROPERTY_NAME_MPP_Y]) * downsample
 
     slide = pyvips.Image.new_from_file(slide_path, page=LEVEL)
     mask = tissue_mask(slide)

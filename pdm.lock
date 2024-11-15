@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:a0c992f2e5a15aec3ab698a63f9540a1e6c998fcd780046517b3c70dee1b0037"
+content_hash = "sha256:832653fdf76c0f51a1cb3e3d8c753b1c54fad97fdebcd8819e26127cf0b2360e"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -2546,7 +2546,8 @@ name = "rationai-masks"
 version = "1.0.0"
 requires_python = ">=3.11"
 git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git"
-revision = "7d56f2ba3c7b411bdf6043ae1224676c745317d2"
+ref = "feature/imagebuilder"
+revision = "77d8995ac0183c8c44f5a25299923fbd87024652"
 summary = ""
 groups = ["default"]
 dependencies = [
@@ -2556,6 +2557,7 @@ dependencies = [
     "pillow>=10.4.0",
     "pyvips>=2.2.3",
     "ray>=2.34.0",
+    "torch>=2.5.1",
     "tqdm>=4.66.5",
 ]
 
