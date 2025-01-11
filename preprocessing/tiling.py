@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 import mlflow
 import pandas as pd
@@ -13,14 +14,16 @@ from sklearn.model_selection import train_test_split
 
 
 BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
-SLIDES_PATH = BASE_FOLDER / "tiff"
-DATAFRAME_PATH = BASE_FOLDER / "test_cohort" / "IBD_AI_test_Fabian.csv"
-TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks"
+SLIDES_PATH = BASE_FOLDER / "data_tiff" / "20x"
+DATAFRAME_PATH = BASE_FOLDER / "data_czi" / "Fab_IBD_AI_12_2024.csv"
+TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
 
 
 @dataclass
-class NancyIndexTileMetadata(TileMetadata):
+class UlcerativeColitisTileMetadata(TileMetadata):
     nancy_index: int
+    location: str
+    diagnosis: str
 
 
 class TissueMask(PyvipsMask[TileMetadata]):
@@ -39,27 +42,35 @@ tissue_mask = TissueMask(
 df = pd.read_csv(DATAFRAME_PATH, index_col=0)
 
 
+def stem_to_case_id(stem: str) -> str:
+    case_id, year, _ = stem.split("_", maxsplit=2)
+    return f"{case_id.zfill(5)}/{year}"
+
+
 def train_test_split_cases(
     slides: list[Path], test_size: float, random_state: int = 42
 ) -> tuple[list[Path], list[Path]]:
     cases = set()
     for slide in slides:
-        cases.add(slide.stem[:7])
+        cases.add(stem_to_case_id(slide.stem))
 
     train_cases, test_cases = train_test_split(
         list(cases), test_size=test_size, random_state=random_state
     )
 
     return (
-        [slide for slide in slides if slide.stem[:7] in train_cases],
-        [slide for slide in slides if slide.stem[:7] in test_cases],
+        [slide for slide in slides if stem_to_case_id(slide.stem) in train_cases],
+        [slide for slide in slides if stem_to_case_id(slide.stem) in test_cases],
     )
 
 
-def get_nancy_index(slide_path: Path, df_nancy_index: pd.DataFrame) -> int:
-    stem = slide_path.stem
-    index = f"{stem[:4]}/{stem[5:7]}"
-    return int(pd.to_numeric(df_nancy_index.loc[index, "Nancy"]))
+def get_metadata(slide_path: Path, df_metadata: pd.DataFrame) -> dict[str, Any]:
+    index = stem_to_case_id(slide_path.stem)
+    return {
+        "nancy_index": int(pd.to_numeric(df_metadata.loc[index, "Nancy"])),
+        "location": df_metadata.loc[index, "Lokalita"],
+        "diagnosis": df_metadata.loc[index, "Diagnoza"],
+    }
 
 
 @ray.remote
@@ -70,9 +81,7 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
 
     tiles = tissue_mask(tissue_mask_path, slide.extent, tiles)
     tiles = [
-        NancyIndexTileMetadata(
-            **asdict(tile), nancy_index=get_nancy_index(slide_path, df)
-        )
+        UlcerativeColitisTileMetadata(**asdict(tile), **get_metadata(slide_path, df))
         for tile in tiles
     ]
 
@@ -80,14 +89,17 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
 
 
 def main() -> None:
+    # 70 / 10 / 10 / 10 - train / val / test1 / test2
     slides, test_slides = train_test_split_cases(
         list(SLIDES_PATH.rglob("*.tiff")), test_size=0.2
     )
-    train_slides, val_slides = train_test_split_cases(slides, test_size=0.01)
+    train_slides, val_slides = train_test_split_cases(slides, test_size=0.875)
+    test1_slides, test2_slides = train_test_split_cases(test_slides, test_size=0.5)
 
     train_slides_df, train_tiles_df = tiling(slides=train_slides, handler=handler)
     val_slides_df, val_tiles_df = tiling(slides=val_slides, handler=handler)
-    test_slides_df, test_tiles_df = tiling(slides=test_slides, handler=handler)
+    test1_slides_df, test1_tiles_df = tiling(slides=test1_slides, handler=handler)
+    test2_slides_df, test2_tiles_df = tiling(slides=test2_slides, handler=handler)
 
     mlflow.set_experiment(experiment_name="IKEM")
     with mlflow.start_run(run_name="📂 Dataset: Ulcerative Colitis"):
@@ -102,9 +114,14 @@ def main() -> None:
             dataset_name="Ulcerative Colitis - val",
         )
         save_mlflow_dataset(
-            slides=test_slides_df,
-            tiles=test_tiles_df,
-            dataset_name="Ulcerative Colitis - test",
+            slides=test1_slides_df,
+            tiles=test1_tiles_df,
+            dataset_name="Ulcerative Colitis - test1",
+        )
+        save_mlflow_dataset(
+            slides=test2_slides_df,
+            tiles=test2_tiles_df,
+            dataset_name="Ulcerative Colitis - test2",
         )
 
 
