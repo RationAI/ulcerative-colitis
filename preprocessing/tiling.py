@@ -89,11 +89,15 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
 
 
 def main() -> None:
+    all_slides = [
+        slide_path
+        for slide_path in SLIDES_PATH.rglob("*.tiff")
+        if stem_to_case_id(slide_path.stem) in df.index
+    ]
+
     # 70 / 10 / 10 / 10 - train / val / test1 / test2
-    slides, test_slides = train_test_split_cases(
-        list(SLIDES_PATH.rglob("*.tiff")), test_size=0.2
-    )
-    train_slides, val_slides = train_test_split_cases(slides, test_size=0.875)
+    train_val_slides, test_slides = train_test_split_cases(all_slides, test_size=0.2)
+    train_slides, val_slides = train_test_split_cases(train_val_slides, test_size=0.125)
     test1_slides, test2_slides = train_test_split_cases(test_slides, test_size=0.5)
 
     train_slides_df, train_tiles_df = tiling(slides=train_slides, handler=handler)
