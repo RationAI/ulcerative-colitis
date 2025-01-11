@@ -3,4 +3,4 @@ from ulcerative_colitis.modeling.ordinal_regression_head import LogisticCumulati
 from ulcerative_colitis.modeling.regression_head import RegressionHead
 
 
-__all__ = ["ClassificationHead", "RegressionHead", "LogisticCumulativeLink"]
+__all__ = ["ClassificationHead", "LogisticCumulativeLink", "RegressionHead"]
