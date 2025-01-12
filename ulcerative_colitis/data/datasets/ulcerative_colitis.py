@@ -12,6 +12,7 @@ from ulcerative_colitis.typing import Metadata, PredictSample, Sample
 
 
 T = TypeVar("T", bound=Sample | PredictSample)
+LOCATIONS = ("cekoascendens", "descendens", "rektosigma", "transverzum")
 
 
 class UlcerativeColitis(MetaTiledSlides[Sample]):
@@ -24,6 +25,7 @@ class UlcerativeColitis(MetaTiledSlides[Sample]):
         super().__init__(uris=uris)
 
     def generate_datasets(self) -> Iterable[Dataset[Sample]]:
+        self.slides = self.slides[self.slides["location"].isin(LOCATIONS)]
         return (
             _UlcerativeColitisSlideTiles[Sample](
                 slide,
@@ -44,6 +46,7 @@ class UlcerativeColitisPredict(MetaTiledSlides[PredictSample]):
         super().__init__(uris=uris)
 
     def generate_datasets(self) -> Iterable[Dataset[PredictSample]]:
+        self.slides = self.slides[self.slides["location"].isin(LOCATIONS)]
         return (
             _UlcerativeColitisSlideTiles[PredictSample](
                 slide,
