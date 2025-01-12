@@ -8,7 +8,7 @@ import ray
 from rationai.tiling import tiling
 from rationai.tiling.modules.masks import PyvipsMask
 from rationai.tiling.modules.tile_sources import OpenSlideTileSource
-from rationai.tiling.typing import TiledSlideMetadata, TileMetadata
+from rationai.tiling.typing import SlideMetadata, TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
@@ -20,7 +20,7 @@ TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
 
 
 @dataclass
-class UlcerativeColitisTileMetadata(TileMetadata):
+class UlcerativeColitisSlideMetadata(SlideMetadata):
     nancy_index: int
     location: str
     diagnosis: str
@@ -80,10 +80,9 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
     tissue_mask_path = TISSUE_MASKS_PATH / slide_path.name
 
     tiles = tissue_mask(tissue_mask_path, slide.extent, tiles)
-    tiles = [
-        UlcerativeColitisTileMetadata(**asdict(tile), **get_metadata(slide_path, df))
-        for tile in tiles
-    ]
+    slide = UlcerativeColitisSlideMetadata(
+        **asdict(slide), **get_metadata(slide_path, df)
+    )
 
     return slide, tiles
 
