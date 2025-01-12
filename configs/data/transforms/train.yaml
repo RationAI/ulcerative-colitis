@@ -11,6 +11,6 @@ transforms:
   - _target_: albumentations.HueSaturationValue
     p: 0.5
   - _target_: albumentations.Normalize
-    mean: [128.7304,  89.8137, 121.3791]
-    std: [30.8448, 46.1268, 43.2777]
+    mean: [126.1225,  96.6271, 131.9352]
+    std: [44.5274, 49.3976, 33.2117]
     max_pixel_value: 1

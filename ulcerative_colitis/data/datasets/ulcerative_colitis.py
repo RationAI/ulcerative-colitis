@@ -68,12 +68,13 @@ class _UlcerativeColitisSlideTiles(Dataset[T], Generic[T]):
     ) -> None:
         super().__init__()
         self.slide_tiles = OpenSlideTilesDataset(
-            slide_path=slide_metadata.path,
-            level=slide_metadata.level,
-            tile_extent_x=slide_metadata.tile_extent_x,
-            tile_extent_y=slide_metadata.tile_extent_y,
+            slide_path=slide_metadata["path"],
+            level=slide_metadata["level"],
+            tile_extent_x=slide_metadata["tile_extent_x"],
+            tile_extent_y=slide_metadata["tile_extent_y"],
             tiles=tiles,
         )
+        self.slide_metadata = slide_metadata
         self.include_labels = include_labels
         self.transforms = transforms
         self.to_tensor = ToTensorV2()
@@ -96,5 +97,5 @@ class _UlcerativeColitisSlideTiles(Dataset[T], Generic[T]):
         if not self.include_labels:
             return image, metadata
 
-        label = torch.tensor([self.slide_tiles.tiles.iloc[idx]["nancy_index"]])
+        label = torch.tensor([self.slide_metadata["nancy_index"]])
         return image, label, metadata

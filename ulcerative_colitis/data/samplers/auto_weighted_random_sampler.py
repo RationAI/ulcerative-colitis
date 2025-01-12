@@ -8,7 +8,10 @@ from ulcerative_colitis.data.datasets import UlcerativeColitis
 
 class AutoWeightedRandomSampler(WeightedRandomSampler):
     def __init__(self, dataset: UlcerativeColitis, replacement: bool = True) -> None:
-        super().__init__(self._get_weights(dataset.tiles), len(dataset), replacement)
+        merged = pd.merge(
+            dataset.tiles, dataset.slides, left_on="slide_id", right_on="id"
+        )
+        super().__init__(self._get_weights(merged), len(dataset), replacement)
 
     def _get_weights(self, df: pd.DataFrame) -> Sequence[float]:
         value_counts = df["nancy_index"].value_counts()
