@@ -3,7 +3,12 @@ from typing import cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from rationai.mlkit.metrics import AggregatedMetricCollection, NestedMetricCollection
+from rationai.mlkit.metrics import (
+    AggregatedMetricCollection,
+    MeanAggregator,
+    MeanPoolMaxAggregator,
+    NestedMetricCollection,
+)
 from torch import Tensor
 from torch.nn import Module, ModuleDict
 from torch.optim.adam import Adam
@@ -17,11 +22,6 @@ from torchmetrics.classification import (
 )
 
 from ulcerative_colitis.loss import CumulativeLinkLoss
-from ulcerative_colitis.metrics import (
-    max_aggregation,
-    mean_aggregation,
-    targets_aggregation,
-)
 from ulcerative_colitis.modeling import LogisticCumulativeLink
 from ulcerative_colitis.modeling.regression_head import RegressionHead
 from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
@@ -48,29 +48,13 @@ class UlcerativeColitisModel(LightningModule):
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
-                    "scene_max": AggregatedMetricCollection(
-                        metrics,
-                        aggregation_preds=max_aggregation,
-                        aggregation_targets=targets_aggregation,
-                        prefix="validation/scenes/max/",
-                    ),
-                    "slide_max": AggregatedMetricCollection(
-                        metrics,
-                        aggregation_preds=max_aggregation,
-                        aggregation_targets=targets_aggregation,
-                        prefix="validation/slides/max/",
-                    ),
-                    "scene_mean": AggregatedMetricCollection(
-                        metrics,
-                        aggregation_preds=mean_aggregation,
-                        aggregation_targets=targets_aggregation,
-                        prefix="validation/scenes/mean/",
-                    ),
                     "slide_mean": AggregatedMetricCollection(
+                        metrics, MeanAggregator(), prefix="validation/slide/mean/"
+                    ),
+                    "slide_mean_pool_max": AggregatedMetricCollection(
                         metrics,
-                        aggregation_preds=mean_aggregation,
-                        aggregation_targets=targets_aggregation,
-                        prefix="validation/slides/mean/",
+                        MeanPoolMaxAggregator(3, 512, 256),
+                        prefix="validation/slide/mean_pool_max/",
                     ),
                 }
             ),
@@ -88,20 +72,9 @@ class UlcerativeColitisModel(LightningModule):
             ),
         )
 
-        self.test_metrics_nested: dict[str, NestedMetricCollection] = cast(
-            dict,
-            ModuleDict(
-                {
-                    "tiles_scene": NestedMetricCollection(
-                        self.test_metrics["tiles_all"].clone(),
-                        key_name="slide",
-                    ),
-                    "tiles_slide": NestedMetricCollection(
-                        self.test_metrics["tiles_all"].clone(),
-                        key_name="scene",
-                    ),
-                }
-            ),
+        self.test_metrics_nested = NestedMetricCollection(
+            self.test_metrics["tiles_all"].clone(),
+            key_name="slide",
         )
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
@@ -136,7 +109,8 @@ class UlcerativeColitisModel(LightningModule):
 
         targets = targets.reshape(-1)
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
-        self.update_metrics(self.test_metrics_nested, outputs, targets, metadata)
+        # TODO
+        # self.update_metrics(self.test_metrics_nested, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
 
     def on_test_epoch_end(self) -> None:
@@ -180,14 +154,15 @@ class UlcerativeColitisModel(LightningModule):
         targets: Tensor,
         metadata: MetadataBatch,
     ) -> None:
-        scenes = metadata["slide"]
-        slides = [scene.split("_scene_")[0] for scene in scenes]
-
         for name, metric in metrics.items():
-            if "scene" in name:
-                metric.update(outputs, targets, key=scenes)
-            elif "slide" in name:
-                metric.update(outputs, targets, key=slides)
+            if "slide" in name:
+                metric.update(
+                    outputs.argmax(1),
+                    targets,
+                    keys=metadata["slide"],
+                    x=metadata["x"],
+                    y=metadata["y"],
+                )
             else:
                 metric.update(outputs, targets)
 
