@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from typing import cast
 
+import torch
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.mlkit.metrics import (
@@ -43,17 +44,23 @@ class UlcerativeColitisModel(LightningModule):
             "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
         }
 
+        # TODO: fix this later
+        mean_aggregator = MeanAggregator()
+        mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        mean_aggregator.to(device)
+        mean_pool_max_aggregator.to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
                     "slide_mean": AggregatedMetricCollection(
-                        metrics, MeanAggregator(), prefix="validation/slide/mean/"
+                        metrics, mean_aggregator, prefix="validation/slide/mean/"
                     ),
                     "slide_mean_pool_max": AggregatedMetricCollection(
                         metrics,
-                        MeanPoolMaxAggregator(3, 512, 256),
+                        mean_pool_max_aggregator,
                         prefix="validation/slide/mean_pool_max/",
                     ),
                 }
