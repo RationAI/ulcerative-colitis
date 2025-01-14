@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import cast
 
 import torch
@@ -54,12 +55,16 @@ class UlcerativeColitisModel(LightningModule):
             dict,
             ModuleDict(
                 {
-                    "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
+                    "tiles_all": MetricCollection(
+                        deepcopy(metrics), prefix="validation/tiles/"
+                    ),
                     "slide_mean": AggregatedMetricCollection(
-                        metrics, mean_aggregator, prefix="validation/slide/mean/"
+                        deepcopy(metrics),
+                        mean_aggregator,
+                        prefix="validation/slide/mean/",
                     ),
                     "slide_mean_pool_max": AggregatedMetricCollection(
-                        metrics,
+                        deepcopy(metrics),
                         mean_pool_max_aggregator,
                         prefix="validation/slide/mean_pool_max/",
                     ),
