@@ -24,11 +24,12 @@ from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
 
 
 class UlcerativeColitisModelBinary(LightningModule):
-    def __init__(self, backbone: Module) -> None:
+    def __init__(self, backbone: Module, lr: float) -> None:
         super().__init__()
         self.backbone = backbone
         self.decode_head = BinaryClassificationHead()
         self.criterion = BCELoss()
+        self.lr = lr
 
         metrics: dict[str, Metric] = {
             "AUC": BinaryAUROC(),
@@ -119,7 +120,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         return outputs
 
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=0.001)
+        return Adam(self.parameters(), lr=self.lr)
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, metric in dictionary.items():

@@ -31,7 +31,8 @@ data:
   batch_size: 16
   num_workers: 4
 
-model: {}
+model:
+  lr: 0.001
 
 metadata:
   experiment_name: IKEM
