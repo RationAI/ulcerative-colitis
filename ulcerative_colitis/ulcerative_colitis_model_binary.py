@@ -4,41 +4,37 @@ from typing import cast
 
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from rationai.mlkit.metrics import (
-    NestedMetricCollection,
-)
+from rationai.mlkit.metrics import NestedMetricCollection
 from torch import Tensor
-from torch.nn import Module, ModuleDict
+from torch.nn import BCELoss, Module, ModuleDict
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
 from torchmetrics import Metric, MetricCollection
 from torchmetrics.classification import (
-    MulticlassAccuracy,
-    MulticlassAUROC,
-    MulticlassPrecision,
-    MulticlassRecall,
+    BinaryAccuracy,
+    BinaryAUROC,
+    BinaryPrecision,
+    BinaryRecall,
 )
 
-from ulcerative_colitis.loss import CumulativeLinkLoss
-from ulcerative_colitis.modeling import LogisticCumulativeLink
-from ulcerative_colitis.modeling.regression_head import RegressionHead
+from ulcerative_colitis.modeling.binary_classification_head import (
+    BinaryClassificationHead,
+)
 from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
 
 
-class UlcerativeColitisModel(LightningModule):
+class UlcerativeColitisModelBinary(LightningModule):
     def __init__(self, backbone: Module) -> None:
         super().__init__()
         self.backbone = backbone
-        self.n_classes = 5
-        self.decode_head = RegressionHead()
-        self.cumulative_link = LogisticCumulativeLink(num_classes=self.n_classes)
-        self.criterion = CumulativeLinkLoss()
+        self.decode_head = BinaryClassificationHead()
+        self.criterion = BCELoss()
 
         metrics: dict[str, Metric] = {
-            "AUC": MulticlassAUROC(num_classes=self.n_classes, average=None),
-            "accuracy": MulticlassAccuracy(num_classes=self.n_classes),
-            "precision": MulticlassPrecision(num_classes=self.n_classes, average=None),
-            "recall": MulticlassRecall(num_classes=self.n_classes, average=None),
+            "AUC": BinaryAUROC(),
+            "accuracy": BinaryAccuracy(),
+            "precision": BinaryPrecision(),
+            "recall": BinaryRecall(),
         }
 
         self.val_metrics: dict[str, MetricCollection] = cast(
@@ -72,7 +68,6 @@ class UlcerativeColitisModel(LightningModule):
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
         x = self.backbone(x)
         x = self.decode_head(x)
-        x = self.cumulative_link(x)
         return x
 
     def training_step(self, batch: Input) -> Tensor:  # pylint: disable=arguments-differ
@@ -91,7 +86,6 @@ class UlcerativeColitisModel(LightningModule):
         loss = self.criterion(outputs, targets)
         self.log("validation/loss", loss, on_epoch=True, prog_bar=True)
 
-        targets = targets.reshape(-1)
         self.update_metrics(self.val_metrics, outputs, targets, metadata)
         self.log_metrics(self.val_metrics)
 
@@ -99,10 +93,7 @@ class UlcerativeColitisModel(LightningModule):
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
-        targets = targets.reshape(-1)
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
-        # TODO
-        # self.update_metrics(self.test_metrics_nested, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
 
     def on_test_epoch_end(self) -> None:
@@ -128,7 +119,7 @@ class UlcerativeColitisModel(LightningModule):
         return outputs
 
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=0.00001)
+        return Adam(self.parameters(), lr=0.001)
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, metric in dictionary.items():

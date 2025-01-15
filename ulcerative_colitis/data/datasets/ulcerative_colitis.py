@@ -97,5 +97,6 @@ class _UlcerativeColitisSlideTiles(Dataset[T], Generic[T]):
         if not self.include_labels:
             return image, metadata
 
-        label = torch.tensor([self.slide_metadata["nancy_index"]])
+        # label = torch.tensor([self.slide_metadata["nancy_index"]])
+        label = torch.tensor([self.slide_metadata["nancy_index"] >= 2]).float()
         return image, label, metadata
