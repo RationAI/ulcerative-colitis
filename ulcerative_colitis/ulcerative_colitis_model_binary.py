@@ -2,9 +2,14 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import cast
 
+import torch
 from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from rationai.mlkit.metrics import NestedMetricCollection
+from rationai.mlkit.metrics import (
+    AggregatedMetricCollection,
+    MeanAggregator,
+    NestedMetricCollection,
+)
 from torch import Tensor
 from torch.nn import BCELoss, Module, ModuleDict
 from torch.optim.adam import Adam
@@ -38,12 +43,18 @@ class UlcerativeColitisModelBinary(LightningModule):
             "recall": BinaryRecall(),
         }
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        aggregator = MeanAggregator()
+        aggregator.to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
                         deepcopy(metrics), prefix="validation/tiles/"
+                    ),
+                    "slides_mean": AggregatedMetricCollection(
+                        deepcopy(metrics), aggregator, prefix="validation/slides/mean/"
                     ),
                 }
             ),
@@ -123,8 +134,8 @@ class UlcerativeColitisModelBinary(LightningModule):
         return Adam(self.parameters(), lr=self.lr)
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
-        for name, metric in dictionary.items():
-            result = cast(Tensor, metric.compute())
+        for name, result in dictionary.compute().items():
+            result = cast(Tensor, result)
             if result.shape:
                 for i, value in enumerate(result):
                     self.log(f"{name}/{i}", value, *args, **kwargs)
@@ -141,8 +152,8 @@ class UlcerativeColitisModelBinary(LightningModule):
         for name, metric in metrics.items():
             if "slide" in name:
                 metric.update(
-                    outputs,
-                    targets,
+                    outputs.squeeze(),
+                    targets.squeeze(),
                     keys=metadata["slide"],
                     x=metadata["x"],
                     y=metadata["y"],
