@@ -7,7 +7,9 @@ from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
+    MaxAggregator,
     MeanAggregator,
+    MeanPoolMaxAggregator,
     NestedMetricCollection,
 )
 from torch import Tensor
@@ -44,8 +46,9 @@ class UlcerativeColitisModelBinary(LightningModule):
         }
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        aggregator = MeanAggregator()
-        aggregator.to(device)
+        mean_aggregator = MeanAggregator().to(device)
+        max_aggregator = MaxAggregator().to(device)
+        mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256).to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -54,7 +57,19 @@ class UlcerativeColitisModelBinary(LightningModule):
                         deepcopy(metrics), prefix="validation/tiles/"
                     ),
                     "slides_mean": AggregatedMetricCollection(
-                        deepcopy(metrics), aggregator, prefix="validation/slides/mean/"
+                        deepcopy(metrics),
+                        mean_aggregator,
+                        prefix="validation/slides/mean/",
+                    ),
+                    "slides_max": AggregatedMetricCollection(
+                        deepcopy(metrics),
+                        max_aggregator,
+                        prefix="validation/slides/max/",
+                    ),
+                    "slides_mean_pool_max": AggregatedMetricCollection(
+                        deepcopy(metrics),
+                        mean_pool_max_aggregator,
+                        prefix="validation/slides/mean_pool_max/",
                     ),
                 }
             ),
@@ -152,7 +167,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         for name, metric in metrics.items():
             if "slide" in name:
                 metric.update(
-                    outputs.squeeze(),
+                    outputs.squeeze() if "pool" not in name else outputs,
                     targets.squeeze(),
                     keys=metadata["slide"],
                     x=metadata["x"],
