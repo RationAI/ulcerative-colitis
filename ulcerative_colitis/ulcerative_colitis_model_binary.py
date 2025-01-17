@@ -9,7 +9,6 @@ from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
     MaxAggregator,
     MeanAggregator,
-    MeanPoolMaxAggregator,
     NestedMetricCollection,
 )
 from torch import Tensor
@@ -45,10 +44,12 @@ class UlcerativeColitisModelBinary(LightningModule):
             "recall": BinaryRecall(),
         }
 
+        # TODO: add aggregator as attribute to AggregatedMetricCollection
+        # TODO: set device to HeatmapAssembler in MeanPoolAggregator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         mean_aggregator = MeanAggregator().to(device)
         max_aggregator = MaxAggregator().to(device)
-        mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256).to(device)
+        # mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256).to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -66,11 +67,11 @@ class UlcerativeColitisModelBinary(LightningModule):
                         max_aggregator,
                         prefix="validation/slides/max/",
                     ),
-                    "slides_mean_pool_max": AggregatedMetricCollection(
-                        deepcopy(metrics),
-                        mean_pool_max_aggregator,
-                        prefix="validation/slides/mean_pool_max/",
-                    ),
+                    # "slides_mean_pool_max": AggregatedMetricCollection(
+                    #     deepcopy(metrics),
+                    #     mean_pool_max_aggregator,
+                    #     prefix="validation/slides/mean_pool_max/",
+                    # ),
                 }
             ),
         )
