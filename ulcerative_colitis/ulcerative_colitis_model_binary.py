@@ -128,19 +128,11 @@ class UlcerativeColitisModelBinary(LightningModule):
         assert isinstance(self.logger, MLFlowLogger)
         self.logger.log_table(self.test_metrics_nested.compute(), "nested_metrics.json")
 
-    def predict_step(self, batch: PredictInput) -> Output:  # pylint: disable=arguments-differ
-        inputs, metadata = batch
+    def predict_step(  # pylint: disable=arguments-differ
+        self, batch: PredictInput, batch_idx: int, dataloader_idx: int = 0
+    ) -> Output:
+        inputs, _ = batch
         outputs = self(inputs)
-
-        table = {
-            "slide": metadata["slide"],
-            "x": metadata["x"].cpu(),
-            "y": metadata["y"].cpu(),
-        }
-        for i in range(outputs.shape[1]):
-            table[f"pred_{i}"] = outputs[:, i].cpu()
-        assert isinstance(self.logger, MLFlowLogger)
-        self.logger.log_table(table, artifact_file="predictions.parquet")
 
         return outputs
 
