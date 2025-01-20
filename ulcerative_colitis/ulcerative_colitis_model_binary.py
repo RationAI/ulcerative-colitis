@@ -7,7 +7,6 @@ from lightning import LightningModule
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
-    MaxAggregator,
     MeanAggregator,
     NestedMetricCollection,
 )
@@ -48,7 +47,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         # TODO: set device to HeatmapAssembler in MeanPoolAggregator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         mean_aggregator = MeanAggregator().to(device)
-        max_aggregator = MaxAggregator().to(device)
+        # max_aggregator = MaxAggregator().to(device)
         # mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256).to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
@@ -62,11 +61,11 @@ class UlcerativeColitisModelBinary(LightningModule):
                         mean_aggregator,
                         prefix="validation/slides/mean/",
                     ),
-                    "slides_max": AggregatedMetricCollection(
-                        deepcopy(metrics),
-                        max_aggregator,
-                        prefix="validation/slides/max/",
-                    ),
+                    # "slides_max": AggregatedMetricCollection(
+                    #     deepcopy(metrics),
+                    #     max_aggregator,
+                    #     prefix="validation/slides/max/",
+                    # ),
                     # "slides_mean_pool_max": AggregatedMetricCollection(
                     #     deepcopy(metrics),
                     #     mean_pool_max_aggregator,
@@ -121,14 +120,13 @@ class UlcerativeColitisModelBinary(LightningModule):
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
+        self.test_metrics_nested.update(outputs, targets, metadata["slide"])
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
 
     def on_test_epoch_end(self) -> None:
-        for name, metric in self.test_metrics_nested.items():
-            assert isinstance(self.logger, MLFlowLogger)
-            self.logger.log_table(metric.compute(), f"{name}.json")
-            metric.reset()
+        assert isinstance(self.logger, MLFlowLogger)
+        self.logger.log_table(self.test_metrics_nested.compute(), "nested_metrics.json")
 
     def predict_step(self, batch: PredictInput) -> Output:  # pylint: disable=arguments-differ
         inputs, metadata = batch
@@ -168,7 +166,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         for name, metric in metrics.items():
             if "slide" in name:
                 metric.update(
-                    outputs.squeeze() if "pool" not in name else outputs,
+                    outputs.squeeze(),
                     targets.squeeze(),
                     keys=metadata["slide"],
                     x=metadata["x"],
