@@ -46,7 +46,8 @@ class MaskBuilderCallback(MultiloaderLifecycle):
     ) -> None:
         metadata = batch[1]
         # outputs is a tensor of shape (batch_size, 1)
-        self.mask_builder.update(outputs, metadata["x"], metadata["y"])
+        # TODO: fix move ImageBuilder to right device
+        self.mask_builder.update(outputs.cpu(), metadata["x"], metadata["y"])
 
     def on_predict_dataloader_end(
         self, trainer: Trainer, pl_module: LightningModule, dataloader_idx: int
