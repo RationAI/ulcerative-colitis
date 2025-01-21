@@ -28,7 +28,7 @@ class MLFlowPredictionCallback(MultiloaderLifecycle):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        for output in outputs.cpu().squeeze():
+        for output in outputs.cpu().squeeze(0):
             self.aggregator.update(output, output)
 
     def on_predict_dataloader_end(
