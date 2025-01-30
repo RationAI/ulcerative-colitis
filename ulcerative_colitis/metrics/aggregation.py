@@ -48,5 +48,4 @@ class NancyIndexAggregator(MeanPoolMaxAggregator):
 
             pooled /= pooled.sum(dim=1, keepdim=True)
 
-        print(pooled.mean(dim=0), self.targets[0])
         return pooled.mean(dim=0), self.targets[0]
