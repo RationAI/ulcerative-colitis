@@ -41,7 +41,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
         # TODO: add aggregator as attribute to AggregatedMetricCollection
         # TODO: set device to HeatmapAssembler in MeanPoolAggregator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        aggregator = NancyIndexAggregator(2, 512, 256).to(device)
+        aggregator = NancyIndexAggregator(self.num_classes, 2, 512, 256).to(device)
 
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
