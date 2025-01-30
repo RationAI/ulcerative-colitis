@@ -1,15 +1,25 @@
 import torch
-import torch.nn.functional as F
+from rationai.masks import HeatmapAssembler
+from rationai.mlkit.metrics.aggregators import MeanPoolMaxAggregator
 from torch import Tensor
 
 
-def max_aggregation(preds: list[Tensor]) -> Tensor:
-    return F.one_hot(torch.stack(preds).argmax(dim=1).max(), 5).float().unsqueeze(0)
+class NancyIndexAggregator(MeanPoolMaxAggregator):
+    def compute(self) -> tuple[Tensor, Tensor]:
+        extent_x, extent_y = self._get_extents()
+        assembler = HeatmapAssembler(
+            extent_x,
+            extent_y,
+            self.extent_tile,
+            self.extent_tile,
+            self.stride,
+            self.stride,
+            device=self.preds[0].device if self.preds else "cpu",
+        )
+        assembler.update(
+            torch.cat(self.preds), torch.stack(self.xs), torch.stack(self.ys)
+        )
+        polled = self.pool(assembler.compute().unsqueeze(0).unsqueeze(0))
 
-
-def mean_aggregation(preds: list[Tensor]) -> Tensor:
-    return torch.stack(preds).mean(dim=0).unsqueeze(0)
-
-
-def targets_aggregation(targets: list[Tensor]) -> Tensor:
-    return targets[0].unsqueeze(0)
+        print(polled.shape)
+        return polled.max(), torch.stack(self.targets).max()

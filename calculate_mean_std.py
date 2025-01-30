@@ -6,7 +6,7 @@ from ulcerative_colitis.data.datasets import UlcerativeColitisPredict
 
 
 URIS = [
-    "mlflow-artifacts:/27/b343ca345c1442c1a92ae20de697a91c/artifacts/Ulcerative Colitis - train"
+    "mlflow-artifacts:/27/40d45169bc604d3782f140284e87725c/artifacts/Ulcerative Colitis - train"
 ]
 
 
