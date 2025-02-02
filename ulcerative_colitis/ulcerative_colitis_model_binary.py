@@ -8,7 +8,6 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
     MeanAggregator,
-    NestedMetricCollection,
 )
 from torch import Tensor
 from torch.nn import BCELoss, Module, ModuleDict
@@ -47,8 +46,6 @@ class UlcerativeColitisModelBinary(LightningModule):
         # TODO: set device to HeatmapAssembler in MeanPoolAggregator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         mean_aggregator = MeanAggregator().to(device)
-        # max_aggregator = MaxAggregator().to(device)
-        # mean_pool_max_aggregator = MeanPoolMaxAggregator(3, 512, 256).to(device)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -61,16 +58,6 @@ class UlcerativeColitisModelBinary(LightningModule):
                         mean_aggregator,
                         prefix="validation/slides/mean/",
                     ),
-                    # "slides_max": AggregatedMetricCollection(
-                    #     deepcopy(metrics),
-                    #     max_aggregator,
-                    #     prefix="validation/slides/max/",
-                    # ),
-                    # "slides_mean_pool_max": AggregatedMetricCollection(
-                    #     deepcopy(metrics),
-                    #     mean_pool_max_aggregator,
-                    #     prefix="validation/slides/mean_pool_max/",
-                    # ),
                 }
             ),
         )
@@ -85,11 +72,6 @@ class UlcerativeColitisModelBinary(LightningModule):
                     for name, metric in self.val_metrics.items()
                 }
             ),
-        )
-
-        self.test_metrics_nested = NestedMetricCollection(
-            self.test_metrics["tiles_all"].clone(),
-            key_name="slide",
         )
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
@@ -120,7 +102,6 @@ class UlcerativeColitisModelBinary(LightningModule):
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
-        self.test_metrics_nested.update(outputs, targets, metadata["slide"])
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
 

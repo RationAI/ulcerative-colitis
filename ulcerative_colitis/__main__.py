@@ -9,12 +9,14 @@ from rationai.mlkit import Trainer, autolog
 from ulcerative_colitis.data import DataModule
 
 # from ulcerative_colitis.ulcerative_colitis_model import UlcerativeColitisModel
-# from ulcerative_colitis.ulcerative_colitis_model_binary import (
-#     UlcerativeColitisModelBinary,
-# )
-from ulcerative_colitis.ulcerative_colitis_model_multiclass import (
-    UlcerativeColitisModelMulticlass,
+from ulcerative_colitis.ulcerative_colitis_model_binary import (
+    UlcerativeColitisModelBinary,
 )
+
+
+# from ulcerative_colitis.ulcerative_colitis_model_multiclass import (
+#     UlcerativeColitisModelMulticlass,
+# )
 
 
 OmegaConf.register_new_resolver(
@@ -32,9 +34,7 @@ def main(config: DictConfig, logger: Logger | None) -> None:
         _recursive_=False,  # to avoid instantiating all the datasets
         _target_=DataModule,
     )
-    model = hydra.utils.instantiate(
-        config.model, _target_=UlcerativeColitisModelMulticlass
-    )
+    model = hydra.utils.instantiate(config.model, _target_=UlcerativeColitisModelBinary)
 
     trainer = hydra.utils.instantiate(config.trainer, _target_=Trainer, logger=logger)
     getattr(trainer, config.mode)(model, datamodule=data, ckpt_path=config.checkpoint)
