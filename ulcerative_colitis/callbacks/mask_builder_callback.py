@@ -66,7 +66,7 @@ class MaskBuilderCallback(MultiloaderLifecycle):
         for i, mask_builder in enumerate(self.mask_builders):
             mask_builder.update(outputs[:, i].cpu(), metadata["x"], metadata["y"])
         self.mask_builder_argmax.update(
-            outputs.argmax(dim=1).cpu() / 4, metadata["x"], metadata["y"]
+            (outputs.argmax(dim=1).cpu() + 1) / 5, metadata["x"], metadata["y"]
         )
 
     def on_predict_dataloader_end(
