@@ -12,7 +12,8 @@ from ulcerative_colitis.typing import Output, PredictInput
 
 
 class MaskBuilderCallback(MultiloaderLifecycle):
-    mask_builder: ScalarMaskBuilder
+    mask_builders: list[ScalarMaskBuilder]
+    mask_builder_argmax: ScalarMaskBuilder
 
     def on_predict_dataloader_start(
         self, trainer: Trainer, pl_module: LightningModule, dataloader_idx: int
@@ -24,7 +25,21 @@ class MaskBuilderCallback(MultiloaderLifecycle):
         slide = cast(pd.DataFrame, datamodule.predict.slides).iloc[dataloader_idx]
 
         # TODO: fix mmp -> mpp
-        self.mask_builder = ScalarMaskBuilder(
+        self.mask_builders = [
+            ScalarMaskBuilder(
+                save_dir=Path("masks"),
+                filename=Path(slide.path).stem,
+                extent_x=slide.extent_x,
+                extent_y=slide.extent_y,
+                mmp_x=slide.mpp_x,
+                mmp_y=slide.mpp_y,
+                extent_tile=slide.tile_extent_x,
+                stride=slide.stride_x,
+            )
+            for _ in range(5)
+        ]
+
+        self.mask_builder_argmax = ScalarMaskBuilder(
             save_dir=Path("masks"),
             filename=Path(slide.path).stem,
             extent_x=slide.extent_x,
@@ -47,9 +62,19 @@ class MaskBuilderCallback(MultiloaderLifecycle):
         metadata = batch[1]
         # outputs is a tensor of shape (batch_size, 1)
         # TODO: fix move ImageBuilder to right device
-        self.mask_builder.update(outputs.cpu(), metadata["x"], metadata["y"])
+
+        for i, mask_builder in enumerate(self.mask_builders):
+            mask_builder.update(outputs[:, i].cpu(), metadata["x"], metadata["y"])
+        self.mask_builder_argmax.update(
+            outputs.argmax(dim=1).cpu() / 4, metadata["x"], metadata["y"]
+        )
 
     def on_predict_dataloader_end(
         self, trainer: Trainer, pl_module: LightningModule, dataloader_idx: int
     ) -> None:
-        mlflow.log_artifact(str(self.mask_builder.save()))
+        for i, mask_builder in enumerate(self.mask_builders):
+            mlflow.log_artifact(str(mask_builder.save()), artifact_path=f"nancy_{i}")
+
+        mlflow.log_artifact(
+            str(self.mask_builder_argmax.save()), artifact_path="nancy_argmax"
+        )

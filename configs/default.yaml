@@ -26,7 +26,7 @@ trainer:
       mode: min
       patience: 5
     - _target_: ulcerative_colitis.callbacks.MaskBuilderCallback
-    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
+    # - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
 
 data:
   batch_size: 16
