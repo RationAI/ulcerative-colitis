@@ -16,6 +16,7 @@ trainer:
   enable_checkpointing: True
   max_epochs: 30
   log_every_n_steps: 5
+  check_val_every_n_epoch: 100
   callbacks:
     - _target_: lightning.pytorch.callbacks.ModelCheckpoint
       save_top_k: 1
