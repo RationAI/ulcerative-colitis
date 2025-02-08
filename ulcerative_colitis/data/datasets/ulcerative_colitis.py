@@ -169,7 +169,7 @@ class _UlcerativeColitisSlidesTilesTrain(Dataset[TrainSample]):
         xs = []
         ys = []
         for _ in range(self.inner_batch_size):
-            i = random.randint(0, len(slide_tiles))
+            i = random.randint(0, len(slide_tiles) - 1)
             image = slide_tiles[i]
             if self.transforms is not None:
                 image = self.transforms(image=image)["image"]
