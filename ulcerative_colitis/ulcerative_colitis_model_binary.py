@@ -81,9 +81,12 @@ class UlcerativeColitisModelBinary(LightningModule):
 
     def training_step(self, batch: Input) -> Tensor:  # pylint: disable=arguments-differ
         inputs, targets, _ = batch
-        outputs = self(inputs)
+        inputs_shape = inputs.shape
+        inputs = inputs.view(inputs_shape[0] * inputs_shape[1], *inputs_shape[2:])
+        outputs = cast(torch.Tensor, self(inputs))
+        outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
 
-        loss = self.criterion(outputs, targets)
+        loss = self.criterion(outputs.max(dim=1)[0], targets)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
         return loss

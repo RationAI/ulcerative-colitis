@@ -29,11 +29,13 @@ trainer:
     # - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
 
 data:
-  batch_size: 16
+  batch_size: 4
   num_workers: 4
+  train:
+    inner_batch_size: 32
 
 model:
-  lr: 0.001
+  lr: 0.00001
 
 metadata:
   experiment_name: IKEM
