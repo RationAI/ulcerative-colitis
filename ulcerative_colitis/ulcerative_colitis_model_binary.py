@@ -149,8 +149,8 @@ class UlcerativeColitisModelBinary(LightningModule):
         for name, metric in metrics.items():
             if "slide" in name:
                 metric.update(
-                    outputs.squeeze() if "max1" in name else outputs,
-                    targets.squeeze(),
+                    outputs.squeeze(-1) if "max1" in name else outputs,
+                    targets.squeeze(-1),
                     keys=metadata["slide"],
                     x=metadata["x"],
                     y=metadata["y"],
