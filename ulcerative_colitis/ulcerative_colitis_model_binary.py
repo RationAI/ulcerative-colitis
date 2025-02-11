@@ -34,7 +34,7 @@ from ulcerative_colitis.typing import (
 
 
 class UlcerativeColitisModelBinary(LightningModule):
-    def __init__(self, backbone: Module, lr: float) -> None:
+    def __init__(self, backbone: Module, lr: float | None = None) -> None:
         super().__init__()
         self.backbone = backbone
         self.decode_head = BinaryClassificationHead()
@@ -126,6 +126,8 @@ class UlcerativeColitisModelBinary(LightningModule):
         return outputs
 
     def configure_optimizers(self) -> Optimizer:
+        if self.lr is None:
+            raise ValueError("Learning rate must be set for training.")
         return Adam(self.parameters(), lr=self.lr)
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
