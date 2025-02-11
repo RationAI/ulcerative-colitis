@@ -12,6 +12,8 @@ seed: ${random_seed:}
 mode: test
 checkpoint: ???
 
+trainer: {}
+
 data:
   batch_size: 4
   num_workers: 4
