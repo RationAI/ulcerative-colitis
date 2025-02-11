@@ -37,7 +37,7 @@ class TissueMask(PyvipsMask[TileMetadata]):
         return tile_labels
 
 
-source = OpenSlideTileSource(mpp=0.69, tile_extent=512, stride=256)
+source = OpenSlideTileSource(mpp=0.17, tile_extent=512, stride=256)
 tissue_mask = TissueMask(
     tile_extent=source.tile_extent, absolute_roi_extent=256, relative_roi_offset=0
 )
@@ -114,7 +114,7 @@ def main() -> None:
     test2_slides_df, test2_tiles_df = tiling(slides=test2_slides, handler=handler)
 
     mlflow.set_experiment(experiment_name="IKEM")
-    with mlflow.start_run(run_name="📂 Dataset: Ulcerative Colitis - level 2"):
+    with mlflow.start_run(run_name="📂 Dataset: Ulcerative Colitis - level 0"):
         save_mlflow_dataset(
             slides=train_slides_df,
             tiles=train_tiles_df,

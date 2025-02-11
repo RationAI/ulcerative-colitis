@@ -44,6 +44,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         }
 
         # TODO: add aggregator as attribute to AggregatedMetricCollection
+        # TODO: reset aggregators when resetting metrics
         # TODO: set device to HeatmapAssembler in MeanPoolAggregator
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         max_aggregator = MaxAggregator().to(device)
