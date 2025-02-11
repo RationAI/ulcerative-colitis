@@ -2,7 +2,6 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import cast
 
-import torch
 from lightning import LightningModule
 from rationai.mlkit.metrics import AggregatedMetricCollection
 from torch import Tensor
@@ -19,7 +18,13 @@ from torchmetrics.classification import (
 
 from ulcerative_colitis.metrics import NancyIndexAggregator
 from ulcerative_colitis.modeling import ClassificationHead
-from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
+from ulcerative_colitis.typing import (
+    MetadataBatch,
+    Output,
+    PredictInput,
+    TestInput,
+    TrainInput,
+)
 
 
 class UlcerativeColitisModelMulticlass(LightningModule):
@@ -38,10 +43,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
             "recall": MulticlassRecall(self.num_classes, average="none"),
         }
 
-        # TODO: add aggregator as attribute to AggregatedMetricCollection
-        # TODO: set device to HeatmapAssembler in MeanPoolAggregator
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        aggregator = NancyIndexAggregator(self.num_classes, 2, 512, 256).to(device)
+        aggregator = NancyIndexAggregator(self.num_classes, 2, 512, 256)
 
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
@@ -76,7 +78,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
         x = self.decode_head(x)
         return x
 
-    def training_step(self, batch: Input) -> Tensor:  # pylint: disable=arguments-differ
+    def training_step(self, batch: TrainInput) -> Tensor:  # pylint: disable=arguments-differ
         inputs, targets, _ = batch
         outputs = self(inputs)
 
@@ -85,7 +87,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def validation_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
@@ -95,7 +97,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
         self.update_metrics(self.val_metrics, outputs, targets, metadata)
         self.log_metrics(self.val_metrics)
 
-    def test_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def test_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 

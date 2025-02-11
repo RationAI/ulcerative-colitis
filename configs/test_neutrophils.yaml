@@ -1,0 +1,25 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.train: neutrophils/train
+  - /data/datasets@data.val: neutrophils/val
+  - /data/datasets@data.test: neutrophils/test
+  - /data/datasets@data.predict: neutrophils/predict
+  - model/backbone: vgg16
+  - _self_
+
+seed: ${random_seed:}
+mode: test
+checkpoint: ???
+
+data:
+  batch_size: 4
+  num_workers: 4
+
+metadata:
+  experiment_name: IKEM
+  run_name: '📏 Testing: Ulcerative Colitis - Neutrophils'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+

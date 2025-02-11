@@ -1,0 +1,5 @@
+defaults:
+  - /data/transforms@transforms: test
+
+_target_: ulcerative_colitis.data.datasets.NancyHighTest
+uris: ["mlflow-artifacts:/27/b343ca345c1442c1a92ae20de697a91c/artifacts/Ulcerative Colitis - test1"]

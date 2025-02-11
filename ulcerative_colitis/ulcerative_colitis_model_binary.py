@@ -4,7 +4,6 @@ from typing import cast
 
 import torch
 from lightning import LightningModule
-from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
     MaxAggregator,
@@ -25,7 +24,13 @@ from torchmetrics.classification import (
 from ulcerative_colitis.modeling.binary_classification_head import (
     BinaryClassificationHead,
 )
-from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
+from ulcerative_colitis.typing import (
+    MetadataBatch,
+    Output,
+    PredictInput,
+    TestInput,
+    TrainInput,
+)
 
 
 class UlcerativeColitisModelBinary(LightningModule):
@@ -43,11 +48,8 @@ class UlcerativeColitisModelBinary(LightningModule):
             "recall": BinaryRecall(),
         }
 
-        # TODO: add aggregator as attribute to AggregatedMetricCollection
-        # TODO: reset aggregators when resetting metrics
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        max_aggregator = MaxAggregator()  # .to(device)
-        mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256)  # .to(device)
+        max_aggregator = MaxAggregator()
+        mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -86,7 +88,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         x = self.decode_head(x)
         return x
 
-    def training_step(self, batch: Input) -> Tensor:  # pylint: disable=arguments-differ
+    def training_step(self, batch: TrainInput) -> Tensor:  # pylint: disable=arguments-differ
         inputs, targets, _ = batch
         inputs_shape = inputs.shape
         inputs = inputs.view(inputs_shape[0] * inputs_shape[1], *inputs_shape[2:])
@@ -98,7 +100,7 @@ class UlcerativeColitisModelBinary(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def validation_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
@@ -108,16 +110,12 @@ class UlcerativeColitisModelBinary(LightningModule):
         self.update_metrics(self.val_metrics, outputs, targets, metadata)
         self.log_metrics(self.val_metrics)
 
-    def test_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def test_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
-
-    def on_test_epoch_end(self) -> None:
-        assert isinstance(self.logger, MLFlowLogger)
-        self.logger.log_table(self.test_metrics_nested.compute(), "nested_metrics.json")
 
     def predict_step(  # pylint: disable=arguments-differ
         self, batch: PredictInput, batch_idx: int, dataloader_idx: int = 0

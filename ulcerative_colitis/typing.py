@@ -27,12 +27,12 @@ class TrainMetadataBatch(TypedDict):
     y: Tensor  # Tensor[int]
 
 
-Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
 TrainSample: TypeAlias = tuple[Tensor, Tensor, TrainMetadata]
+TestSample: TypeAlias = tuple[Tensor, Tensor, Metadata]
 PredictSample: TypeAlias = tuple[Tensor, Metadata]
 
-Input: TypeAlias = tuple[Tensor, Tensor, MetadataBatch]
 TrainInput: TypeAlias = tuple[Tensor, Tensor, TrainMetadataBatch]
+TestInput: TypeAlias = tuple[Tensor, Tensor, MetadataBatch]
 PredictInput: TypeAlias = tuple[Tensor, MetadataBatch]
 
 Output: TypeAlias = Tensor

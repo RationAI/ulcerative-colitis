@@ -23,10 +23,9 @@ dependencies = [
 dev = ["mypy", "pre-commit", "ruff"]
 
 [tool.pdm.scripts]
-train = "python -m ulcerative_colitis mode=fit"
-validate = "python -m ulcerative_colitis mode=validate"
-test = "python -m ulcerative_colitis mode=test"
-predict = "python -m ulcerative_colitis mode=predict"
+train_neutrophils = "python -m ulcerative_colitis --config-name=train_neutrophils"
+test_neutrophils = "python -m ulcerative_colitis --config-name=test_neutrophils"
+predict_neutrophils = "python -m ulcerative_colitis --config-name=predict_neutrophils"
 l = { composite = ["lint", "format", "mypy"] }
 lint = "ruff check --fix"
 format = "ruff format"

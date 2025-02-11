@@ -22,7 +22,13 @@ from torchmetrics.classification import (
 from ulcerative_colitis.loss import CumulativeLinkLoss
 from ulcerative_colitis.modeling import LogisticCumulativeLink
 from ulcerative_colitis.modeling.regression_head import RegressionHead
-from ulcerative_colitis.typing import Input, MetadataBatch, Output, PredictInput
+from ulcerative_colitis.typing import (
+    MetadataBatch,
+    Output,
+    PredictInput,
+    TestInput,
+    TrainInput,
+)
 
 
 class UlcerativeColitisModel(LightningModule):
@@ -75,7 +81,7 @@ class UlcerativeColitisModel(LightningModule):
         x = self.cumulative_link(x)
         return x
 
-    def training_step(self, batch: Input) -> Tensor:  # pylint: disable=arguments-differ
+    def training_step(self, batch: TrainInput) -> Tensor:  # pylint: disable=arguments-differ
         inputs, targets, _ = batch
         outputs = self(inputs)
 
@@ -84,7 +90,7 @@ class UlcerativeColitisModel(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def validation_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
@@ -95,14 +101,12 @@ class UlcerativeColitisModel(LightningModule):
         self.update_metrics(self.val_metrics, outputs, targets, metadata)
         self.log_metrics(self.val_metrics)
 
-    def test_step(self, batch: Input) -> None:  # pylint: disable=arguments-differ
+    def test_step(self, batch: TestInput) -> None:  # pylint: disable=arguments-differ
         inputs, targets, metadata = batch
         outputs = self(inputs)
 
         targets = targets.reshape(-1)
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
-        # TODO
-        # self.update_metrics(self.test_metrics_nested, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
 
     def on_test_epoch_end(self) -> None:
