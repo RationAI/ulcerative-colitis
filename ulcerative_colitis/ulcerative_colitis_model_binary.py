@@ -7,6 +7,7 @@ from lightning import LightningModule
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
     MaxAggregator,
+    MeanAggregator,
     MeanPoolMaxAggregator,
 )
 from torch import Tensor
@@ -55,11 +56,6 @@ class UlcerativeColitisModelBinary(LightningModule):
                     "tiles_all": MetricCollection(
                         deepcopy(metrics), prefix="validation/tiles/"
                     ),
-                    "slides_max1": AggregatedMetricCollection(
-                        deepcopy(metrics),
-                        MaxAggregator(),
-                        prefix="validation/slides/max1/",
-                    ),
                 }
             ),
         )
@@ -68,18 +64,26 @@ class UlcerativeColitisModelBinary(LightningModule):
             dict,
             ModuleDict(
                 {
-                    name: metric.clone(
-                        prefix=cast(str, metric.prefix).replace("validation", "test")
-                    )
-                    for name, metric in self.val_metrics.items()
+                    "tiles_all": MetricCollection(
+                        deepcopy(metrics), prefix="test/tiles/"
+                    ),
+                    "slides_max1": AggregatedMetricCollection(
+                        deepcopy(metrics),
+                        MaxAggregator(),
+                        prefix="test/slides/max1/",
+                    ),
+                    "slides_max2": AggregatedMetricCollection(
+                        deepcopy(metrics),
+                        MeanPoolMaxAggregator(2, 512, 256),
+                        prefix="test/slides/max2/",
+                    ),
+                    "slides_mean": AggregatedMetricCollection(
+                        deepcopy(metrics),
+                        MeanAggregator(),
+                        prefix="test/slides/mean/",
+                    ),
                 }
             ),
-        )
-
-        self.test_metrics["slides_max2"] = AggregatedMetricCollection(
-            deepcopy(metrics),
-            MeanPoolMaxAggregator(2, 512, 256),
-            prefix="test/slides/max2/",
         )
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
@@ -94,7 +98,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         outputs = cast(torch.Tensor, self(inputs))
         outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
 
-        loss = self.criterion(outputs.max(dim=1)[0], targets)
+        loss = self.criterion(outputs.mean(dim=1)[0], targets)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
         return loss
@@ -148,7 +152,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         for name, metric in metrics.items():
             if "slide" in name:
                 metric.update(
-                    outputs.squeeze(-1) if "max1" in name else outputs,
+                    outputs if "max2" in name else outputs.squeeze(-1),
                     targets.squeeze(-1),
                     keys=metadata["slide"],
                     x=metadata["x"],
