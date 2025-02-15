@@ -7,7 +7,7 @@ from lightning import LightningModule
 from rationai.mlkit.metrics import (
     AggregatedMetricCollection,
     MaxAggregator,
-    # MeanPoolMaxAggregator,
+    MeanPoolMaxAggregator,
 )
 from torch import Tensor
 from torch.nn import BCELoss, Module, ModuleDict
@@ -48,8 +48,6 @@ class UlcerativeColitisModelBinary(LightningModule):
             "recall": BinaryRecall(),
         }
 
-        max_aggregator = MaxAggregator()
-        # mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256)
         self.val_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -59,14 +57,9 @@ class UlcerativeColitisModelBinary(LightningModule):
                     ),
                     "slides_max1": AggregatedMetricCollection(
                         deepcopy(metrics),
-                        max_aggregator,
+                        MaxAggregator(),
                         prefix="validation/slides/max1/",
                     ),
-                    # "slides_max2": AggregatedMetricCollection(
-                    #     deepcopy(metrics),
-                    #     mean_pool_max_aggregator,
-                    #     prefix="validation/slides/max2/",
-                    # ),
                 }
             ),
         )
@@ -81,6 +74,12 @@ class UlcerativeColitisModelBinary(LightningModule):
                     for name, metric in self.val_metrics.items()
                 }
             ),
+        )
+
+        self.test_metrics["slides_max2"] = AggregatedMetricCollection(
+            deepcopy(metrics),
+            MeanPoolMaxAggregator(2, 512, 256),
+            prefix="test/slides/max2/",
         )
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
