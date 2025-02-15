@@ -98,7 +98,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         outputs = cast(torch.Tensor, self(inputs))
         outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
 
-        loss = self.criterion(outputs.mean(dim=1)[0], targets)
+        loss = self.criterion(outputs.mean(dim=1), targets)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
         return loss
