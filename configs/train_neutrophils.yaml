@@ -28,11 +28,11 @@ trainer:
       patience: 5
 
 data:
-  batch_size: 4
+  batch_size: 2
   target_column: neutrophils
   num_workers: 4
   train:
-    inner_batch_size: 32
+    inner_batch_size: 64
 
 model:
   lr: 0.00001
