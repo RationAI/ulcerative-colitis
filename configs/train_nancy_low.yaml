@@ -32,7 +32,7 @@ data:
   target_column: nancy_index
   num_workers: 4
   train:
-    inner_batch_size: 128
+    inner_batch_size: 64 
 
 model:
   lr: 0.00001
