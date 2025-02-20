@@ -60,6 +60,10 @@ class UlcerativeColitisModelBinary(LightningModule):
             ),
         )
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        max_aggregator = MaxAggregator().to(device)
+        mean_aggregator = MeanAggregator().to(device)
+        mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256).to(device)
         self.test_metrics: dict[str, MetricCollection] = cast(
             dict,
             ModuleDict(
@@ -69,17 +73,17 @@ class UlcerativeColitisModelBinary(LightningModule):
                     ),
                     "slides_max1": AggregatedMetricCollection(
                         deepcopy(metrics),
-                        MaxAggregator(),
+                        max_aggregator,
                         prefix="test/slides/max1/",
                     ),
                     "slides_max2": AggregatedMetricCollection(
                         deepcopy(metrics),
-                        MeanPoolMaxAggregator(2, 512, 256),
+                        mean_pool_max_aggregator,
                         prefix="test/slides/max2/",
                     ),
                     "slides_mean": AggregatedMetricCollection(
                         deepcopy(metrics),
-                        MeanAggregator(),
+                        mean_aggregator,
                         prefix="test/slides/mean/",
                     ),
                 }
