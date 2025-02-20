@@ -26,6 +26,7 @@ dev = ["mypy", "pre-commit", "ruff"]
 train_neutrophils = "python -m ulcerative_colitis --config-name=train_neutrophils"
 test_neutrophils = "python -m ulcerative_colitis --config-name=test_neutrophils"
 predict_neutrophils = "python -m ulcerative_colitis --config-name=predict_neutrophils"
+train_nancy_low = "python -m ulcerative_colitis --config-name=train_nancy_low"
 l = { composite = ["lint", "format", "mypy"] }
 lint = "ruff check --fix"
 format = "ruff format"
