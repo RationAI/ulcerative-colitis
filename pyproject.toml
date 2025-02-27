@@ -14,9 +14,11 @@ dependencies = [
     "torchvision>=0.17.2",
     "albumentations>=1.4.14",
     "ipykernel",
+    "timm",
     "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git@fix/metrics",
     "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git",
     "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git",
+    "prov-gigapath @ git+https://github.com/prov-gigapath/prov-gigapath.git"
 ]
 
 [tool.pdm.dev-dependencies]

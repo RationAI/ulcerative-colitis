@@ -37,7 +37,7 @@ class TissueMask(PyvipsMask[TileMetadata]):
         return tile_labels
 
 
-source = OpenSlideTileSource(mpp=0.17, tile_extent=512, stride=256)
+source = OpenSlideTileSource(mpp=0.5, tile_extent=256, stride=256)
 tissue_mask = TissueMask(
     tile_extent=source.tile_extent, absolute_roi_extent=256, relative_roi_offset=0
 )
