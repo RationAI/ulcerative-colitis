@@ -58,25 +58,28 @@ def main() -> None:
     devide = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tile_encoder = load_tile_encoder().to(devide).eval()
 
-    for uri in URIS:
-        dataset = load_dataset((uri,))
-        partition = uri.split(" - ")[-1]
+    with torch.no_grad():
+        for uri in URIS:
+            dataset = load_dataset((uri,))
+            partition = uri.split(" - ")[-1]
 
-        slide_embeddings = torch.zeros(
-            (len(dataset), 1536), device=devide, dtype=torch.float32
-        )
-        for slide_dataset in dataset.generate_datasets():
-            slide_dataloader = DataLoader(slide_dataset, batch_size=1, shuffle=False)
-            for i, (x, _) in enumerate(slide_dataloader):
-                x = x.to(devide)
-                embeddings = tile_encoder(x)
-
-                slide_embeddings[i, :] = embeddings.squeeze()
-
-            slide_name = (
-                slide_dataset.slide_metadata["path"].split("/")[-1].split(".")[0]
+            slide_embeddings = torch.zeros(
+                (len(dataset), 1536), device=devide, dtype=torch.float32
             )
-            save_embeddings(slide_embeddings, partition, slide_name)
+            for slide_dataset in dataset.generate_datasets():
+                slide_dataloader = DataLoader(
+                    slide_dataset, batch_size=1, shuffle=False
+                )
+                for i, (x, _) in enumerate(slide_dataloader):
+                    x = x.to(devide)
+                    embeddings = tile_encoder(x)
+
+                    slide_embeddings[i, :] = embeddings.squeeze()
+
+                slide_name = (
+                    slide_dataset.slide_metadata["path"].split("/")[-1].split(".")[0]
+                )
+                save_embeddings(slide_embeddings, partition, slide_name)
 
     mlflow.set_experiment(experiment_name="IKEM")
     with mlflow.start_run(run_name="📂 Dataset: Embeddings"):
