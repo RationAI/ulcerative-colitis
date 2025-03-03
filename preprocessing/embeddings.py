@@ -20,7 +20,7 @@ URIS = [
 ]
 
 DESTINATION = Path(
-    "/mnt/data/Projects/inflammatory_bowel_disease/ulcerative_colitis/embeddings"
+    "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embeddings"
 )
 
 
