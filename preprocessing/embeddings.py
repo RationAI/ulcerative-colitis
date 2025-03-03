@@ -56,7 +56,7 @@ def save_embeddings(
 
 def main() -> None:
     devide = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tile_encoder = load_tile_encoder().to(devide)
+    tile_encoder = load_tile_encoder().to(devide).eval()
 
     for uri in URIS:
         dataset = load_dataset((uri,))
