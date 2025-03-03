@@ -1,9 +1,11 @@
+from collections.abc import Iterable
+from pathlib import Path
+
 import albumentations as A
 import gigapath
 import gigapath.slide_encoder
+import mlflow
 import timm
-
-# from torchvision import transforms
 import torch
 from torch.utils.data import DataLoader
 
@@ -11,13 +13,18 @@ from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
 
 URIS = [
-    # "mlflow-artifacts:/27/40d45169bc604d3782f140284e87725c/artifacts/Ulcerative Colitis - train"
-    # "mlflow-artifacts:/27/40d45169bc604d3782f140284e87725c/artifacts/Ulcerative Colitis - val"
-    "mlflow-artifacts:/27/40d45169bc604d3782f140284e87725c/artifacts/Ulcerative Colitis - test1"
+    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - val",
+    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - train",
+    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - test1",
+    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - test2",
 ]
 
+DESTINATION = Path(
+    "/mnt/data/Projects/inflammatory_bowel_disease/ulcerative_colitis/embeddings"
+)
 
-def load_dataset() -> DataLoader:
+
+def load_dataset(uris: Iterable[str]) -> NeutrophilsPredict:
     transforms = A.Compose(
         [
             A.CenterCrop(224, 224),
@@ -25,8 +32,7 @@ def load_dataset() -> DataLoader:
         ]
     )
 
-    dataset = NeutrophilsPredict(URIS, transforms=transforms)
-    return DataLoader(dataset, batch_size=1, num_workers=4)
+    return NeutrophilsPredict(uris, transforms=transforms)
 
 
 def load_tile_encoder() -> torch.nn.Module:
@@ -40,12 +46,41 @@ def load_slide_encoder() -> torch.nn.Module:
     )
 
 
+def save_embeddings(
+    slide_embeddings: torch.Tensor, partition: str, slide_name: str
+) -> None:
+    torch.save(
+        slide_embeddings, (DESTINATION / partition / slide_name).with_suffix(".pt")
+    )
+
+
 def main() -> None:
-    tile_encoder = load_tile_encoder()
-    print(tile_encoder)
-    print("\n\n\n")
-    slide_encoder = load_slide_encoder()
-    print(slide_encoder)
+    devide = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tile_encoder = load_tile_encoder().to(devide)
+
+    for uri in URIS:
+        dataset = load_dataset((uri,))
+        partition = uri.split(" - ")[-1]
+
+        slide_embeddings = torch.zeros(
+            (len(dataset), 1536), device=devide, dtype=torch.float32
+        )
+        for slide_dataset in dataset.generate_datasets():
+            slide_dataloader = DataLoader(slide_dataset, batch_size=1, shuffle=False)
+            for i, (x, _) in slide_dataloader:
+                x = x.to(devide)
+                embeddings = tile_encoder(x)
+
+                slide_embeddings[i, :] = embeddings.squeeze()
+
+            slide_name = (
+                slide_dataset.slide_metadata["path"].split("/")[-1].split(".")[0]
+            )
+            save_embeddings(slide_embeddings, partition, slide_name)
+
+    mlflow.set_experiment(experiment_name="IKEM")
+    with mlflow.start_run(run_name="📂 Dataset: Embeddings"):
+        mlflow.log_artifacts(str(DESTINATION))
 
 
 if __name__ == "__main__":
