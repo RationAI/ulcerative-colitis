@@ -63,12 +63,12 @@ def main() -> None:
             dataset = load_dataset((uri,))
             partition = uri.split(" - ")[-1]
 
-            slide_embeddings = torch.zeros(
-                (len(dataset), 1536), device=devide, dtype=torch.float32
-            )
             for slide_dataset in dataset.generate_datasets():
                 slide_dataloader = DataLoader(
                     slide_dataset, batch_size=1, shuffle=False
+                )
+                slide_embeddings = torch.zeros(
+                    (len(slide_dataloader), 1536), device=devide, dtype=torch.float32
                 )
                 for i, (x, _) in enumerate(slide_dataloader):
                     x = x.to(devide)
