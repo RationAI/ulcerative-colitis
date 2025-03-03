@@ -67,7 +67,7 @@ def main() -> None:
         )
         for slide_dataset in dataset.generate_datasets():
             slide_dataloader = DataLoader(slide_dataset, batch_size=1, shuffle=False)
-            for i, (x, _) in slide_dataloader:
+            for i, (x, _) in enumerate(slide_dataloader):
                 x = x.to(devide)
                 embeddings = tile_encoder(x)
 
