@@ -49,9 +49,9 @@ def load_slide_encoder() -> torch.nn.Module:
 def save_embeddings(
     slide_embeddings: torch.Tensor, partition: str, slide_name: str
 ) -> None:
-    torch.save(
-        slide_embeddings, (DESTINATION / partition / slide_name).with_suffix(".pt")
-    )
+    folder = DESTINATION / partition
+    folder.mkdir(parents=True, exist_ok=True)
+    torch.save(slide_embeddings, (folder / slide_name).with_suffix(".pt"))
 
 
 def main() -> None:
