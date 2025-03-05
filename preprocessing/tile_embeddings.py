@@ -2,8 +2,6 @@ from collections.abc import Iterable
 from pathlib import Path
 
 import albumentations as A
-import gigapath
-import gigapath.slide_encoder
 import mlflow
 import timm
 import torch
@@ -37,13 +35,6 @@ def load_dataset(uris: Iterable[str]) -> NeutrophilsPredict:
 
 def load_tile_encoder() -> torch.nn.Module:
     return timm.create_model("hf_hub:prov-gigapath/prov-gigapath", pretrained=True)
-
-
-def load_slide_encoder() -> torch.nn.Module:
-    # TODO
-    return gigapath.slide_encoder.create_model(
-        "hf_hub:prov-gigapath/prov-gigapath", "gigapath_slide_enc12l768d", 1536
-    )
 
 
 def save_embeddings(
