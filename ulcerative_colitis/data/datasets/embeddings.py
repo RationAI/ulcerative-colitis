@@ -145,10 +145,12 @@ class _EmbeddingsSlideTilesTrain(Dataset[TrainSample]):
         slide_metadata = self.slides.iloc[idx]
         tiles = self.tiles_all.query(f"slide_id == {slide_metadata['id']!s}")
         slide_name = get_slide_name(slide_metadata)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        embeddings = torch.load(
-            (self.folder / slide_name).with_suffix(".pt"), map_location=device
-        )
+        if torch.cuda.is_available():
+            embeddings = torch.load((self.folder / slide_name).with_suffix(".pt"))
+        else:
+            embeddings = torch.load(
+                (self.folder / slide_name).with_suffix(".pt"), map_location="cpu"
+            )
 
         vectors = []
         xs = []
