@@ -1,3 +1,8 @@
+from ulcerative_colitis.data.datasets.embeddings import (
+    EmbeddingsPredict,
+    EmbeddingsTest,
+    EmbeddingsTrain,
+)
 from ulcerative_colitis.data.datasets.nancy_high import (
     NancyHighPredict,
     NancyHighTest,
@@ -17,6 +22,9 @@ from ulcerative_colitis.data.datasets.ulcerative_colitis import UlcerativeColiti
 
 
 __all__ = [
+    "EmbeddingsPredict",
+    "EmbeddingsTest",
+    "EmbeddingsTrain",
     "NancyHighPredict",
     "NancyHighTest",
     "NancyHighTrain",

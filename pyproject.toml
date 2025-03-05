@@ -25,6 +25,10 @@ dependencies = [
     "prov-gigapath @ git+https://github.com/prov-gigapath/prov-gigapath.git"
 ]
 
+[build-system]
+requires = ["setuptools", "wheel", "torch"]
+build-backend = "setuptools.build_meta"
+
 [tool.pdm.dev-dependencies]
 dev = ["mypy", "pre-commit", "ruff"]
 
