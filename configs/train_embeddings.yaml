@@ -13,7 +13,7 @@ checkpoint: null
 
 trainer:
   enable_checkpointing: True
-  max_epochs: 10
+  max_epochs: 300
   log_every_n_steps: 5
   # check_val_every_n_epoch: 10
   callbacks:
@@ -24,7 +24,7 @@ trainer:
     - _target_: lightning.pytorch.callbacks.EarlyStopping
       monitor: validation/loss
       mode: min
-      patience: 5
+      patience: 10 
 
 data:
   batch_size: 8
