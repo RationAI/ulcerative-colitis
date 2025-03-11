@@ -60,13 +60,12 @@ class EmbeddingsTrain(Embeddings[TrainSample]):
 class EmbeddingsTest(Embeddings[TestSample]):
     def generate_datasets(self) -> Iterable[Dataset[TestSample]]:
         self.slides = process_slides(self.slides)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         return [
             _EmbeddingsSlideTiles(
                 slide,
                 torch.load(
                     (self.folder / get_slide_name(slide)).with_suffix(".pt"),
-                    map_location=device,
+                    map_location="cpu",
                 ),
                 tiles=self.filter_tiles_by_slide(slide["id"]),
                 include_labels=True,

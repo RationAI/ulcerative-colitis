@@ -17,6 +17,8 @@ data:
   batch_size: 4
   num_workers: 4
 
+model: {}
+
 metadata:
   experiment_name: IKEM
   run_name: '📏 Testing: Ulcerative Colitis - Embeddings'
