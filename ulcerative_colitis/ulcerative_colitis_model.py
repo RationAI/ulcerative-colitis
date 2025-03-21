@@ -48,7 +48,7 @@ class UlcerativeColitisModel(LightningModule):
         }
 
         self.val_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
@@ -59,11 +59,11 @@ class UlcerativeColitisModel(LightningModule):
         )
 
         self.test_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     name: metric.clone(
-                        prefix=cast(str, metric.prefix).replace("validation", "test")
+                        prefix=cast("str", metric.prefix).replace("validation", "test")
                     )
                     for name, metric in self.val_metrics.items()
                 }
@@ -136,7 +136,7 @@ class UlcerativeColitisModel(LightningModule):
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, metric in dictionary.items():
-            result = cast(Tensor, metric.compute())
+            result = cast("Tensor", metric.compute())
             if result.shape:
                 for i, value in enumerate(result):
                     self.log(f"{name}/{i}", value, *args, **kwargs)

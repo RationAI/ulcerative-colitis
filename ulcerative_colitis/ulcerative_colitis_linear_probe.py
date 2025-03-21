@@ -47,7 +47,7 @@ class UlcerativeColitisModelLinearProbe(LightningModule):
         }
 
         self.val_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
@@ -62,7 +62,7 @@ class UlcerativeColitisModelLinearProbe(LightningModule):
         mean_aggregator = MeanAggregator().to(device)
         mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256).to(device)
         self.test_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
@@ -94,7 +94,7 @@ class UlcerativeColitisModelLinearProbe(LightningModule):
         inputs, targets, _ = batch
         inputs_shape = inputs.shape  # (batch_size, inner_batch_size, embedding_size)
         inputs = inputs.view(inputs_shape[0] * inputs_shape[1], *inputs_shape[2:])
-        outputs = cast(torch.Tensor, self(inputs))
+        outputs = cast("torch.Tensor", self(inputs))
         outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
 
         loss = self.criterion(outputs.mean(dim=1), targets)
@@ -106,7 +106,7 @@ class UlcerativeColitisModelLinearProbe(LightningModule):
         inputs, targets, metadata = batch
         inputs_shape = inputs.shape  # (batch_size, inner_batch_size, embedding_size)
         inputs = inputs.view(inputs_shape[0] * inputs_shape[1], *inputs_shape[2:])
-        outputs = cast(torch.Tensor, self(inputs))
+        outputs = cast("torch.Tensor", self(inputs))
         outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
         outputs = outputs.mean(dim=1)
 
@@ -140,7 +140,7 @@ class UlcerativeColitisModelLinearProbe(LightningModule):
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, result in dictionary.compute().items():
-            result = cast(Tensor, result)
+            result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):
                     self.log(f"{name}/{i}", value, *args, **kwargs)

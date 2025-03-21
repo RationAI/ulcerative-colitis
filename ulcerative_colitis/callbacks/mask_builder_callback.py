@@ -21,8 +21,8 @@ class MaskBuilderCallback(MultiloaderLifecycle):
         if not hasattr(trainer, "datamodule"):
             raise ValueError("Trainer must have a datamodule to use this callback")
 
-        datamodule = cast(DataModule, trainer.datamodule)
-        slide = cast(pd.DataFrame, datamodule.predict.slides).iloc[dataloader_idx]
+        datamodule = cast("DataModule", trainer.datamodule)
+        slide = cast("pd.DataFrame", datamodule.predict.slides).iloc[dataloader_idx]
 
         # TODO: fix mmp -> mpp
         self.mask_builders = [

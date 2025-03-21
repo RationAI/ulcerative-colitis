@@ -24,7 +24,7 @@ def process_slide(slide_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
         mpp_x, mpp_y = slide_resolution(slide, level=LEVEL)
 
-    slide = cast(pyvips.Image, pyvips.Image.new_from_file(slide_path, page=LEVEL))
+    slide = cast("pyvips.Image", pyvips.Image.new_from_file(slide_path, page=LEVEL))
     mask = tissue_mask(slide, mpp=(mpp_x + mpp_y) / 2)
     mask_path = TISSUE_MASKS_PATH / slide_path.with_suffix(".tiff").name
     mask_path.parent.mkdir(exist_ok=True, parents=True)

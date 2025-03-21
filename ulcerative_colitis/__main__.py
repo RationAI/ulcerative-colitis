@@ -7,16 +7,8 @@ from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import Trainer, autolog
 
 from ulcerative_colitis.data import DataModule
-
-# from ulcerative_colitis.ulcerative_colitis_model import UlcerativeColitisModel
-# from ulcerative_colitis.ulcerative_colitis_model_binary import (
-#     UlcerativeColitisModelBinary,
-# )
-# from ulcerative_colitis.ulcerative_colitis_model_multiclass import (
-#     UlcerativeColitisModelMulticlass,
-# )
-from ulcerative_colitis.ulcerative_colitis_linear_probe import (
-    UlcerativeColitisModelLinearProbe,
+from ulcerative_colitis.ulcerative_colitis_attention_mil import (
+    UlcerativeColitisModelAttentionMIL,
 )
 
 
@@ -36,7 +28,7 @@ def main(config: DictConfig, logger: Logger | None) -> None:
         _target_=DataModule,
     )
     model = hydra.utils.instantiate(
-        config.model, _target_=UlcerativeColitisModelLinearProbe
+        config.model, _target_=UlcerativeColitisModelAttentionMIL
     )
 
     trainer = hydra.utils.instantiate(config.trainer, _target_=Trainer, logger=logger)

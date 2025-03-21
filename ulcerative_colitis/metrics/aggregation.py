@@ -36,7 +36,7 @@ class NancyIndexAggregator(MeanPoolMaxAggregator):
             assemblers[i].update(preds[:, i], xs, ys)
 
         assemblies = torch.stack([assembler.compute() for assembler in assemblers])
-        pooled = cast(Tensor, self.pool(assemblies.unsqueeze(0)))
+        pooled = cast("Tensor", self.pool(assemblies.unsqueeze(0)))
         pooled = pooled.squeeze(0).permute(1, 2, 0).view(-1, self.num_classes)
 
         non_zero_mask = pooled.sum(dim=1) > 0.5

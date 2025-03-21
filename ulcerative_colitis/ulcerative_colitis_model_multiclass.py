@@ -46,7 +46,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
         aggregator = NancyIndexAggregator(self.num_classes, 2, 512, 256)
 
         self.val_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles": MetricCollection(
@@ -62,11 +62,11 @@ class UlcerativeColitisModelMulticlass(LightningModule):
         )
 
         self.test_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     name: metric.clone(
-                        prefix=cast(str, metric.prefix).replace("validation", "test")
+                        prefix=cast("str", metric.prefix).replace("validation", "test")
                     )
                     for name, metric in self.val_metrics.items()
                 }
@@ -117,7 +117,7 @@ class UlcerativeColitisModelMulticlass(LightningModule):
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, result in dictionary.compute().items():
-            result = cast(Tensor, result)
+            result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):
                     self.log(f"{name}/{i}", value, *args, **kwargs)

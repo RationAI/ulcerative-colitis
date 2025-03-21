@@ -50,7 +50,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         }
 
         self.val_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
@@ -65,7 +65,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         mean_aggregator = MeanAggregator().to(device)
         mean_pool_max_aggregator = MeanPoolMaxAggregator(2, 512, 256).to(device)
         self.test_metrics: dict[str, MetricCollection] = cast(
-            dict,
+            "dict",
             ModuleDict(
                 {
                     "tiles_all": MetricCollection(
@@ -99,7 +99,7 @@ class UlcerativeColitisModelBinary(LightningModule):
         inputs, targets, _ = batch
         inputs_shape = inputs.shape
         inputs = inputs.view(inputs_shape[0] * inputs_shape[1], *inputs_shape[2:])
-        outputs = cast(torch.Tensor, self(inputs))
+        outputs = cast("torch.Tensor", self(inputs))
         outputs = outputs.view(inputs_shape[0], inputs_shape[1], *outputs.shape[1:])
 
         loss = self.criterion(outputs.mean(dim=1), targets)
@@ -139,7 +139,7 @@ class UlcerativeColitisModelBinary(LightningModule):
 
     def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
         for name, result in dictionary.compute().items():
-            result = cast(Tensor, result)
+            result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):
                     self.log(f"{name}/{i}", value, *args, **kwargs)

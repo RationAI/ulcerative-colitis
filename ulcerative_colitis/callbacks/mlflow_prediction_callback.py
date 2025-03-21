@@ -40,8 +40,8 @@ class MLFlowPredictionCallback(MultiloaderLifecycle):
         if not hasattr(trainer, "datamodule"):
             raise ValueError("Trainer must have a datamodule to use this callback")
 
-        datamodule = cast(DataModule, trainer.datamodule)
-        slide = cast(pd.DataFrame, datamodule.predict.slides).iloc[dataloader_idx]
+        datamodule = cast("DataModule", trainer.datamodule)
+        slide = cast("pd.DataFrame", datamodule.predict.slides).iloc[dataloader_idx]
 
         output = self.aggregator.compute()[0].cpu()
         table = {f"pred_mean_{i}": output[i].item() for i in range(output.shape[0])}

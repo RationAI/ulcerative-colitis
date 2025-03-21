@@ -1,0 +1,42 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.train: embeddings/train
+  - /data/datasets@data.val: embeddings/val
+  - /data/datasets@data.test: embeddings/test
+  - /data/datasets@data.predict: embeddings/predict
+  - _self_
+
+seed: ${random_seed:}
+mode: fit
+checkpoint: null
+
+trainer:
+  enable_checkpointing: True
+  max_epochs: 30
+  log_every_n_steps: 5
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      save_top_k: 1
+      monitor: validation/loss
+      mode: min
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: validation/loss
+      mode: min
+      patience: 10 
+
+data:
+  batch_size: 2
+  target_column: neutrophils
+  num_workers: 4
+
+model:
+  lr: 0.0001
+
+metadata:
+  experiment_name: IKEM
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - MIL'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+

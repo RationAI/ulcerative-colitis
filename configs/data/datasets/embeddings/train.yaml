@@ -1,4 +1,4 @@
-_target_: ulcerative_colitis.data.datasets.EmbeddingsTrain
+_target_: ulcerative_colitis.data.datasets.Embeddings
 uri: "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - train"
 uri_embeddings: "mlflow-artifacts:/27/738471d6ff2c4d979bea2860cba4a399/artifacts/train"
 
