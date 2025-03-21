@@ -13,7 +13,7 @@ checkpoint: null
 
 trainer:
   enable_checkpointing: True
-  max_epochs: 30
+  max_epochs: 300
   log_every_n_steps: 5
   callbacks:
     - _target_: lightning.pytorch.callbacks.ModelCheckpoint
@@ -26,7 +26,7 @@ trainer:
       patience: 10 
 
 data:
-  batch_size: 2
+  batch_size: 8
   target_column: neutrophils
   num_workers: 4
 

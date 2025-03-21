@@ -44,7 +44,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
     def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
         x = self.encoder(x)
-        attention_weights = torch.softmax(self.attention(x), dim=1)
+        attention_weights = torch.softmax(self.attention(x), dim=0)
         x = torch.sum(attention_weights * x, dim=0)
         x = self.classifier(x)
         x = x.sigmoid()
@@ -70,12 +70,11 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
             output = self(bag)
-            print(output, label)
             loss += self.criterion(output, label)
             outputs.append(output)
 
         loss /= len(bags)
-        self.log("validation/loss", loss, on_step=True, prog_bar=True)
+        self.log("validation/loss", loss, prog_bar=True)
 
         self.val_metrics.update(torch.tensor(outputs), torch.tensor(labels))
         self.log_dict(self.val_metrics)
