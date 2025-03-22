@@ -1,10 +1,10 @@
 defaults:
   - hydra: default
   - logger: mlflow
-  - /data/datasets@data.train: neutrophils/train
-  - /data/datasets@data.val: neutrophils/val
-  - /data/datasets@data.test: neutrophils/test
-  - /data/datasets@data.predict: neutrophils/predict
+  - /data/datasets@data.train: embeddings/train
+  - /data/datasets@data.val: embeddings/val
+  - /data/datasets@data.test: embeddings/test
+  - /data/datasets@data.predict: embeddings/predict
   - _self_
 
 seed: ${random_seed:}
