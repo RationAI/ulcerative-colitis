@@ -8,20 +8,23 @@ defaults:
   - _self_
 
 seed: ${random_seed:}
-mode: test
+mode: predict
 checkpoint: ???
 
-trainer: {}
+trainer:
+  callbacks:
+    - _target_: ulcerative_colitis.callbacks.MaskBuilderCallback
+    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
 
 data:
-  batch_size: 8
+  batch_size: 1
   num_workers: 4
 
 model: {}
 
 metadata:
   experiment_name: IKEM
-  run_name: '📏 Testing: Ulcerative Colitis - Neutrophils MIL'
+  run_name: '🎯 Predicting: Ulcerative Colitis - Neutrophils MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

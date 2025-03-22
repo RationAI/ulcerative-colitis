@@ -1,80 +1,104 @@
 from pathlib import Path
-from typing import cast
+from typing import TypedDict, cast
 
 import mlflow
 import pandas as pd
-from lightning import LightningModule, Trainer
+import torch
+from lightning import Callback, Trainer
 from rationai.masks.mask_builders import ScalarMaskBuilder
-from rationai.mlkit.lightning.callbacks import MultiloaderLifecycle
 
 from ulcerative_colitis.data import DataModule
-from ulcerative_colitis.typing import Output, PredictInput
+from ulcerative_colitis.typing import MILPredictInput, Output
+from ulcerative_colitis.ulcerative_colitis_attention_mil import (
+    UlcerativeColitisModelAttentionMIL,
+)
 
 
-class MaskBuilderCallback(MultiloaderLifecycle):
-    mask_builders: list[ScalarMaskBuilder]
-    mask_builder_argmax: ScalarMaskBuilder
+class MaskBuilders(TypedDict):
+    attention: ScalarMaskBuilder
+    attention_rescaled: ScalarMaskBuilder
+    classification: ScalarMaskBuilder
+    classification_attention: ScalarMaskBuilder
+    classification_attention_rescaled: ScalarMaskBuilder
 
-    def on_predict_dataloader_start(
-        self, trainer: Trainer, pl_module: LightningModule, dataloader_idx: int
-    ) -> None:
-        if not hasattr(trainer, "datamodule"):
-            raise ValueError("Trainer must have a datamodule to use this callback")
 
+class MaskBuilderCallback(Callback):
+    def get_mask_builders(self, slide_name: str, trainer: Trainer) -> MaskBuilders:
         datamodule = cast("DataModule", trainer.datamodule)
-        slide = cast("pd.DataFrame", datamodule.predict.slides).iloc[dataloader_idx]
+        slides = cast("pd.DataFrame", datamodule.predict.slides)
+        slides["name"] = slides["path"].apply(lambda x: Path(x).stem)
 
-        # TODO: fix mmp -> mpp
-        self.mask_builders = [
-            ScalarMaskBuilder(
-                save_dir=Path("masks"),
-                filename=Path(slide.path).stem,
-                extent_x=slide.extent_x,
-                extent_y=slide.extent_y,
-                mmp_x=slide.mpp_x,
-                mmp_y=slide.mpp_y,
-                extent_tile=slide.tile_extent_x,
-                stride=slide.stride_x,
+        _slide = slides[slides["name"] == slide_name]
+        assert len(_slide) == 1
+        slide = _slide.iloc[0]
+
+        kwargs = {
+            "filename": Path(slide.path).stem,
+            "extent_x": slide.extent_x,
+            "extent_y": slide.extent_y,
+            "mpp_x": slide.mpp_x,
+            "mpp_y": slide.mpp_y,
+            "extent_tile": slide.tile_extent_x,
+            "stride": slide.stride_x,
+        }
+
+        return {
+            "attention": ScalarMaskBuilder(save_dir=Path("masks/attention"), **kwargs),
+            "attention_rescaled": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_rescaled"), **kwargs
+            ),
+            "classification": ScalarMaskBuilder(
+                save_dir=Path("masks/classifications"), **kwargs
+            ),
+            "classification_attention": ScalarMaskBuilder(
+                save_dir=Path("masks/classifications_attention"), **kwargs
+            ),
+            "classification_attention_rescaled": ScalarMaskBuilder(
+                save_dir=Path("masks/classifications_attention_rescaled"), **kwargs
+            ),
+        }
+
+    def save_mask_builders(self, mask_builders: MaskBuilders) -> None:
+        for mask_builder in mask_builders.values():
+            assert isinstance(mask_builder, ScalarMaskBuilder)
+            mlflow.log_artifact(
+                str(mask_builder.save()), artifact_path=str(mask_builder.save_dir)
             )
-            for _ in range(5)
-        ]
-
-        self.mask_builder_argmax = ScalarMaskBuilder(
-            save_dir=Path("masks"),
-            filename=Path(slide.path).stem,
-            extent_x=slide.extent_x,
-            extent_y=slide.extent_y,
-            mmp_x=slide.mpp_x,
-            mmp_y=slide.mpp_y,
-            extent_tile=slide.tile_extent_x,
-            stride=slide.stride_x,
-        )
 
     def on_predict_batch_end(
         self,
         trainer: Trainer,
-        pl_module: LightningModule,
+        pl_module: UlcerativeColitisModelAttentionMIL,
         outputs: Output,
-        batch: PredictInput,
+        batch: MILPredictInput,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        metadata = batch[1]
-        # outputs is a tensor of shape (batch_size, 1)
-        # TODO: fix move ImageBuilder to right device
+        for bag, metadata in zip(*batch, strict=True):
+            mask_builders = self.get_mask_builders(metadata["slide"], trainer)
 
-        for i, mask_builder in enumerate(self.mask_builders):
-            mask_builder.update(outputs[:, i].cpu(), metadata["x"], metadata["y"])
-        self.mask_builder_argmax.update(
-            (outputs.argmax(dim=1).cpu() + 1) / 5, metadata["x"], metadata["y"]
-        )
+            bag = pl_module.encoder(bag)
+            attention_weights = torch.softmax(pl_module.attention(bag), dim=0).cpu()
+            classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
 
-    def on_predict_dataloader_end(
-        self, trainer: Trainer, pl_module: LightningModule, dataloader_idx: int
-    ) -> None:
-        for i, mask_builder in enumerate(self.mask_builders):
-            mlflow.log_artifact(str(mask_builder.save()), artifact_path=f"nancy_{i}")
+            weights_max = attention_weights.max()
 
-        mlflow.log_artifact(
-            str(self.mask_builder_argmax.save()), artifact_path="nancy_argmax"
-        )
+            mask_builders["attention"].update(
+                attention_weights, metadata["x"], metadata["y"]
+            )
+            mask_builders["attention_rescaled"].update(
+                attention_weights / weights_max, metadata["x"], metadata["y"]
+            )
+            mask_builders["classification"].update(
+                classification, metadata["x"], metadata["y"]
+            )
+            mask_builders["classification_attention"].update(
+                attention_weights * classification, metadata["x"], metadata["y"]
+            )
+            mask_builders["classification_attention_rescaled"].update(
+                attention_weights * classification / weights_max,
+                metadata["x"],
+                metadata["y"],
+            )
+
+            self.save_mask_builders(mask_builders)
