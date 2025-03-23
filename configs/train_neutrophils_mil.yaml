@@ -31,7 +31,8 @@ data:
   num_workers: 4
 
 model:
-  lr: 0.0001
+  lr: 0.00001
+  alpha: 0.01
 
 metadata:
   experiment_name: IKEM

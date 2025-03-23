@@ -14,11 +14,12 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
+from ulcerative_colitis.loss import attention_entropy_loss
 from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
 
 
 class UlcerativeColitisModelAttentionMIL(LightningModule):
-    def __init__(self, lr: float | None = None) -> None:
+    def __init__(self, lr: float | None = None, alpha: float = 0.01) -> None:
         super().__init__()
         self.encoder = nn.Identity()
         self.attention = nn.Sequential(
@@ -29,6 +30,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.classifier = nn.Linear(1536, 1)
         self.criterion = nn.BCELoss()
         self.lr = lr
+        self.alpha = alpha
 
         metrics: dict[str, Metric] = {
             "AUC": BinaryAUROC(),
@@ -42,12 +44,18 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
 
-    def forward(self, x: Tensor) -> Output:  # pylint: disable=arguments-differ
+    def forward(
+        self, x: Tensor, return_attention: bool = False
+    ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
         x = self.encoder(x)
         attention_weights = torch.softmax(self.attention(x), dim=0)
         x = torch.sum(attention_weights * x, dim=0)
         x = self.classifier(x)
         x = x.sigmoid()
+
+        if return_attention:
+            return x.squeeze(), attention_weights.squeeze()
+
         return x.squeeze()
 
     def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
@@ -55,8 +63,10 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         loss = torch.tensor(0.0, device=self.device)
         for bag, label in zip(bags, labels, strict=True):
-            output = self(bag)
-            loss += self.criterion(output, label)
+            output, attention = self(bag, return_attention=True)
+            l_classification = self.criterion(output, label)
+            l_attention = attention_entropy_loss(attention)
+            loss += l_classification + self.alpha * l_attention
 
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
@@ -69,8 +79,10 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         loss = torch.tensor(0.0, device=self.device)
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
-            output = self(bag)
-            loss += self.criterion(output, label)
+            output, attention = self(bag, return_attention=True)
+            l_classification = self.criterion(output, label)
+            l_attention = attention_entropy_loss(attention)
+            loss += l_classification + self.alpha * l_attention
             outputs.append(output)
 
         loss /= len(bags)
