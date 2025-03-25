@@ -58,7 +58,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         return x.squeeze()
 
-    def log_attention_coverage(self, attention_weights: Tensor) -> None:
+    def log_attention_coverage(self, attention_weights: Tensor, stage: str) -> None:
         # Sort attention weights in descending order
         sorted_weights, _ = torch.sort(attention_weights, descending=True)
 
@@ -75,7 +75,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
             # Log the result
             self.log(
-                f"attention/coverage_count_{treshold}",
+                f"{stage}/attention/coverage_count_{treshold}",
                 count,
                 on_step=True,
                 on_epoch=True,
@@ -88,7 +88,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         loss = torch.tensor(0.0, device=self.device)
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention)
+            self.log_attention_coverage(attention, "train")
             l_classification = self.criterion(output, label)
             # l_attention = attention_entropy_loss(attention)
             loss += l_classification  # + self.alpha * l_attention
@@ -105,7 +105,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention)
+            self.log_attention_coverage(attention, "validation")
             l_classification = self.criterion(output, label)
             # l_attention = attention_entropy_loss(attention)
             loss += l_classification  # + self.alpha * l_attention
@@ -123,7 +123,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         outputs = []
         for bag in bags:
             output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention)
+            self.log_attention_coverage(attention, "test")
             outputs.append(output)
 
         self.test_metrics.update(torch.tensor(outputs), torch.tensor(labels))
