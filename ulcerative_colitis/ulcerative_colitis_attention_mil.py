@@ -120,7 +120,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         outputs = []
         for bag in bags:
-            output = self(bag)
+            output, attention = self(bag, return_attention=True)
+            self.log_attention_coverage(attention)
             outputs.append(output)
 
         self.test_metrics.update(torch.tensor(outputs), torch.tensor(labels))
@@ -133,8 +134,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         outputs = []
         for bag in bags:
-            output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention)
+            output = self(bag)
             outputs.append(output)
 
         return torch.tensor(outputs)
