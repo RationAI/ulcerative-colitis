@@ -78,6 +78,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
                 f"attention/coverage_count_{treshold}",
                 count,
                 on_step=True,
+                on_epoch=True,
                 prog_bar=True,
             )
 
@@ -104,6 +105,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
+            self.log_attention_coverage(attention)
             l_classification = self.criterion(output, label)
             # l_attention = attention_entropy_loss(attention)
             loss += l_classification  # + self.alpha * l_attention
