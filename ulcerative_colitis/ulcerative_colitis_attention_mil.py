@@ -14,7 +14,7 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
-from ulcerative_colitis.loss import attention_entropy_loss
+# from ulcerative_colitis.loss import attention_entropy_loss
 from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
 
 
@@ -58,15 +58,39 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         return x.squeeze()
 
+    def log_attention_coverage(self, attention_weights: Tensor) -> None:
+        # Sort attention weights in descending order
+        sorted_weights, _ = torch.sort(attention_weights, descending=True)
+
+        tresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        for treshold in tresholds:
+            # Find the minimum number of weights that sum to treshold
+            cumulative_sum = 0.0
+            count = 0
+            for weight in sorted_weights:
+                cumulative_sum += weight.item()
+                count += 1
+                if cumulative_sum >= treshold:
+                    break
+
+            # Log the result
+            self.log(
+                f"attention/coverage_count_{treshold}",
+                count,
+                on_step=True,
+                prog_bar=True,
+            )
+
     def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
         loss = torch.tensor(0.0, device=self.device)
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
+            self.log_attention_coverage(attention)
             l_classification = self.criterion(output, label)
-            l_attention = attention_entropy_loss(attention)
-            loss += l_classification + self.alpha * l_attention
+            # l_attention = attention_entropy_loss(attention)
+            loss += l_classification  # + self.alpha * l_attention
 
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
@@ -81,8 +105,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
             l_classification = self.criterion(output, label)
-            l_attention = attention_entropy_loss(attention)
-            loss += l_classification + self.alpha * l_attention
+            # l_attention = attention_entropy_loss(attention)
+            loss += l_classification  # + self.alpha * l_attention
             outputs.append(output)
 
         loss /= len(bags)
