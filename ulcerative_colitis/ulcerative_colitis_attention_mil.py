@@ -133,7 +133,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         outputs = []
         for bag in bags:
-            output = self(bag)
+            output, attention = self(bag, return_attention=True)
+            self.log_attention_coverage(attention)
             outputs.append(output)
 
         return torch.tensor(outputs)
