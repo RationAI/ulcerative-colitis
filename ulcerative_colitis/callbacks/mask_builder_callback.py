@@ -144,6 +144,7 @@ class MaskBuilderCallback(Callback):
 
 
 def values_to_percentiles(values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    values = values.flatten()
     sorted_indices = values.argsort()
     ranks = torch.empty_like(sorted_indices, dtype=torch.float)
     ranks[sorted_indices] = torch.linspace(0, 1, len(values), device=values.device)
