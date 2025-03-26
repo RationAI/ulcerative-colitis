@@ -14,7 +14,7 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
-# from ulcerative_colitis.loss import attention_entropy_loss
+from ulcerative_colitis.modeling import sigmoid_normalization
 from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
 
 
@@ -48,7 +48,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self, x: Tensor, return_attention: bool = False
     ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
         x = self.encoder(x)
-        attention_weights = torch.softmax(self.attention(x), dim=0)
+        # attention_weights = torch.softmax(self.attention(x), dim=0)
+        attention_weights = sigmoid_normalization(self.attention(x))
         x = torch.sum(attention_weights * x, dim=0)
         x = self.classifier(x)
         x = x.sigmoid()
