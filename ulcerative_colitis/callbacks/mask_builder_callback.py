@@ -153,4 +153,4 @@ def values_to_percentiles(values: torch.Tensor) -> tuple[torch.Tensor, torch.Ten
     original_order_cumulative = torch.empty_like(cumulative_values)
     original_order_cumulative[sorted_indices] = cumulative_values
 
-    return ranks, original_order_cumulative
+    return ranks.unsqueeze(1), original_order_cumulative.unsqueeze(1)
