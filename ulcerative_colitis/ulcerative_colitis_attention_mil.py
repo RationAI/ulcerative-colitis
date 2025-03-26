@@ -48,7 +48,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self, x: Tensor, return_attention: bool = False
     ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
         x = self.encoder(x)
-        # attention_weights = torch.softmax(self.attention(x), dim=0)
         attention_weights = sigmoid_normalization(self.attention(x))
         x = torch.sum(attention_weights * x, dim=0)
         x = self.classifier(x)
@@ -76,9 +75,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
             # Log the result
             self.log(
-                f"{stage}/attention/coverage_count_{treshold}",
-                count,
-                on_step=True,
+                f"{stage}/attention/coverage_fraction_{treshold}",
+                count / len(attention_weights),
                 on_epoch=True,
                 prog_bar=True,
             )
@@ -90,9 +88,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
             self.log_attention_coverage(attention, "train")
-            l_classification = self.criterion(output, label)
-            # l_attention = attention_entropy_loss(attention)
-            loss += l_classification  # + self.alpha * l_attention
+            loss += self.criterion(output, label)
 
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
@@ -107,9 +103,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         for bag, label in zip(bags, labels, strict=True):
             output, attention = self(bag, return_attention=True)
             self.log_attention_coverage(attention, "validation")
-            l_classification = self.criterion(output, label)
-            # l_attention = attention_entropy_loss(attention)
-            loss += l_classification  # + self.alpha * l_attention
+            loss += self.criterion(output, label)
             outputs.append(output)
 
         loss /= len(bags)

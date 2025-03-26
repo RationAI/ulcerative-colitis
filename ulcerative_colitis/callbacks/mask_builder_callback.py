@@ -17,9 +17,13 @@ from ulcerative_colitis.ulcerative_colitis_attention_mil import (
 class MaskBuilders(TypedDict):
     attention: ScalarMaskBuilder
     attention_rescaled: ScalarMaskBuilder
+    attention_percentile: ScalarMaskBuilder
+    attention_cumulative: ScalarMaskBuilder
     classification: ScalarMaskBuilder
     classification_attention: ScalarMaskBuilder
     classification_attention_rescaled: ScalarMaskBuilder
+    classification_attention_percentile: ScalarMaskBuilder
+    classification_attention_cumulative: ScalarMaskBuilder
 
 
 class MaskBuilderCallback(Callback):
@@ -47,6 +51,12 @@ class MaskBuilderCallback(Callback):
             "attention_rescaled": ScalarMaskBuilder(
                 save_dir=Path("masks/attention_rescaled"), **kwargs
             ),
+            "attention_percentile": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_percentile"), **kwargs
+            ),
+            "attention_cumulative": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_cumulative"), **kwargs
+            ),
             "classification": ScalarMaskBuilder(
                 save_dir=Path("masks/classifications"), **kwargs
             ),
@@ -55,6 +65,12 @@ class MaskBuilderCallback(Callback):
             ),
             "classification_attention_rescaled": ScalarMaskBuilder(
                 save_dir=Path("masks/classifications_attention_rescaled"), **kwargs
+            ),
+            "classification_attention_percentile": ScalarMaskBuilder(
+                save_dir=Path("masks/classifications_attention_percentile"), **kwargs
+            ),
+            "classification_attention_cumulative": ScalarMaskBuilder(
+                save_dir=Path("masks/classifications_attention_cumulative"), **kwargs
             ),
         }
 
@@ -82,12 +98,25 @@ class MaskBuilderCallback(Callback):
             classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
 
             weights_max = attention_weights.max()
+            attention_percentiles, attention_cumulative = values_to_percentiles(
+                attention_weights
+            )
 
             mask_builders["attention"].update(
                 attention_weights, metadata["x"], metadata["y"]
             )
             mask_builders["attention_rescaled"].update(
                 attention_weights / weights_max, metadata["x"], metadata["y"]
+            )
+            mask_builders["attention_percentile"].update(
+                attention_percentiles,
+                metadata["x"],
+                metadata["y"],
+            )
+            mask_builders["attention_cumulative"].update(
+                attention_cumulative,
+                metadata["x"],
+                metadata["y"],
             )
             mask_builders["classification"].update(
                 classification, metadata["x"], metadata["y"]
@@ -100,5 +129,27 @@ class MaskBuilderCallback(Callback):
                 metadata["x"],
                 metadata["y"],
             )
+            mask_builders["classification_attention_percentile"].update(
+                attention_percentiles * classification,
+                metadata["x"],
+                metadata["y"],
+            )
+            mask_builders["classification_attention_cumulative"].update(
+                attention_cumulative * classification,
+                metadata["x"],
+                metadata["y"],
+            )
 
             self.save_mask_builders(mask_builders)
+
+
+def values_to_percentiles(values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    sorted_indices = values.argsort()
+    ranks = torch.empty_like(sorted_indices, dtype=torch.float)
+    ranks[sorted_indices] = torch.linspace(0, 1, len(values), device=values.device)
+
+    cumulative_values = torch.cumsum(values[sorted_indices], dim=0)
+    original_order_cumulative = torch.empty_like(cumulative_values)
+    original_order_cumulative[sorted_indices] = cumulative_values
+
+    return ranks, original_order_cumulative
