@@ -11,10 +11,10 @@ from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
 
 URIS = [
-    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - val",
-    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - train",
-    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - test1",
-    "mlflow-artifacts:/27/a42de386382f48f0b61e9e7fe898208e/artifacts/Ulcerative Colitis - test2",
+    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - val",
+    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - train",
+    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - test1",
+    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - test2",
 ]
 
 DESTINATION = Path(
@@ -25,7 +25,6 @@ DESTINATION = Path(
 def load_dataset(uris: Iterable[str]) -> NeutrophilsPredict:
     transforms = A.Compose(
         [
-            A.CenterCrop(224, 224),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ]
     )
