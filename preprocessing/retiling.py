@@ -37,9 +37,9 @@ class TissueMask(PyvipsMask[TileMetadata]):
         return tile_labels
 
 
-source = OpenSlideTileSource(mpp=0.5, tile_extent=256, stride=256)
+source = OpenSlideTileSource(mpp=0.5, tile_extent=224, stride=112)
 tissue_mask = TissueMask(
-    tile_extent=source.tile_extent, absolute_roi_extent=256, relative_roi_offset=0
+    tile_extent=source.tile_extent, absolute_roi_extent=112, relative_roi_offset=0
 )
 df = pd.read_csv(DATAFRAME_PATH, index_col=0)
 
