@@ -19,7 +19,7 @@ from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
 
 
 class UlcerativeColitisModelAttentionMIL(LightningModule):
-    def __init__(self, lr: float | None = None, alpha: float = 0.01) -> None:
+    def __init__(self, lr: float | None = None) -> None:
         super().__init__()
         self.encoder = nn.Identity()
         self.attention = nn.Sequential(
@@ -30,7 +30,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.classifier = nn.Linear(1536, 1)
         self.criterion = nn.BCELoss()
         self.lr = lr
-        self.alpha = alpha
 
         metrics: dict[str, Metric] = {
             "AUC": BinaryAUROC(),

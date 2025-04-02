@@ -32,7 +32,6 @@ data:
 
 model:
   lr: 0.00001
-  alpha: 0.01
 
 metadata:
   experiment_name: IKEM
