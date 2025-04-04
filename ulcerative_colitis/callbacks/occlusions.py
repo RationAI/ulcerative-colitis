@@ -154,6 +154,8 @@ class OcclusionCallback(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
+        self.tile_encoder.to(device=pl_module.device)
+        self.tile_encoder.eval()
         for bag, metadata in zip(*batch, strict=True):
             slide_tiles = OpenSlideTilesDataset(
                 slide_path=metadata["slide_path"],
