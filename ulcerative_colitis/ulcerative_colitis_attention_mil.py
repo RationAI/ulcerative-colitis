@@ -85,8 +85,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         loss = torch.tensor(0.0, device=self.device)
         for bag, label in zip(bags, labels, strict=True):
-            output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention, "train")
+            output = self(bag, return_attention=False)
             loss += self.criterion(output, label)
 
         loss /= len(bags)
