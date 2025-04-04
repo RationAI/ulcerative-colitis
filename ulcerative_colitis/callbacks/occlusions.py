@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from itertools import islice
+from itertools import islice, product
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -126,24 +126,24 @@ class OcclusionCallback(Callback):
         y_iter = iter(range(0, image.shape[0] - self.sliding_window, self.stride))
         x_iter = iter(range(0, image.shape[1] - self.sliding_window, self.stride))
 
-        while ys := list(islice(y_iter, self.batch_size)):
-            while xs := list(islice(x_iter, self.batch_size)):
-                occlusions = []
-                for y in ys:
-                    for x in xs:
-                        occlusion = image.copy()
-                        occlusion[
-                            y : y + self.sliding_window,
-                            x : x + self.sliding_window,
-                            :,
-                        ] = self.color
+        while positions := list(islice(product(y_iter, x_iter), self.batch_size)):
+            ys, xs = positions
+            occlusions = []
+            for y in ys:
+                for x in xs:
+                    occlusion = image.copy()
+                    occlusion[
+                        y : y + self.sliding_window,
+                        x : x + self.sliding_window,
+                        :,
+                    ] = self.color
 
-                        occlusion = self.transforms(image=occlusion)["image"]
-                        occlusion = self.to_tensor(image=occlusion)["image"]
+                    occlusion = self.transforms(image=occlusion)["image"]
+                    occlusion = self.to_tensor(image=occlusion)["image"]
 
-                        occlusions.append(occlusion)
+                    occlusions.append(occlusion)
 
-                yield torch.stack(occlusions), torch.tensor(xs), torch.tensor(ys)
+            yield torch.stack(occlusions), torch.tensor(xs), torch.tensor(ys)
 
     def on_predict_batch_end(
         self,
@@ -184,18 +184,9 @@ class OcclusionCallback(Callback):
 
                 for occlusions, xs, ys in self.batched(image):
                     occlusions = occlusions.to(device=pl_module.device)
-                    print(
-                        f"Occlusions shape: {occlusions.shape}, device: {occlusions.device}"
-                    )
                     embeddings = self.tile_encoder(occlusions)
-                    print(
-                        f"Embeddings shape: {embeddings.shape}, device: {embeddings.device}"
-                    )
 
                     occlusion_attention = pl_module.attention(embeddings)
-                    print(
-                        f"Occlusion attention shape: {occlusion_attention.shape}, device: {occlusion_attention.device}"
-                    )
                     occlusion_attention_exp = torch.exp(occlusion_attention)
 
                     occlusion_attention_weights = occlusion_attention_exp / (
@@ -203,12 +194,9 @@ class OcclusionCallback(Callback):
                         + occlusion_attention_exp
                         - raw_attention_exp[i]
                     )
-                    print(
-                        f"Occlusion attention weights shape: {occlusion_attention_weights.shape}, device: {occlusion_attention_weights.device}"
-                    )
 
                     occlusion_classification = torch.sigmoid(
-                        pl_module.classifier(occlusions)
+                        pl_module.classifier(embeddings)
                     )
 
                     original_attention_weight = attention_weights[i]
