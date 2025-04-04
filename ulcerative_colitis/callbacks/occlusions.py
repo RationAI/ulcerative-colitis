@@ -177,7 +177,9 @@ class OcclusionCallback(Callback):
             #     pl_module.classifier(torch.sum(attention_weights * bag, dim=0))
             # ).cpu()
 
-            for i in tqdm(range(len(bag)), desc=f"Occlusion_{metadata['slide']}"):
+            for i in tqdm(
+                range(len(bag)), desc=f"Occlusion_{metadata['slide']}", disable=True
+            ):
                 image = slide_tiles[i]
 
                 for occlusions, xs, ys in self.batched(image):
