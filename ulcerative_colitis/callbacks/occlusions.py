@@ -182,6 +182,9 @@ class OcclusionCallback(Callback):
 
                 for occlusions, xs, ys in self.batched(image):
                     occlusions = occlusions.to(device=pl_module.device)
+                    xs = xs.to(device=pl_module.device)
+                    ys = ys.to(device=pl_module.device)
+
                     embeddings = self.tile_encoder(occlusions)
 
                     occlusion_attention = pl_module.attention(embeddings)
