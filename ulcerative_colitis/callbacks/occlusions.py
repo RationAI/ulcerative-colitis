@@ -182,15 +182,27 @@ class OcclusionCallback(Callback):
 
                 for occlusions, xs, ys in self.batched(image):
                     occlusions = occlusions.to(device=pl_module.device)
+                    print(
+                        f"Occlusions shape: {occlusions.shape}, device: {occlusions.device}"
+                    )
                     embeddings = self.tile_encoder(occlusions)
+                    print(
+                        f"Embeddings shape: {embeddings.shape}, device: {embeddings.device}"
+                    )
 
                     occlusion_attention = pl_module.attention(embeddings)
+                    print(
+                        f"Occlusion attention shape: {occlusion_attention.shape}, device: {occlusion_attention.device}"
+                    )
                     occlusion_attention_exp = torch.exp(occlusion_attention)
 
                     occlusion_attention_weights = occlusion_attention_exp / (
                         softmax_denominator
                         + occlusion_attention_exp
                         - raw_attention_exp[i]
+                    )
+                    print(
+                        f"Occlusion attention weights shape: {occlusion_attention_weights.shape}, device: {occlusion_attention_weights.device}"
                     )
 
                     occlusion_classification = torch.sigmoid(
