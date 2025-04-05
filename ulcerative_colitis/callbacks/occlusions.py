@@ -211,8 +211,8 @@ class OcclusionCallback(Callback):
                 occlusion_classification = torch.sigmoid(
                     pl_module.classifier(embeddings)
                 )
-                original_attention_weight = attention_weights[indices]
-                original_classification = classifications[indices]
+                original_attention_weight = attention_weights[_indices]
+                original_classification = classifications[_indices]
 
                 attention_diff = (
                     occlusion_attention_weights.cpu() - original_attention_weight
