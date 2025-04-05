@@ -125,23 +125,25 @@ class OcclusionCallback(Callback):
     ) -> Iterator[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         y_iter = iter(range(0, image.shape[0] - self.sliding_window, self.stride))
         x_iter = iter(range(0, image.shape[1] - self.sliding_window, self.stride))
+        prod_iter = iter(product(y_iter, x_iter))
 
-        while positions := list(islice(product(y_iter, x_iter), self.batch_size)):
-            ys, xs = zip(*positions, strict=True)
+        while positions := list(islice(prod_iter, self.batch_size)):
             occlusions = []
-            for y in ys:
-                for x in xs:
-                    occlusion = image.copy()
-                    occlusion[
-                        y : y + self.sliding_window,
-                        x : x + self.sliding_window,
-                        :,
-                    ] = self.color
+            ys, xs = [], []
+            for y, x in positions:
+                occlusion = image.copy()
+                occlusion[
+                    y : y + self.sliding_window,
+                    x : x + self.sliding_window,
+                    :,
+                ] = self.color
 
-                    occlusion = self.transforms(image=occlusion)["image"]
-                    occlusion = self.to_tensor(image=occlusion)["image"]
+                occlusion = self.transforms(image=occlusion)["image"]
+                occlusion = self.to_tensor(image=occlusion)["image"]
 
-                    occlusions.append(occlusion)
+                occlusions.append(occlusion)
+                ys.append(y)
+                xs.append(x)
 
             yield torch.stack(occlusions), torch.tensor(xs), torch.tensor(ys)
 
