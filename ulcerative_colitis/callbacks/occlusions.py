@@ -131,9 +131,11 @@ class OcclusionCallback(Callback):
         ys_new, xs_new = [], []
 
         for image, x, y in zip(images, xs, ys, strict=True):
-            for x_delta in range(0, image.shape[1] - self.sliding_window, self.stride):
+            for x_delta in range(
+                0, image.shape[1] - self.sliding_window + 1, self.stride
+            ):
                 for y_delta in range(
-                    0, image.shape[0] - self.sliding_window, self.stride
+                    0, image.shape[0] - self.sliding_window + 1, self.stride
                 ):
                     occlusion = image.copy()
                     occlusion[
@@ -196,10 +198,14 @@ class OcclusionCallback(Callback):
                 embeddings = self.tile_encoder(occlusions)
                 occlusion_attention = pl_module.attention(embeddings)
                 occlusion_attention_exp = torch.exp(occlusion_attention)
+
+                _indices = torch.repeat_interleave(
+                    torch.tensor(indices), len(xs) // len(indices)
+                )
                 occlusion_attention_weights = occlusion_attention_exp / (
                     softmax_denominator
                     + occlusion_attention_exp
-                    - raw_attention_exp[indices]
+                    - raw_attention_exp[_indices]
                 )
 
                 occlusion_classification = torch.sigmoid(
