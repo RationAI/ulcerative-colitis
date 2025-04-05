@@ -42,12 +42,14 @@ class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
         self,
         uri: str,
         uri_embeddings: str,
+        slide_names: list[str] | None = None,
     ) -> None:
         self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
+        self.slide_names = slide_names
         super().__init__(uris=[uri])
 
     def generate_datasets(self) -> Iterable[Dataset[MILPredictSample]]:
-        self.slides = process_slides(self.slides)
+        self.slides = process_slides(self.slides, self.slide_names)
         return [
             _Embeddings[MILPredictSample](
                 self.slides,
@@ -109,7 +111,10 @@ def get_slide_name(slide_metadata: pd.Series) -> str:
     return Path(slide_metadata["path"]).stem
 
 
-def process_slides(slides: pd.DataFrame) -> pd.DataFrame:
+def process_slides(slides: pd.DataFrame, slide_names: list[str] | None) -> pd.DataFrame:
     slides = slides[slides["location"].isin(LOCATIONS)].copy()
     slides["neutrophils"] = slides["nancy_index"] >= 2
+
+    if slide_names is not None:
+        slides = slides[slides["path"].str.contains("|".join(slide_names))]
     return slides

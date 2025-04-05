@@ -16,11 +16,15 @@ trainer:
     - _target_: ulcerative_colitis.callbacks.OcclusionCallback
       sliding_window: 28
       stride: 14
-      batch_size: 16
+      batch_size: 225 # 15 * 15
 
 data:
   batch_size: 1
   num_workers: 4
+  predict:
+    slide_names:
+      - 5005_23_HE
+      - 1468_23_HE
 
 model: {}
 
