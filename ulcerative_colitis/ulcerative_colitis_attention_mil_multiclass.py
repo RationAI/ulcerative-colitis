@@ -94,7 +94,9 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
-        self.train_metrics.update(torch.stack(outputs), torch.tensor(labels))
+        self.train_metrics.update(
+            torch.stack(outputs), torch.tensor(labels, device=self.device)
+        )
         self.log_dict(self.train_metrics, on_epoch=True)
 
         return loss
@@ -113,10 +115,9 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss /= len(bags)
         self.log("validation/loss", loss, prog_bar=True)
 
-        print("outputs", torch.stack(outputs).device)
-        print("labels", torch.tensor(labels).device)
-        print("metric", self.val_metrics["accuracy"].device)
-        self.val_metrics.update(torch.stack(outputs), torch.tensor(labels))
+        self.val_metrics.update(
+            torch.stack(outputs), torch.tensor(labels, device=self.device)
+        )
         self.log_dict(self.val_metrics)
 
     def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
@@ -127,7 +128,9 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             output = self(bag)
             outputs.append(output)
 
-        self.test_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.test_metrics.update(
+            torch.stack(outputs), torch.tensor(labels, device=self.device)
+        )
         self.log_dict(self.test_metrics)
 
     def predict_step(  # pylint: disable=arguments-differ
@@ -140,7 +143,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             output = self(bag)
             outputs.append(output)
 
-        return torch.tensor(outputs)
+        return torch.stack(outputs)
 
     def configure_optimizers(self) -> Optimizer:
         if self.lr is None:
