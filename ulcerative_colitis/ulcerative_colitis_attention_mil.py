@@ -94,7 +94,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
         self.train_metrics.update(torch.tensor(outputs), torch.tensor(labels))
-        self.log_dict(self.train_metrics)
+        self.log_dict(self.train_metrics, on_epoch=True)
 
         return loss
 
