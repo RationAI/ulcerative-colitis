@@ -150,4 +150,4 @@ def get_label(slide_metadata: pd.Series, mode: EmbeddingsMode) -> torch.Tensor:
         case EmbeddingsMode.NEUTROPHILS:
             return torch.tensor(slide_metadata["neutrophils"]).float()
         case EmbeddingsMode.NANCY_LOW | EmbeddingsMode.NANCY_HIGH:
-            return torch.tensor(slide_metadata["nancy_index"]).float()
+            return torch.tensor(slide_metadata["nancy_index"]).long()

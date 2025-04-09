@@ -37,7 +37,7 @@ model:
 
 metadata:
   experiment_name: IKEM
-  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Nancy Low MIL'
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Nancy High MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
