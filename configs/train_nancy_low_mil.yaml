@@ -25,19 +25,19 @@ trainer:
 
 data:
   batch_size: 8
-  target_column: neutrophils
+  target_column: nancy_index
   num_workers: 4
   train:
-    mode: neutrophils
+    mode: nancy_low
   val:
-    mode: neutrophils
+    mode: nancy_low
 
 model:
   lr: 0.00001
 
 metadata:
   experiment_name: IKEM
-  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL'
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Nancy Low MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
