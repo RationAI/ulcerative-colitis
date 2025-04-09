@@ -39,8 +39,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             "specificity": BinarySpecificity(),
         }
 
+        self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
         self.val_metrics = MetricCollection(deepcopy(metrics), prefix="validation/")
-
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
 
     def forward(
@@ -84,12 +84,17 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         bags, labels, _ = batch
 
         loss = torch.tensor(0.0, device=self.device)
+        outputs = []
         for bag, label in zip(bags, labels, strict=True):
             output = self(bag, return_attention=False)
             loss += self.criterion(output, label)
+            outputs.append(output)
 
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
+
+        self.train_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.log_dict(self.train_metrics)
 
         return loss
 
