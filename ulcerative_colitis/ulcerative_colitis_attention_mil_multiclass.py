@@ -94,7 +94,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
-        self.train_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.train_metrics.update(torch.stack(outputs), torch.tensor(labels))
         self.log_dict(self.train_metrics, on_epoch=True)
 
         return loss
@@ -113,7 +113,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss /= len(bags)
         self.log("validation/loss", loss, prog_bar=True)
 
-        self.val_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.val_metrics.update(torch.stack(outputs), torch.tensor(labels))
         self.log_dict(self.val_metrics)
 
     def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
