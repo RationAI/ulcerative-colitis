@@ -138,6 +138,7 @@ def process_slides(
             slides = slides[slides["nancy_index"] < 2]
         case EmbeddingsMode.NANCY_HIGH:
             slides = slides[slides["nancy_index"] >= 2]
+            slides["ulceration"] = slides["nancy_index"] == 4
             slides["nancy_index"] -= 2
 
     if slide_names is not None:
@@ -149,5 +150,8 @@ def get_label(slide_metadata: pd.Series, mode: EmbeddingsMode) -> torch.Tensor:
     match mode:
         case EmbeddingsMode.NEUTROPHILS:
             return torch.tensor(slide_metadata["neutrophils"]).float()
-        case EmbeddingsMode.NANCY_LOW | EmbeddingsMode.NANCY_HIGH:
-            return torch.tensor(slide_metadata["nancy_index"]).long()
+        case EmbeddingsMode.NANCY_LOW:
+            return torch.tensor(slide_metadata["nancy_index"]).float()
+        case EmbeddingsMode.NANCY_HIGH:
+            return torch.tensor(slide_metadata["ulceration"]).float()
+            # return torch.tensor(slide_metadata["nancy_index"]).long()
