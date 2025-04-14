@@ -97,33 +97,6 @@ class OcclusionCallback(Callback):
                 str(mask_builder.save()), artifact_path=str(mask_builder.save_dir)
             )
 
-    # def batched(
-    #     self, image: NDArray[np.uint8]
-    # ) -> Iterator[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-    #     y_iter = iter(range(0, image.shape[0] - self.sliding_window, self.stride))
-    #     x_iter = iter(range(0, image.shape[1] - self.sliding_window, self.stride))
-    #     prod_iter = iter(product(y_iter, x_iter))
-
-    #     while positions := list(islice(prod_iter, self.batch_size)):
-    #         occlusions = []
-    #         ys, xs = [], []
-    #         for y, x in positions:
-    #             occlusion = image.copy()
-    #             occlusion[
-    #                 y : y + self.sliding_window,
-    #                 x : x + self.sliding_window,
-    #                 :,
-    #             ] = self.color
-
-    #             occlusion = self.transforms(image=occlusion)["image"]
-    #             occlusion = self.to_tensor(image=occlusion)["image"]
-
-    #             occlusions.append(occlusion)
-    #             ys.append(y)
-    #             xs.append(x)
-
-    #         yield torch.stack(occlusions), torch.tensor(xs), torch.tensor(ys)
-
     def batch(
         self, images: list[NDArray[np.uint8]], xs: torch.Tensor, ys: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -183,7 +156,9 @@ class OcclusionCallback(Callback):
             raw_attention_exp = torch.exp(raw_attention)
             softmax_denominator = torch.sum(raw_attention_exp, dim=0, keepdim=True)
             attention_weights = torch.softmax(raw_attention, dim=0).cpu()
-            classifications = torch.sigmoid(pl_module.classifier(bag)).cpu()
+            classifications_logits = cast(
+                "torch.Tensor", pl_module.classifier(bag).cpu()
+            )
 
             bag_iter = iter(range(len(bag)))
             progress_bar_iter = iter(
@@ -208,17 +183,19 @@ class OcclusionCallback(Callback):
                     - raw_attention_exp[_indices]
                 )
 
-                occlusion_classification = torch.sigmoid(
-                    pl_module.classifier(embeddings)
+                occlusion_classification_logits = cast(
+                    "torch.Tensor", pl_module.classifier(embeddings)
                 )
+
                 original_attention_weight = attention_weights[_indices]
-                original_classification = classifications[_indices]
+                original_classification_logits = classifications_logits[_indices]
 
                 attention_diff = (
                     occlusion_attention_weights.cpu() - original_attention_weight
                 )
-                classification_diff = (
-                    occlusion_classification.cpu() - original_classification
+                classification_diff_logits = (
+                    occlusion_classification_logits.cpu()
+                    - original_classification_logits
                 )
                 mask_builders["occlusion_attention_abs"].update(
                     attention_diff.sigmoid(), xs, ys
@@ -227,68 +204,14 @@ class OcclusionCallback(Callback):
                     (attention_diff / original_attention_weight).sigmoid(), xs, ys
                 )
                 mask_builders["occlusion_classification_abs"].update(
-                    classification_diff.sigmoid(), xs, ys
+                    classification_diff_logits.sigmoid(), xs, ys
                 )
                 mask_builders["occlusion_classification_rel"].update(
-                    (classification_diff / original_classification).sigmoid(), xs, ys
+                    (
+                        classification_diff_logits / original_classification_logits
+                    ).sigmoid(),
+                    xs,
+                    ys,
                 )
-
-            # for i in tqdm(range(len(bag)), desc=f"Occlusion_{metadata['slide']}"):
-            #     image = slide_tiles[i]
-
-            #     for occlusions, xs, ys in self.batched(image):
-            #         occlusions = occlusions.to(device=pl_module.device)
-            #         xs = xs.to(device=pl_module.device)
-            #         ys = ys.to(device=pl_module.device)
-
-            #         embeddings = self.tile_encoder(occlusions)
-
-            #         occlusion_attention = pl_module.attention(embeddings)
-            #         occlusion_attention_exp = torch.exp(occlusion_attention)
-
-            #         occlusion_attention_weights = occlusion_attention_exp / (
-            #             softmax_denominator
-            #             + occlusion_attention_exp
-            #             - raw_attention_exp[i]
-            #         )
-
-            #         occlusion_classification = torch.sigmoid(
-            #             pl_module.classifier(embeddings)
-            #         )
-
-            #         original_attention_weight = attention_weights[i]
-            #         original_classification = classifications[i]
-
-            #         attention_diff = (
-            #             occlusion_attention_weights.cpu() - original_attention_weight
-            #         )
-
-            #         classification_diff = (
-            #             occlusion_classification.cpu() - original_classification
-            #         )
-
-            #         mask_builders["occlusion_attention_abs"].update(
-            #             attention_diff.sigmoid(),
-            #             metadata["x"][i] + xs,
-            #             metadata["y"][i] + ys,
-            #         )
-
-            #         mask_builders["occlusion_attention_rel"].update(
-            #             (attention_diff / original_attention_weight).sigmoid(),
-            #             metadata["x"][i] + xs,
-            #             metadata["y"][i] + ys,
-            #         )
-
-            #         mask_builders["occlusion_classification_abs"].update(
-            #             classification_diff.sigmoid(),
-            #             metadata["x"][i] + xs,
-            #             metadata["y"][i] + ys,
-            #         )
-
-            #         mask_builders["occlusion_classification_rel"].update(
-            #             (classification_diff / original_classification).sigmoid(),
-            #             metadata["x"][i] + xs,
-            #             metadata["y"][i] + ys,
-            #         )
 
             self.save_mask_builders(mask_builders)
