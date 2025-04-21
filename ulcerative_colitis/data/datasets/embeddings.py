@@ -143,7 +143,7 @@ def process_slides(
             slides["nancy_index"] -= 2
         case EmbeddingsMode.NANCY_MIX:
             slides = slides[slides["nancy_index"] < 4]
-            slides["nancy_index_mix"] = slides["nancy_index"].isin([1, 3])
+            slides["nancy_mix"] = slides["nancy_index"].isin([1, 3])
 
     if slide_names is not None:
         slides = slides[slides["path"].str.contains("|".join(slide_names))]
