@@ -160,4 +160,4 @@ def get_label(slide_metadata: pd.Series, mode: EmbeddingsMode) -> torch.Tensor:
             return torch.tensor(slide_metadata["ulceration"]).float()
             # return torch.tensor(slide_metadata["nancy_index"]).long()
         case EmbeddingsMode.NANCY_MIX:
-            return torch.tensor(slide_metadata["nancy_index_mix"]).float()
+            return torch.tensor(slide_metadata["nancy_mix"]).float()
