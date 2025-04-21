@@ -26,7 +26,7 @@ def change_background_color(mask_path: Path, color: int = 128) -> None:
 def main() -> None:
     masks = Path(
         mlflow.artifacts.download_artifacts(
-            "mlflow-artifacts:/27/32559541cc864cdebe0e3e58ffbcb220/artifacts/masks",
+            "mlflow-artifacts:/27/1da56a0e21e54855ae30230c4efe9dd6/artifacts/masks",
             dst_path="in",
         )
     )

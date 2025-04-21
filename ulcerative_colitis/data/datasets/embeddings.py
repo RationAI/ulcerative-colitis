@@ -22,6 +22,7 @@ class EmbeddingsMode(Enum):
     NEUTROPHILS = "neutrophils"
     NANCY_HIGH = "nancy_high"
     NANCY_LOW = "nancy_low"
+    NANCY_MIX = "nancy_mix"
 
 
 class Embeddings(MetaTiledSlides[MILSample]):
@@ -140,6 +141,9 @@ def process_slides(
             slides = slides[slides["nancy_index"] >= 2]
             slides["ulceration"] = slides["nancy_index"] == 4
             slides["nancy_index"] -= 2
+        case EmbeddingsMode.NANCY_MIX:
+            slides = slides[slides["nancy_index"] < 4]
+            slides["nancy_index_mix"] = slides["nancy_index"].isin([1, 3])
 
     if slide_names is not None:
         slides = slides[slides["path"].str.contains("|".join(slide_names))]
@@ -155,3 +159,5 @@ def get_label(slide_metadata: pd.Series, mode: EmbeddingsMode) -> torch.Tensor:
         case EmbeddingsMode.NANCY_HIGH:
             return torch.tensor(slide_metadata["ulceration"]).float()
             # return torch.tensor(slide_metadata["nancy_index"]).long()
+        case EmbeddingsMode.NANCY_MIX:
+            return torch.tensor(slide_metadata["nancy_index_mix"]).float()
