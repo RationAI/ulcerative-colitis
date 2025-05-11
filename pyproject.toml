@@ -16,6 +16,8 @@ dependencies = [
     "rationai-mlkit",
     "rationai-masks",
     "rationai-tiling",
+    "openslide-python>=1.4.2",
+    "openslide-bin>=4.0.0.8",
 ]
 
 [tool.uv]
