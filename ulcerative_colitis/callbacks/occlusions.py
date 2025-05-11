@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 import timm
 import torch
+import pyvips
 from lightning import Callback, Trainer
 from numpy.typing import NDArray
 from rationai.masks.mask_builders import ScalarMaskBuilder
+from rationai.masks import write_big_tiff
 from rationai.mlkit.data.datasets import OpenSlideTilesDataset
 from tqdm import tqdm
 
@@ -24,8 +26,10 @@ from ulcerative_colitis.ulcerative_colitis_attention_mil import (
 class MaskBuilders(TypedDict):
     occlusion_attention_abs: ScalarMaskBuilder
     occlusion_attention_rel: ScalarMaskBuilder
+    occlusion_attention_rescaled: ScalarMaskBuilder
     occlusion_classification_abs: ScalarMaskBuilder
     occlusion_classification_rel: ScalarMaskBuilder
+    occlusion_classification_rescaled: ScalarMaskBuilder
 
 
 class OcclusionCallback(Callback):
@@ -33,7 +37,7 @@ class OcclusionCallback(Callback):
         self,
         sliding_window: int,
         stride: int,
-        color: int = 255,
+        color: int,
         batch_size: int = 1,
     ) -> None:
         self.tile_encoder = self.load_tile_encoder()
@@ -82,20 +86,41 @@ class OcclusionCallback(Callback):
             "occlusion_attention_rel": ScalarMaskBuilder(
                 save_dir=Path("masks/occlusion_attention_rel"), **kwargs
             ),
+            "occlusion_attention_rescaled": ScalarMaskBuilder(
+                save_dir=Path("masks/occlusion_attention_rescaled"), **kwargs
+            ),
             "occlusion_classification_abs": ScalarMaskBuilder(
                 save_dir=Path("masks/occlusion_classification_abs"), **kwargs
             ),
             "occlusion_classification_rel": ScalarMaskBuilder(
                 save_dir=Path("masks/occlusion_classification_rel"), **kwargs
             ),
+            "occlusion_classification_rescaled": ScalarMaskBuilder(
+                save_dir=Path("masks/occlusion_classification_rescaled"), **kwargs
+            ),
         }
+
+    def change_background_color(
+        self, mask_path: Path, mpp_x: float, mpp_y: float, color: int = 128
+    ) -> None:
+        mask = pyvips.Image.new_from_file(str(mask_path), access="sequential")
+        mask = (mask == 0).ifthenelse(color, mask)
+        write_big_tiff(mask, mask_path, mpp_x, mpp_y)
 
     def save_mask_builders(self, mask_builders: MaskBuilders) -> None:
         for mask_builder in mask_builders.values():
             assert isinstance(mask_builder, ScalarMaskBuilder)
-            mlflow.log_artifact(
-                str(mask_builder.save()), artifact_path=str(mask_builder.save_dir)
+            path = mask_builder.save()
+            self.change_background_color(
+                path, mask_builder.mpp_x, mask_builder.mpp_y, self.color
             )
+            mlflow.log_artifact(str(path), artifact_path=str(mask_builder.save_dir))
+
+    def rescale(self, probabilities: torch.Tensor) -> torch.Tensor:
+        probabilities -= 0.5
+        probabilities *= (0.45 / probabilities.abs().max())
+        probabilities += 0.5
+        return probabilities
 
     def batch(
         self, images: list[NDArray[np.uint8]], xs: torch.Tensor, ys: torch.Tensor
@@ -152,17 +177,27 @@ class OcclusionCallback(Callback):
 
             mask_builders = self.get_mask_builders(metadata["slide"], trainer)
 
-            raw_attention = pl_module.attention(bag)
-            raw_attention_exp = torch.exp(raw_attention)
-            softmax_denominator = torch.sum(raw_attention_exp, dim=0, keepdim=True)
-            attention_weights = torch.softmax(raw_attention, dim=0).cpu()
+            raw_attention = cast("torch.Tensor", pl_module.attention(bag)).cpu()
             classifications_logits = cast(
-                "torch.Tensor", pl_module.classifier(bag).cpu()
-            )
+                "torch.Tensor", pl_module.classifier(bag)
+            ).cpu()
 
-            bag_iter = iter(range(len(bag)))
+            # pick top 2% of the attention weights
+            top_k = int(0.02 * len(raw_attention))
+            top_k_indices = torch.topk(raw_attention, top_k).indices.tolist()
+
+
+            attention_diffs = []
+            classification_diffs = []
+            xss = []
+            yss = []
+            bag_iter = iter(top_k_indices)
             progress_bar_iter = iter(
-                tqdm(bag_iter, desc=f"Occlusion_{metadata['slide']}", total=len(bag))
+                tqdm(
+                    bag_iter,
+                    desc=f"Occlusion_{metadata['slide']}",
+                    total=len(top_k_indices),
+                )
             )
             while indices := list(islice(progress_bar_iter, self.batch_size)):
                 images = [slide_tiles[i] for i in indices]
@@ -171,37 +206,28 @@ class OcclusionCallback(Callback):
                 )
 
                 embeddings = self.tile_encoder(occlusions)
-                occlusion_attention = pl_module.attention(embeddings)
-                occlusion_attention_exp = torch.exp(occlusion_attention)
+                occlusion_raw_attention = cast(
+                    "torch.Tensor", pl_module.attention(embeddings)
+                ).cpu()
+                occlusion_classification_logits = cast(
+                    "torch.Tensor", pl_module.classifier(embeddings)
+                ).cpu()
 
                 _indices = torch.repeat_interleave(
                     torch.tensor(indices), len(xs) // len(indices)
                 )
-                occlusion_attention_weights = occlusion_attention_exp / (
-                    softmax_denominator
-                    + occlusion_attention_exp
-                    - raw_attention_exp[_indices]
-                )
-
-                occlusion_classification_logits = cast(
-                    "torch.Tensor", pl_module.classifier(embeddings)
-                )
-
-                original_attention_weight = attention_weights[_indices]
+                original_raw_attention = raw_attention[_indices]
                 original_classification_logits = classifications_logits[_indices]
 
-                attention_diff = (
-                    occlusion_attention_weights.cpu() - original_attention_weight
-                )
+                attention_diff_raw = occlusion_raw_attention - original_raw_attention
                 classification_diff_logits = (
-                    occlusion_classification_logits.cpu()
-                    - original_classification_logits
+                    occlusion_classification_logits - original_classification_logits
                 )
                 mask_builders["occlusion_attention_abs"].update(
-                    attention_diff.sigmoid(), xs, ys
+                    attention_diff_raw.sigmoid(), xs, ys
                 )
                 mask_builders["occlusion_attention_rel"].update(
-                    (attention_diff / original_attention_weight).sigmoid(), xs, ys
+                    (attention_diff_raw / original_raw_attention).sigmoid(), xs, ys
                 )
                 mask_builders["occlusion_classification_abs"].update(
                     classification_diff_logits.sigmoid(), xs, ys
@@ -213,5 +239,24 @@ class OcclusionCallback(Callback):
                     xs,
                     ys,
                 )
+
+                attention_diffs.append(attention_diff_raw.sigmoid())
+                classification_diffs.append(classification_diff_logits.sigmoid())
+                xss.append(xs)
+                yss.append(ys)
+
+            attention_diffs = torch.cat(attention_diffs)
+            classification_diffs = torch.cat(classification_diffs)
+            xss = torch.cat(xss)
+            yss = torch.cat(yss)
+
+            attention_diffs = self.rescale(attention_diffs)
+            classification_diffs = self.rescale(classification_diffs)
+            mask_builders["occlusion_attention_rescaled"].update(
+                attention_diffs, xss, yss
+            )
+            mask_builders["occlusion_classification_rescaled"].update(
+                classification_diffs, xss, yss
+            )
 
             self.save_mask_builders(mask_builders)
