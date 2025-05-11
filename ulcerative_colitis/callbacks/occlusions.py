@@ -184,8 +184,9 @@ class OcclusionCallback(Callback):
 
             # pick top 2% of the attention weights
             top_k = int(0.02 * len(raw_attention))
-            print(top_k, len(raw_attention), raw_attention)
-            top_k_indices = torch.topk(raw_attention, top_k).indices.tolist()
+            top_k_indices = torch.topk(
+                torch.flatten(raw_attention), top_k
+            ).indices.tolist()
 
             attention_diffs = []
             classification_diffs = []
