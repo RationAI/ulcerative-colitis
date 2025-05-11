@@ -6,13 +6,13 @@ import albumentations as A
 import mlflow
 import numpy as np
 import pandas as pd
+import pyvips
 import timm
 import torch
-import pyvips
 from lightning import Callback, Trainer
 from numpy.typing import NDArray
-from rationai.masks.mask_builders import ScalarMaskBuilder
 from rationai.masks import write_big_tiff
+from rationai.masks.mask_builders import ScalarMaskBuilder
 from rationai.mlkit.data.datasets import OpenSlideTilesDataset
 from tqdm import tqdm
 
@@ -118,7 +118,7 @@ class OcclusionCallback(Callback):
 
     def rescale(self, probabilities: torch.Tensor) -> torch.Tensor:
         probabilities -= 0.5
-        probabilities *= (0.45 / probabilities.abs().max())
+        probabilities *= 0.45 / probabilities.abs().max()
         probabilities += 0.5
         return probabilities
 
@@ -184,8 +184,8 @@ class OcclusionCallback(Callback):
 
             # pick top 2% of the attention weights
             top_k = int(0.02 * len(raw_attention))
+            print(top_k, len(raw_attention), raw_attention)
             top_k_indices = torch.topk(raw_attention, top_k).indices.tolist()
-
 
             attention_diffs = []
             classification_diffs = []
