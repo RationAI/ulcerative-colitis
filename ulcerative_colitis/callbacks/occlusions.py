@@ -111,9 +111,9 @@ class OcclusionCallback(Callback):
         for mask_builder in mask_builders.values():
             assert isinstance(mask_builder, ScalarMaskBuilder)
             path = mask_builder.save()
-            self.change_background_color(
-                path, mask_builder.mpp_x, mask_builder.mpp_y, self.color
-            )
+            # self.change_background_color(
+            #     path, mask_builder.mpp_x, mask_builder.mpp_y, self.color
+            # )
             mlflow.log_artifact(str(path), artifact_path=str(mask_builder.save_dir))
 
     def rescale(self, probabilities: torch.Tensor) -> torch.Tensor:
