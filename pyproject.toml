@@ -1,10 +1,8 @@
 [project]
 name = "ulcerative-colitis"
 version = "0.1.0"
-authors = [
-    {name = "Adam Kukučka", email = "524905@muni.cz"},
-]
-requires-python = ">=3.11"
+authors = [{name = "Adam Kukučka", email = "524905@muni.cz"}]
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
 dependencies = [
@@ -15,35 +13,21 @@ dependencies = [
     "albumentations>=1.4.14",
     "ipykernel",
     "timm",
-    "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git@fix/metrics",
-    "rationai-masks @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git",
-    "rationai-tiling @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git",
-    "captum>=0.8.0",
-    "openpyxl>=3.1.5",
-    "seaborn>=0.13.2",
+    "rationai-mlkit",
+    "rationai-masks",
+    "rationai-tiling",
+    "openslide-python>=1.4.2",
+    "openslide-bin>=4.0.0.8",
 ]
 
-[build-system]
-requires = ["setuptools", "wheel", "torch"]
-build-backend = "setuptools.build_meta"
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.11.2",
+    "pre-commit>=3.8.0",
+    "ruff>=0.6.8",
+]
 
-[tool.pdm.dev-dependencies]
-dev = ["mypy", "pre-commit", "ruff"]
-
-[tool.pdm.scripts]
-train_neutrophils = "python -m ulcerative_colitis --config-name=train_neutrophils"
-test_neutrophils = "python -m ulcerative_colitis --config-name=test_neutrophils"
-predict_neutrophils = "python -m ulcerative_colitis --config-name=predict_neutrophils"
-train_nancy_low = "python -m ulcerative_colitis --config-name=train_nancy_low"
-l = { composite = ["lint", "format", "mypy"] }
-lint = "ruff check --fix"
-format = "ruff format"
-mypy = "mypy ."
-post_install = { composite = [
-    "pre-commit autoupdate",
-    "pre-commit install",
-    "pre-commit install --hook-type commit-msg",
-] }
-
-[tool.pdm]
-distribution = false
+[tool.uv.sources]
+rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" }
+rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" }
+rationai-tiling = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" }

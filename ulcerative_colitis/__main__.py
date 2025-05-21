@@ -1,6 +1,7 @@
 from random import randint
 
 import hydra
+import pyvips  # noqa: F401
 from lightning import seed_everything
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
