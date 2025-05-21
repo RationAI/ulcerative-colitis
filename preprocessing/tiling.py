@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 
 BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
 SLIDES_PATH = BASE_FOLDER / "data_tiff" / "20x"
-DATAFRAME_PATH = BASE_FOLDER / "data_czi" / "Fab_IBD_AI_12_2024.csv"
+DATAFRAME_PATH = BASE_FOLDER / "data_czi" / "IBD_AI.csv"
 TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
 
 
@@ -65,6 +65,14 @@ def train_test_split_cases(
     )
 
 
+def get_slides(df: pd.DataFrame) -> list[Path]:
+    return [
+        slide_path
+        for slide_path in SLIDES_PATH.glob("*.tiff")
+        if stem_to_case_id(slide_path.stem) in df.index
+    ]
+
+
 def get_metadata(slide_path: Path, df_metadata: pd.DataFrame) -> dict[str, Any]:
     index = stem_to_case_id(slide_path.stem)
     return {
@@ -89,21 +97,25 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
 
 
 def main() -> None:
-    all_slides = [
-        slide_path
-        for slide_path in SLIDES_PATH.rglob("*.tiff")
-        if stem_to_case_id(slide_path.stem) in df.index
-    ]
-
     # 70 / 10 / 10 / 10 - train / val / test1 / test2
-    train_val_slides, test_slides = train_test_split_cases(all_slides, test_size=0.2)
-    train_slides, val_slides = train_test_split_cases(train_val_slides, test_size=0.125)
-    test1_slides, test2_slides = train_test_split_cases(test_slides, test_size=0.5)
+    _train, _test = train_test_split(
+        df, test_size=0.2, stratify=df["Nancy"], random_state=42
+    )
+    train, val = train_test_split(
+        _train, test_size=0.125, stratify=_train["Nancy"], random_state=42
+    )
+    test_preliminary, test_final = train_test_split(
+        _test, test_size=0.5, stratify=_test["Nancy"], random_state=42
+    )
 
-    train_slides_df, train_tiles_df = tiling(slides=train_slides, handler=handler)
-    val_slides_df, val_tiles_df = tiling(slides=val_slides, handler=handler)
-    test1_slides_df, test1_tiles_df = tiling(slides=test1_slides, handler=handler)
-    test2_slides_df, test2_tiles_df = tiling(slides=test2_slides, handler=handler)
+    train_slides_df, train_tiles_df = tiling(slides=get_slides(train), handler=handler)
+    val_slides_df, val_tiles_df = tiling(slides=get_slides(val), handler=handler)
+    test_preliminary_slides_df, test_preliminary_tiles_df = tiling(
+        slides=get_slides(test_preliminary), handler=handler
+    )
+    test_final_slides_df, test_final_tiles_df = tiling(
+        slides=get_slides(test_final), handler=handler
+    )
 
     mlflow.set_experiment(experiment_name="IKEM")
     with mlflow.start_run(run_name="📂 Dataset: Ulcerative Colitis"):
@@ -118,14 +130,14 @@ def main() -> None:
             dataset_name="Ulcerative Colitis - val",
         )
         save_mlflow_dataset(
-            slides=test1_slides_df,
-            tiles=test1_tiles_df,
-            dataset_name="Ulcerative Colitis - test1",
+            slides=test_preliminary_slides_df,
+            tiles=test_preliminary_tiles_df,
+            dataset_name="Ulcerative Colitis - test preliminary",
         )
         save_mlflow_dataset(
-            slides=test2_slides_df,
-            tiles=test2_tiles_df,
-            dataset_name="Ulcerative Colitis - test2",
+            slides=test_final_slides_df,
+            tiles=test_final_tiles_df,
+            dataset_name="Ulcerative Colitis - test final",
         )
 
 
