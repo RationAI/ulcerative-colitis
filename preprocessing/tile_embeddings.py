@@ -56,7 +56,11 @@ def main() -> None:
 
             for slide_dataset in dataset.generate_datasets():
                 slide_dataloader = DataLoader(
-                    slide_dataset, batch_size=BATCH_SIZE, shuffle=False
+                    slide_dataset,
+                    batch_size=BATCH_SIZE,
+                    shuffle=False,
+                    num_workers=8,
+                    persistent_workers=True,
                 )
                 slide_embeddings = torch.zeros(
                     (len(slide_dataset), 1536), device=devide, dtype=torch.float32
