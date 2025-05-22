@@ -61,16 +61,17 @@ def main() -> None:
                     shuffle=False,
                     num_workers=8,
                     persistent_workers=True,
+                    pin_memory=True,
                 )
                 slide_embeddings = torch.zeros(
                     (len(slide_dataset), 1536), device=devide, dtype=torch.float32
                 )
                 for i, (x, _) in enumerate(slide_dataloader):
-                    x = x.to(devide)
+                    x = x.to(devide, non_blocking=True)
                     embeddings = tile_encoder(x)
-
-                    for j, embedding in enumerate(embeddings):
-                        slide_embeddings[i * BATCH_SIZE + j, :] = embedding
+                    start = i * BATCH_SIZE
+                    end = start + embeddings.size(0)
+                    slide_embeddings[start:end] = embeddings
 
                 slide_name = Path(slide_dataset.slide_metadata["path"]).stem
                 save_embeddings(slide_embeddings, partition, slide_name)
