@@ -11,15 +11,16 @@ from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
 
 URIS = [
-    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - val",
-    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - train",
-    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - test1",
-    "mlflow-artifacts:/27/12b7bd13ec474a5c889a4642e3c951bd/artifacts/Ulcerative Colitis - test2",
+    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - val",
+    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - train",
+    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - test preliminary",
+    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - test final",
 ]
 
 DESTINATION = Path(
     "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embeddings"
 )
+BATCH_SIZE = 4096
 
 
 def load_dataset(uris: Iterable[str]) -> NeutrophilsPredict:
@@ -55,7 +56,7 @@ def main() -> None:
 
             for slide_dataset in dataset.generate_datasets():
                 slide_dataloader = DataLoader(
-                    slide_dataset, batch_size=1, shuffle=False
+                    slide_dataset, batch_size=BATCH_SIZE, shuffle=False
                 )
                 slide_embeddings = torch.zeros(
                     (len(slide_dataloader), 1536), device=devide, dtype=torch.float32
@@ -64,11 +65,10 @@ def main() -> None:
                     x = x.to(devide)
                     embeddings = tile_encoder(x)
 
-                    slide_embeddings[i, :] = embeddings.squeeze()
+                    for j, embedding in enumerate(embeddings):
+                        slide_embeddings[i * BATCH_SIZE + j, :] = embedding
 
-                slide_name = (
-                    slide_dataset.slide_metadata["path"].split("/")[-1].split(".")[0]
-                )
+                slide_name = Path(slide_dataset.slide_metadata["path"]).stem
                 save_embeddings(slide_embeddings, partition, slide_name)
 
     mlflow.set_experiment(experiment_name="IKEM")
