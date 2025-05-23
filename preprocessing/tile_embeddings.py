@@ -6,6 +6,7 @@ import mlflow
 import timm
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
@@ -54,7 +55,14 @@ def main() -> None:
             dataset = load_dataset((uri,))
             partition = uri.split(" - ")[-1]
 
-            for slide_dataset in dataset.generate_datasets():
+            for slide_dataset in tqdm(
+                dataset.generate_datasets(), desc=f"{partition}: "
+            ):
+                slide_name = Path(slide_dataset.slide_metadata["path"]).stem
+                slide_path = (DESTINATION / partition / slide_name).with_suffix(".pt")
+                if slide_path.exists():
+                    continue
+
                 slide_dataloader = DataLoader(
                     slide_dataset,
                     batch_size=BATCH_SIZE,
@@ -72,7 +80,6 @@ def main() -> None:
                     end = start + embeddings.size(0)
                     slide_embeddings[start:end] = embeddings
 
-                slide_name = Path(slide_dataset.slide_metadata["path"]).stem
                 save_embeddings(slide_embeddings, partition, slide_name)
 
     mlflow.set_experiment(experiment_name="IKEM")
