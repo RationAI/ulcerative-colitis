@@ -20,7 +20,7 @@ URIS = [
 DESTINATION = Path(
     "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embeddings"
 )
-BATCH_SIZE = 4096
+BATCH_SIZE = 2048
 
 
 def load_dataset(uris: Iterable[str]) -> NeutrophilsPredict:
