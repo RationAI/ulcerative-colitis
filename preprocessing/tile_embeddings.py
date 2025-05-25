@@ -12,10 +12,9 @@ from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
 
 URIS = [
-    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - val",
-    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - train",
-    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - test preliminary",
-    "mlflow-artifacts:/27/e98e14f011004970a645c86398507e85/artifacts/Ulcerative Colitis - test final",
+    "mlflow-artifacts:/27/a045896edb624e9ba042b99d2b9e3d72/artifacts/Ulcerative Colitis - test preliminary",
+    "mlflow-artifacts:/27/a045896edb624e9ba042b99d2b9e3d72/artifacts/Ulcerative Colitis - test final",
+    "mlflow-artifacts:/27/a045896edb624e9ba042b99d2b9e3d72/artifacts/Ulcerative Colitis - train",
 ]
 
 DESTINATION = Path(
