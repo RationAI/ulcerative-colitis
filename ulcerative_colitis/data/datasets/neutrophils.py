@@ -15,7 +15,7 @@ from ulcerative_colitis.data.datasets.ulcerative_colitis import (
 from ulcerative_colitis.typing import PredictSample, TestSample, TrainSample
 
 
-LOCATIONS = ("cekoascendens", "descendens", "rektosigma", "transverzum")
+# LOCATIONS = ("cekoascendens", "descendens", "rektosigma", "transverzum")
 
 
 class NeutrophilsTrain(UlcerativeColitisTrain):
@@ -86,6 +86,6 @@ class _NetrophilsSlideTilesPredict(UlcerativeColitisSlideTiles):
 
 
 def process_slides(slides: pd.DataFrame) -> pd.DataFrame:
-    slides = slides[slides["location"].isin(LOCATIONS)].copy()
+    # slides = slides[slides["location"].isin(LOCATIONS)].copy()
     slides["neutrophils"] = slides["nancy_index"] >= 2
     return slides

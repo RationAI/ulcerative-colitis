@@ -97,19 +97,16 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
 
 
 def main() -> None:
-    # 70 / 10 / 10 / 10 - train / val / test1 / test2
-    _train, _test = train_test_split(
-        df, test_size=0.2, stratify=df["Nancy"], random_state=42
+    # 70 / 15 / 15 - train / test preliminary / test final
+    train, _test = train_test_split(
+        df, test_size=0.3, stratify=df["Nancy"], random_state=42
     )
-    train, val = train_test_split(
-        _train, test_size=0.125, stratify=_train["Nancy"], random_state=42
-    )
+
     test_preliminary, test_final = train_test_split(
         _test, test_size=0.5, stratify=_test["Nancy"], random_state=42
     )
 
     train_slides_df, train_tiles_df = tiling(slides=get_slides(train), handler=handler)
-    val_slides_df, val_tiles_df = tiling(slides=get_slides(val), handler=handler)
     test_preliminary_slides_df, test_preliminary_tiles_df = tiling(
         slides=get_slides(test_preliminary), handler=handler
     )
@@ -123,11 +120,6 @@ def main() -> None:
             slides=train_slides_df,
             tiles=train_tiles_df,
             dataset_name="Ulcerative Colitis - train",
-        )
-        save_mlflow_dataset(
-            slides=val_slides_df,
-            tiles=val_tiles_df,
-            dataset_name="Ulcerative Colitis - val",
         )
         save_mlflow_dataset(
             slides=test_preliminary_slides_df,
