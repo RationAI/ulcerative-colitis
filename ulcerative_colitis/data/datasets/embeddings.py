@@ -83,7 +83,7 @@ class EmbeddingsSubset(Subset):
         indices: Sequence[int],
     ) -> None:
         super().__init__(dataset, indices)
-        self.slides = dataset.slides
+        self.slides = dataset.slides[indices].reset_index()
         self.tiles = dataset.tiles
 
 
