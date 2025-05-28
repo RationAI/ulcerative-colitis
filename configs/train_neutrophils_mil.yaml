@@ -2,7 +2,6 @@ defaults:
   - hydra: default
   - logger: mlflow
   - /data/datasets@data.train: embeddings/train
-  - /data/datasets@data.val: embeddings/val
   - _self_
 
 seed: ${random_seed:}
@@ -27,9 +26,9 @@ data:
   batch_size: 8
   target_column: neutrophils
   num_workers: 4
+  kfold_splits: 5
+  k: 1
   train:
-    mode: neutrophils
-  val:
     mode: neutrophils
 
 model:
@@ -37,7 +36,7 @@ model:
 
 metadata:
   experiment_name: IKEM
-  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL'
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL (fold ${data.k}/${data.kfold_splits})'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

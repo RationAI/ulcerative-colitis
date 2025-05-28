@@ -3,7 +3,8 @@ from collections.abc import Iterable
 from hydra.utils import instantiate
 from lightning import LightningDataModule
 from omegaconf import DictConfig
-from torch.utils.data import DataLoader
+from sklearn.model_selection import KFold
+from torch.utils.data import DataLoader, Subset
 
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
 from ulcerative_colitis.typing import MILInput, MILPredictInput
@@ -15,12 +16,20 @@ class DataModule(LightningDataModule):
         batch_size: int,
         target_column: str | None = None,
         num_workers: int = 0,
+        kfold_splits: int | None = None,
+        k: int | None = None,
         **datasets: DictConfig,
     ) -> None:
         super().__init__()
         self.batch_size = batch_size
         self.target_column = target_column
         self.num_workers = num_workers
+        self.kfold_splits = kfold_splits
+        self.k = k
+
+        if self.kfold_splits is None and self.k is not None:
+            raise ValueError("kfold_splits cannot be None if k is set.")
+
         self.datasets = datasets
         self.collate_fn = lambda x: tuple(map(list, zip(*x, strict=True)))
 
@@ -28,11 +37,13 @@ class DataModule(LightningDataModule):
 
     def setup(self, stage: str) -> None:
         match stage:
-            case "fit":
-                self.train = instantiate(self.datasets["train"])
-                self.val = instantiate(self.datasets["val"])
-            case "validate":
-                self.val = instantiate(self.datasets["val"])
+            case "fit" | "validatie":
+                assert self.kfold_splits is not None and self.k is not None
+                dataset = instantiate(self.dataset["train"])
+                kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
+                train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k]
+                self.train = Subset(dataset, train_idx)
+                self.val = Subset(dataset, val_idx)
             case "test":
                 self.test = instantiate(self.datasets["test"])
             case "predict":

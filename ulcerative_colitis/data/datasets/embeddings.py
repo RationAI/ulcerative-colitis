@@ -15,8 +15,6 @@ from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
 
 T = TypeVar("T", bound=MILSample | MILPredictSample)
 
-LOCATIONS = ("cekoascendens", "descendens", "rektosigma", "transverzum")
-
 
 class EmbeddingsMode(Enum):
     NEUTROPHILS = "neutrophils"
@@ -130,8 +128,6 @@ def get_slide_name(slide_metadata: pd.Series) -> str:
 def process_slides(
     slides: pd.DataFrame, mode: EmbeddingsMode, slide_names: list[str] | None = None
 ) -> pd.DataFrame:
-    slides = slides[slides["location"].isin(LOCATIONS)].copy()
-
     match mode:
         case EmbeddingsMode.NEUTROPHILS:
             slides["neutrophils"] = slides["nancy_index"] >= 2
