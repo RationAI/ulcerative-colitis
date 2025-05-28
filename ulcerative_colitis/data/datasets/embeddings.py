@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeVar, cast
@@ -8,7 +8,7 @@ import mlflow.artifacts
 import pandas as pd
 import torch
 from rationai.mlkit.data.datasets import MetaTiledSlides
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
 
@@ -29,8 +29,12 @@ class Embeddings(MetaTiledSlides[MILSample]):
         uri: str,
         uri_embeddings: str,
         mode: EmbeddingsMode | str,
+        folder: str | None = None,
     ) -> None:
-        self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
+        if folder is not None:
+            self.folder = Path(folder)
+        if not self.folder.exists():
+            self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
         self.mode = EmbeddingsMode(mode)
         super().__init__(uris=[uri])
 
@@ -70,6 +74,17 @@ class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
                 include_labels=False,
             )
         ]
+
+
+class EmbeddingsSubset(Subset):
+    def __init__(
+        self,
+        dataset: Embeddings,
+        indices: Sequence[int],
+    ) -> None:
+        super().__init__(dataset, indices)
+        self.slides = dataset.slides
+        self.tiles = dataset.tiles
 
 
 class _Embeddings(Dataset[T], Generic[T]):

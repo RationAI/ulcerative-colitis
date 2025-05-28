@@ -4,8 +4,9 @@ from hydra.utils import instantiate
 from lightning import LightningDataModule
 from omegaconf import DictConfig
 from sklearn.model_selection import KFold
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 
+from ulcerative_colitis.data.datasets.embeddings import EmbeddingsSubset
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
 from ulcerative_colitis.typing import MILInput, MILPredictInput
 
@@ -42,8 +43,8 @@ class DataModule(LightningDataModule):
                 dataset = instantiate(self.datasets["train"])
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
                 train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k]
-                self.train = Subset(dataset, train_idx)
-                self.val = Subset(dataset, val_idx)
+                self.train = EmbeddingsSubset(dataset, train_idx)
+                self.val = EmbeddingsSubset(dataset, val_idx)
             case "test":
                 self.test = instantiate(self.datasets["test"])
             case "predict":

@@ -3,12 +3,12 @@ from collections.abc import Sequence
 import pandas as pd
 from torch.utils.data import WeightedRandomSampler
 
-from ulcerative_colitis.data.datasets import UlcerativeColitisTrain
+from ulcerative_colitis.data.datasets import EmbeddingsSubset
 
 
 class AutoWeightedRandomSampler(WeightedRandomSampler):
     def __init__(
-        self, dataset: UlcerativeColitisTrain, column: str, replacement: bool = True
+        self, dataset: EmbeddingsSubset, column: str, replacement: bool = True
     ) -> None:
         super().__init__(
             self._get_weights(dataset.slides[column]), len(dataset), replacement
