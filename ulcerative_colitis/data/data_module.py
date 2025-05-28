@@ -39,7 +39,7 @@ class DataModule(LightningDataModule):
         match stage:
             case "fit" | "validatie":
                 assert self.kfold_splits is not None and self.k is not None
-                dataset = instantiate(self.dataset["train"])
+                dataset = instantiate(self.datasets["train"])
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
                 train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k]
                 self.train = Subset(dataset, train_idx)
