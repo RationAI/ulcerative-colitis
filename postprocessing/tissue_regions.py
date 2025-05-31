@@ -48,9 +48,9 @@ def main() -> None:
 
         tiles = tiles_df.query(f"slide_id == {slide_id}")
         mask_builder.update(
+            torch.tensor(tiles["tissue_region"].to_numpy()) / n_regions,
             torch.tensor(tiles["x"].to_numpy()),
             torch.tensor(tiles["y"].to_numpy()),
-            torch.tensor(tiles["tissue_region"].to_numpy()) / n_regions,
         )
 
         mlflow.log_artifact(
