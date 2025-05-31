@@ -50,7 +50,7 @@ def main() -> None:
         mask_builder.update(
             torch.tensor(tiles["x"].to_numpy()),
             torch.tensor(tiles["y"].to_numpy()),
-            torch.tensor(tiles["tissue_region"]) / n_regions,
+            torch.tensor(tiles["tissue_region"].to_numpy()) / n_regions,
         )
 
         mlflow.log_artifact(
