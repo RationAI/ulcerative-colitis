@@ -109,14 +109,10 @@ class MaskBuilderCallback(Callback):
                 attention_weights / weights_max, metadata["x"], metadata["y"]
             )
             mask_builders["attention_percentile"].update(
-                attention_percentiles,
-                metadata["x"],
-                metadata["y"],
+                attention_percentiles, metadata["x"], metadata["y"]
             )
             mask_builders["attention_cumulative"].update(
-                attention_cumulative,
-                metadata["x"],
-                metadata["y"],
+                attention_cumulative, metadata["x"], metadata["y"]
             )
             mask_builders["classification"].update(
                 classification, metadata["x"], metadata["y"]
@@ -135,9 +131,7 @@ class MaskBuilderCallback(Callback):
                 metadata["y"],
             )
             mask_builders["classification_attention_cumulative"].update(
-                attention_cumulative * classification,
-                metadata["x"],
-                metadata["y"],
+                attention_cumulative * classification, metadata["x"], metadata["y"]
             )
 
             self.save_mask_builders(mask_builders)
@@ -152,5 +146,6 @@ def values_to_percentiles(values: torch.Tensor) -> tuple[torch.Tensor, torch.Ten
     cumulative_values = torch.cumsum(values[sorted_indices], dim=0)
     original_order_cumulative = torch.empty_like(cumulative_values)
     original_order_cumulative[sorted_indices] = cumulative_values
+    print("cumulative_value.max()", cumulative_values.max())
 
     return ranks.unsqueeze(1), original_order_cumulative.unsqueeze(1)
