@@ -16,6 +16,11 @@ trainer:
 data:
   batch_size: 1
   num_workers: 4
+  predict:
+    mode: neutrophils
+    slide_names:
+      - 5005_23_HE
+      - 1468_23_HE
 
 model: {}
 
