@@ -1,9 +1,6 @@
 defaults:
   - hydra: default
   - logger: mlflow
-  - /data/datasets@data.train: embeddings/train
-  - /data/datasets@data.val: embeddings/val
-  - /data/datasets@data.test: embeddings/test
   - /data/datasets@data.predict: embeddings/predict
   - _self_
 
