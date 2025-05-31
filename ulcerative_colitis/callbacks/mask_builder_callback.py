@@ -19,10 +19,7 @@ class MaskBuilders(TypedDict):
     attention_rescaled: ScalarMaskBuilder
     attention_percentile: ScalarMaskBuilder
     attention_cumulative: ScalarMaskBuilder
-    attention_cumulative_log: ScalarMaskBuilder
-    attention_cumulative_log2: ScalarMaskBuilder
-    attention_cumulative_log4: ScalarMaskBuilder
-    attention_cumulative_log8: ScalarMaskBuilder
+    attention_cumulative_log5: ScalarMaskBuilder
     classification: ScalarMaskBuilder
     classification_attention: ScalarMaskBuilder
     classification_attention_rescaled: ScalarMaskBuilder
@@ -61,17 +58,8 @@ class MaskBuilderCallback(Callback):
             "attention_cumulative": ScalarMaskBuilder(
                 save_dir=Path("masks/attention_cumulative"), **kwargs
             ),
-            "attention_cumulative_log": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative_log"), **kwargs
-            ),
-            "attention_cumulative_log2": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative_log2"), **kwargs
-            ),
-            "attention_cumulative_log4": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative_log4"), **kwargs
-            ),
-            "attention_cumulative_log8": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative_log8"), **kwargs
+            "attention_cumulative_log5": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_cumulative_log5"), **kwargs
             ),
             "classification": ScalarMaskBuilder(
                 save_dir=Path("masks/classifications"), **kwargs
@@ -130,17 +118,8 @@ class MaskBuilderCallback(Callback):
             mask_builders["attention_cumulative"].update(
                 attention_cumulative, metadata["x"], metadata["y"]
             )
-            mask_builders["attention_cumulative_log"].update(
-                log2_1p_rec(attention_cumulative, 1), metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_cumulative_log2"].update(
-                log2_1p_rec(attention_cumulative, 2), metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_cumulative_log4"].update(
-                log2_1p_rec(attention_cumulative, 4), metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_cumulative_log8"].update(
-                log2_1p_rec(attention_cumulative, 8), metadata["x"], metadata["y"]
+            mask_builders["attention_cumulative_log5"].update(
+                log2_1p_rec(attention_cumulative, 5), metadata["x"], metadata["y"]
             )
             mask_builders["classification"].update(
                 classification, metadata["x"], metadata["y"]

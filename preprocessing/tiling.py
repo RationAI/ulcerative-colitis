@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -12,12 +13,16 @@ from rationai.tiling.modules.tile_sources.openslide_tile_source import OpenSlide
 from rationai.tiling.typing import TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 
 BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
 SLIDES_PATH = BASE_FOLDER / "data_tiff" / "20x"
 DATAFRAME_PATH = BASE_FOLDER / "data_czi" / "IBD_AI.csv"
 TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
+
+TILE = 224
+STRIDE = 112
 
 
 @dataclass
@@ -36,7 +41,7 @@ class TissueMask(PyvipsMask[TileMetadata]):
         return tile_labels
 
 
-source = OpenSlideTileSource(mpp=0.5, tile_extent=224, stride=112)
+source = OpenSlideTileSource(mpp=0.5, tile_extent=TILE, stride=STRIDE)
 tissue_mask = TissueMask(
     tile_extent=source.tile_extent, absolute_roi_extent=112, relative_roi_offset=0
 )
@@ -94,6 +99,54 @@ def handler(slide_path: Path) -> TiledSlideMetadata:
     )
 
     return slide, tiles
+
+
+def dfs_neighbors(tiles_df: pd.DataFrame, idx: int) -> Iterable[int]:
+    current_tile = tiles_df.loc[idx]
+
+    for dx in range(-TILE, TILE + 1, STRIDE):
+        for dy in range(-TILE, TILE + 1, STRIDE):
+            if dx == 0 and dy == 0:
+                continue
+
+            neighbor = tiles_df[
+                (tiles_df["x"] == current_tile["x"] + dx)
+                & (tiles_df["y"] == current_tile["y"] + dy)
+                & (tiles_df["tissue_region"] == -1)
+            ]
+
+            if not neighbor.empty:
+                yield neighbor.index[0]
+
+
+def dfs(tiles_df: pd.DataFrame, idx: int, label: int) -> pd.DataFrame:
+    stack = [idx]
+    tiles_df.at[idx, "tissue_region"] = label
+
+    while stack:
+        current_idx = stack.pop()
+        for neighbor_idx in dfs_neighbors(tiles_df, current_idx):
+            tiles_df.at[neighbor_idx, "tissue_region"] = label
+            stack.append(neighbor_idx)
+
+    return tiles_df
+
+
+def add_regions(slides_df: pd.DataFrame, tiles_df: pd.DataFrame) -> pd.DataFrame:
+    tiles_df["tissue_region"] = -1
+
+    for slide_id in tqdm(slides_df["id"]):
+        slide_tiles = tiles_df.query(f"slide_id == {slide_id}")
+        label = 0
+
+        for idx in slide_tiles.index:
+            if slide_tiles.at[idx, "tissue_region"] == -1:
+                slide_tiles = dfs(slide_tiles, int(idx), label)
+                label += 1
+
+        tiles_df.update(slide_tiles)
+
+    return tiles_df
 
 
 def main() -> None:
