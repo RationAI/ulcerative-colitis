@@ -48,8 +48,8 @@ def main() -> None:
 
         tiles = tiles_df.query(f"slide_id == {slide_id}")
         mask_builder.update(
-            torch.tensor(tiles["x"]),
-            torch.tensor(tiles["y"]),
+            torch.tensor(tiles["x"].to_numpy()),
+            torch.tensor(tiles["y"].to_numpy()),
             torch.tensor(tiles["tissue_region"]) / n_regions,
         )
 
