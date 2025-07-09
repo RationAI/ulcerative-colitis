@@ -1,13 +1,13 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeVar, cast
 
 import mlflow
 import mlflow.artifacts
+import numpy as np
 import pandas as pd
 import torch
-from rationai.mlkit.data.datasets import MetaTiledSlides
 from torch.utils.data import Dataset, Subset
 
 from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
@@ -23,7 +23,7 @@ class EmbeddingsMode(Enum):
     NANCY_MIX = "nancy_mix"
 
 
-class Embeddings(MetaTiledSlides[MILSample]):
+class _Embeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
         uri: str,
@@ -31,85 +31,26 @@ class Embeddings(MetaTiledSlides[MILSample]):
         mode: EmbeddingsMode | str,
         minimum_region_size: int = 100,
         folder: str | None = None,
+        slide_names: list[str] | None = None,
+        include_labels: bool = True,
     ) -> None:
+        self.mode = EmbeddingsMode(mode)
+        artifacts = Path(mlflow.artifacts.download_artifacts(uri))
+        self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
+        self.slides = pd.read_parquet(artifacts / "slides.parquet")
+        self.slides = process_slides(self.slides, self.mode, slide_names)
+
         if folder is not None:
             self.folder = Path(folder)
         if not self.folder.exists():
             self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
-        self.mode = EmbeddingsMode(mode)
+
         self.minimum_region_size = minimum_region_size
-        super().__init__(uris=[uri])
-
-    def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
-        self.slides = process_slides(self.slides, self.mode)
-        return [
-            _Embeddings[MILSample](
-                self.slides,
-                self.tiles,
-                self.folder,
-                self.mode,
-                self.minimum_region_size,
-            )
-        ]
-
-
-class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
-    def __init__(
-        self,
-        uri: str,
-        uri_embeddings: str,
-        mode: EmbeddingsMode,
-        slide_names: list[str] | None = None,
-    ) -> None:
-        self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
-        self.mode = mode
-        self.slide_names = slide_names
-        super().__init__(uris=[uri])
-
-    def generate_datasets(self) -> Iterable[Dataset[MILPredictSample]]:
-        self.slides = process_slides(self.slides, self.mode, self.slide_names)
-        return [
-            _Embeddings[MILPredictSample](
-                self.slides,
-                self.tiles,
-                self.folder,
-                self.mode,
-                include_labels=False,
-            )
-        ]
-
-
-class EmbeddingsSubset(Subset):
-    def __init__(
-        self,
-        dataset: Embeddings,
-        indices: Sequence[int],
-    ) -> None:
-        super().__init__(dataset, indices)
-        self.slides = dataset.slides.iloc[list(indices)].reset_index()
-        self.tiles = dataset.tiles
-
-
-class _Embeddings(Dataset[T], Generic[T]):
-    def __init__(
-        self,
-        slides: pd.DataFrame,
-        tiles_all: pd.DataFrame,
-        folder: Path,
-        mode: EmbeddingsMode,
-        minimum_region_size: int = 100,
-        include_labels: bool = True,
-    ) -> None:
-        super().__init__()
-        self.slides = slides
-        self.tiles_all = tiles_all
-        self.folder = folder
-        self.mode = mode
         self.include_labels = include_labels
         self.bags = self._create_bags(minimum_region_size)
 
     def _create_bags(self, minimum_region_size: int) -> pd.DataFrame:
-        bags = self.tiles_all.groupby(["slide_id", "region"]).agg("size")
+        bags = self.tiles.groupby(["slide_id", "region"]).agg("size")
         return bags[bags >= minimum_region_size].reset_index()
 
     def __len__(self) -> int:
@@ -120,7 +61,7 @@ class _Embeddings(Dataset[T], Generic[T]):
         region = self.bags.iloc[idx]["region"]
 
         slide_metadata = self.slides.query(f"id == {slide_id!s}").iloc[0]
-        tiles = self.tiles_all.query(f"slide_id == {slide_id!s} and region == {region}")
+        tiles = self.tiles.query(f"slide_id == {slide_id!s} and region == {region}")
         slide_name = get_slide_name(slide_metadata)
         embeddings = cast(
             "torch.Tensor",
@@ -146,6 +87,59 @@ class _Embeddings(Dataset[T], Generic[T]):
         label = get_label(slide_metadata, self.mode)
 
         return embeddings, label, metadata
+
+
+class Embeddings(_Embeddings[MILSample]):
+    def __init__(
+        self,
+        uri: str,
+        uri_embeddings: str,
+        mode: EmbeddingsMode | str,
+        minimum_region_size: int = 100,
+        folder: str | None = None,
+        slide_names: list[str] | None = None,
+    ) -> None:
+        super().__init__(
+            uri=uri,
+            uri_embeddings=uri_embeddings,
+            mode=mode,
+            minimum_region_size=minimum_region_size,
+            folder=folder,
+            slide_names=slide_names,
+            include_labels=True,
+        )
+
+
+class EmbeddingsPredict(_Embeddings[MILPredictSample]):
+    def __init__(
+        self,
+        uri: str,
+        uri_embeddings: str,
+        mode: EmbeddingsMode | str,
+        minimum_region_size: int = 100,
+        folder: str | None = None,
+        slide_names: list[str] | None = None,
+    ) -> None:
+        super().__init__(
+            uri=uri,
+            uri_embeddings=uri_embeddings,
+            mode=mode,
+            minimum_region_size=minimum_region_size,
+            folder=folder,
+            slide_names=slide_names,
+            include_labels=False,
+        )
+
+
+class EmbeddingsSubset(Subset[MILSample]):
+    def __init__(
+        self,
+        dataset: Embeddings,
+        slide_indices: Sequence[int],
+    ) -> None:
+        self.slides = dataset.slides.iloc[list(slide_indices)].reset_index()
+        bag_indices = np.flatnonzero(dataset.bags["slide_id"].isin(self.slides["id"]))
+        super().__init__(dataset, bag_indices.tolist())
 
 
 def get_slide_name(slide_metadata: pd.Series) -> str:
