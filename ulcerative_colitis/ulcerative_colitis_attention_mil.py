@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import cast
 
 import torch
 from lightning import LightningModule
@@ -148,3 +149,12 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         if self.lr is None:
             raise ValueError("Learning rate must be set for training.")
         return Adam(self.parameters(), lr=self.lr)
+
+    def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
+        for name, result in dictionary.compute().items():
+            result = cast("Tensor", result)
+            if result.shape:
+                for i, value in enumerate(result):
+                    self.log(f"{name}/{i}", value, *args, **kwargs)
+            else:
+                self.log(name, result, *args, **kwargs)
