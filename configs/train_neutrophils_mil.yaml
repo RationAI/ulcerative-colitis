@@ -36,7 +36,7 @@ model:
   lr: 0.00001
 
 metadata:
-  experiment_name: IKEM
+  experiment_name: 'Ulcerative Colitis'
   run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL (fold ${data.k}/${data.kfold_splits})'
   description: 'Ulcerative Colitis'
   user: AdamK
