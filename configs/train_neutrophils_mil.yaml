@@ -30,6 +30,7 @@ data:
   k: 1
   train:
     mode: neutrophils
+    minimum_region_size: 100
 
 model:
   lr: 0.00001

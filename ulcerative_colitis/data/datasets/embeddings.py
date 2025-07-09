@@ -29,6 +29,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
         uri: str,
         uri_embeddings: str,
         mode: EmbeddingsMode | str,
+        minimum_region_size: int = 100,
         folder: str | None = None,
     ) -> None:
         if folder is not None:
@@ -36,6 +37,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
         if not self.folder.exists():
             self.folder = Path(mlflow.artifacts.download_artifacts(uri_embeddings))
         self.mode = EmbeddingsMode(mode)
+        self.minimum_region_size = minimum_region_size
         super().__init__(uris=[uri])
 
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
@@ -46,6 +48,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
                 self.tiles,
                 self.folder,
                 self.mode,
+                self.minimum_region_size,
             )
         ]
 
@@ -94,6 +97,7 @@ class _Embeddings(Dataset[T], Generic[T]):
         tiles_all: pd.DataFrame,
         folder: Path,
         mode: EmbeddingsMode,
+        minimum_region_size: int = 100,
         include_labels: bool = True,
     ) -> None:
         super().__init__()
@@ -102,13 +106,21 @@ class _Embeddings(Dataset[T], Generic[T]):
         self.folder = folder
         self.mode = mode
         self.include_labels = include_labels
+        self.bags = self._create_bags(minimum_region_size)
+
+    def _create_bags(self, minimum_region_size: int) -> pd.DataFrame:
+        bags = self.tiles_all.groupby(["slide_id", "region"]).agg("size")
+        return bags[bags >= minimum_region_size].reset_index()
 
     def __len__(self) -> int:
-        return len(self.slides)
+        return len(self.bags)
 
     def __getitem__(self, idx: int) -> MILSample | MILPredictSample:
-        slide_metadata = self.slides.iloc[idx]
-        tiles = self.tiles_all.query(f"slide_id == {slide_metadata['id']!s}")
+        slide_id = self.bags.iloc[idx]["slide_id"]
+        region = self.bags.iloc[idx]["region"]
+
+        slide_metadata = self.slides.query(f"id == {slide_id!s}").iloc[0]
+        tiles = self.tiles_all.query(f"slide_id == {slide_id!s} and region == {region}")
         slide_name = get_slide_name(slide_metadata)
         embeddings = cast(
             "torch.Tensor",

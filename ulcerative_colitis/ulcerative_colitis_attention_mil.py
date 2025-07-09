@@ -2,10 +2,12 @@ from copy import deepcopy
 
 import torch
 from lightning import LightningModule
+from rationai.mlkit.metrics import AggregatedMetricCollection
+from rationai.mlkit.metrics.aggregators import MaxAggregator
 from torch import Tensor, nn
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
-from torchmetrics import Metric, MetricCollection
+from torchmetrics import MetricCollection
 from torchmetrics.classification import (
     BinaryAccuracy,
     BinaryAUROC,
@@ -31,7 +33,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.criterion = nn.BCELoss()
         self.lr = lr
 
-        metrics: dict[str, Metric] = {
+        metrics = {
             "AUC": BinaryAUROC(),
             "accuracy": BinaryAccuracy(),
             "precision": BinaryPrecision(),
@@ -42,6 +44,16 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
         self.val_metrics = MetricCollection(deepcopy(metrics), prefix="validation/")
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
+
+        self.train_agg_metrics = AggregatedMetricCollection(
+            deepcopy(metrics), aggregator=MaxAggregator(), prefix="train/agg/"
+        )
+        self.val_agg_metrics = AggregatedMetricCollection(
+            deepcopy(metrics), aggregator=MaxAggregator(), prefix="validation/agg/"
+        )
+        self.test_agg_metrics = AggregatedMetricCollection(
+            deepcopy(metrics), aggregator=MaxAggregator(), prefix="test/agg/"
+        )
 
     def forward(
         self, x: Tensor, return_attention: bool = False
@@ -57,36 +69,13 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         return x.squeeze()
 
-    def log_attention_coverage(self, attention_weights: Tensor, stage: str) -> None:
-        # Sort attention weights in descending order
-        sorted_weights, _ = torch.sort(attention_weights, descending=True)
-
-        tresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        for treshold in tresholds:
-            # Find the minimum number of weights that sum to treshold
-            cumulative_sum = 0.0
-            count = 0
-            for weight in sorted_weights:
-                cumulative_sum += weight.item()
-                count += 1
-                if cumulative_sum >= treshold:
-                    break
-
-            # Log the result
-            self.log(
-                f"{stage}/attention/coverage_fraction_{treshold}",
-                count / len(attention_weights),
-                on_epoch=True,
-                prog_bar=True,
-            )
-
     def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
-        bags, labels, _ = batch
+        bags, labels, metadatas = batch
 
         loss = torch.tensor(0.0, device=self.device)
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
-            output = self(bag, return_attention=False)
+            output = self(bag)
             loss += self.criterion(output, label)
             outputs.append(output)
 
@@ -94,18 +83,23 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
         self.train_metrics.update(torch.tensor(outputs), torch.tensor(labels))
-        self.log_dict(self.train_metrics, on_epoch=True)
+        self.train_agg_metrics.update(
+            torch.tensor(outputs),
+            torch.tensor(labels),
+            [metadata["slide"] for metadata in metadatas],
+        )
+        self.log_dict(self.train_metrics, on_epoch=True, on_step=False)
+        self.log_dict(self.train_agg_metrics, on_epoch=True, on_step=False)
 
         return loss
 
     def validation_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
-        bags, labels, _ = batch
+        bags, labels, metadatas = batch
 
         loss = torch.tensor(0.0, device=self.device)
         outputs = []
         for bag, label in zip(bags, labels, strict=True):
-            output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention, "validation")
+            output = self(bag)
             loss += self.criterion(output, label)
             outputs.append(output)
 
@@ -113,10 +107,16 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.log("validation/loss", loss, prog_bar=True)
 
         self.val_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.val_agg_metrics.update(
+            torch.tensor(outputs),
+            torch.tensor(labels),
+            [metadata["slide"] for metadata in metadatas],
+        )
         self.log_dict(self.val_metrics)
+        self.log_dict(self.val_agg_metrics)
 
     def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
-        bags, labels, _ = batch
+        bags, labels, metadatas = batch
 
         outputs = []
         for bag in bags:
@@ -124,7 +124,13 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             outputs.append(output)
 
         self.test_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.test_agg_metrics.update(
+            torch.tensor(outputs),
+            torch.tensor(labels),
+            [metadata["slide"] for metadata in metadatas],
+        )
         self.log_dict(self.test_metrics)
+        self.log_dict(self.test_agg_metrics)
 
     def predict_step(  # pylint: disable=arguments-differ
         self, batch: MILPredictInput, batch_idx: int, dataloader_idx: int = 0
