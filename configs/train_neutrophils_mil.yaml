@@ -23,7 +23,7 @@ trainer:
       patience: 10 
 
 data:
-  batch_size: 8
+  batch_size: 32
   target_column: neutrophils
   num_workers: 4
   kfold_splits: 5
