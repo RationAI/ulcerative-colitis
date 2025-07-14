@@ -83,7 +83,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         loss /= len(bags)
         self.log("train/loss", loss, on_step=True, prog_bar=True)
 
-        self.train_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.train_metrics.update(torch.stack(outputs), torch.stack(labels))
         # self.train_agg_metrics.update(
         #     torch.tensor(outputs),
         #     torch.tensor(labels),
@@ -107,9 +107,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         loss /= len(bags)
         self.log("validation/loss", loss, prog_bar=True)
 
-        print(outputs, labels)
-        print(torch.tensor(outputs), torch.tensor(labels))
-        self.val_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.val_metrics.update(torch.stack(outputs), torch.stack(labels))
         # self.val_agg_metrics.update(
         #     torch.tensor(outputs),
         #     torch.tensor(labels),
@@ -126,7 +124,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             output = self(bag)
             outputs.append(output)
 
-        self.test_metrics.update(torch.tensor(outputs), torch.tensor(labels))
+        self.test_metrics.update(torch.stack(outputs), torch.stack(labels))
         # self.test_agg_metrics.update(
         #     torch.tensor(outputs),
         #     torch.tensor(labels),
