@@ -81,7 +81,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             outputs.append(output)
 
         loss /= len(bags)
-        self.log("train/loss", loss, on_step=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
         self.train_metrics.update(torch.stack(outputs), torch.stack(labels))
         # self.train_agg_metrics.update(
@@ -89,7 +89,9 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         #     torch.tensor(labels),
         #     [metadata["slide"] for metadata in metadatas],
         # )
-        self.log_dict(self.train_metrics, on_epoch=True, on_step=False)
+        self.log_dict(
+            self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
         # self.log_dict(self.train_agg_metrics, on_epoch=True, on_step=False)
 
         return loss
@@ -105,7 +107,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             outputs.append(output)
 
         loss /= len(bags)
-        self.log("validation/loss", loss, prog_bar=True)
+        self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
         self.val_metrics.update(torch.stack(outputs), torch.stack(labels))
         # self.val_agg_metrics.update(
@@ -113,7 +115,9 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         #     torch.tensor(labels),
         #     [metadata["slide"] for metadata in metadatas],
         # )
-        self.log_dict(self.val_metrics)
+        self.log_dict(
+            self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
         # self.log_dict(self.val_agg_metrics)
 
     def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
@@ -130,7 +134,9 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         #     torch.tensor(labels),
         #     [metadata["slide"] for metadata in metadatas],
         # )
-        self.log_dict(self.test_metrics)
+        self.log_dict(
+            self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
         # self.log_dict(self.test_agg_metrics)
 
     def predict_step(  # pylint: disable=arguments-differ
