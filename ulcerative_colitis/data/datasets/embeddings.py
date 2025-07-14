@@ -61,7 +61,10 @@ class _Embeddings(Dataset[T], Generic[T]):
         region = self.bags.iloc[idx]["region"]
 
         slide_metadata = self.slides.query(f"id == {slide_id!s}").iloc[0]
-        tiles = self.tiles.query(f"slide_id == {slide_id!s} and region == {region}")
+        slide_tiles = self.tiles.query(f"slide_id == {slide_id!s}").reset_index(
+            drop=True
+        )
+        region_tiles = slide_tiles.query(f"region == {region}")
         slide_name = get_slide_name(slide_metadata)
         embeddings = cast(
             "torch.Tensor",
@@ -70,15 +73,17 @@ class _Embeddings(Dataset[T], Generic[T]):
             ),
         )
 
+        embeddings = embeddings[region_tiles.index.to_numpy()]
+
         metadata = MetadataMIL(
             slide=slide_name,
             slide_path=Path(slide_metadata["path"]),
             level=slide_metadata["level"],
             tile_extent_x=slide_metadata["tile_extent_x"],
             tile_extent_y=slide_metadata["tile_extent_y"],
-            tiles=tiles,
-            x=torch.from_numpy(tiles["x"].to_numpy()),
-            y=torch.from_numpy(tiles["y"].to_numpy()),
+            tiles=region_tiles,
+            x=torch.from_numpy(region_tiles["x"].to_numpy()),
+            y=torch.from_numpy(region_tiles["y"].to_numpy()),
         )
 
         if not self.include_labels:
