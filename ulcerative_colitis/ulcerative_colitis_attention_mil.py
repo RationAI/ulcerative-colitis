@@ -107,6 +107,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         loss /= len(bags)
         self.log("validation/loss", loss, prog_bar=True)
 
+        print(outputs, labels)
+        print(torch.tensor(outputs), torch.tensor(labels))
         self.val_metrics.update(torch.tensor(outputs), torch.tensor(labels))
         # self.val_agg_metrics.update(
         #     torch.tensor(outputs),
