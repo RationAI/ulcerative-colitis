@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from preprocessing.paths import EMBEDDINGS_PATH
 from ulcerative_colitis.data.datasets import NeutrophilsPredict
 
 
@@ -17,9 +18,6 @@ URIS = [
     "mlflow-artifacts:/27/a045896edb624e9ba042b99d2b9e3d72/artifacts/Ulcerative Colitis - train",
 ]
 
-DESTINATION = Path(
-    "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embeddings"
-)
 BATCH_SIZE = 2048
 
 
@@ -40,7 +38,7 @@ def load_tile_encoder() -> torch.nn.Module:
 def save_embeddings(
     slide_embeddings: torch.Tensor, partition: str, slide_name: str
 ) -> None:
-    folder = DESTINATION / partition
+    folder = EMBEDDINGS_PATH / partition
     folder.mkdir(parents=True, exist_ok=True)
     torch.save(slide_embeddings, (folder / slide_name).with_suffix(".pt"))
 
@@ -58,7 +56,9 @@ def main() -> None:
                 dataset.generate_datasets(), desc=f"{partition}: "
             ):
                 slide_name = Path(slide_dataset.slide_metadata["path"]).stem
-                slide_path = (DESTINATION / partition / slide_name).with_suffix(".pt")
+                slide_path = (EMBEDDINGS_PATH / partition / slide_name).with_suffix(
+                    ".pt"
+                )
                 if slide_path.exists():
                     continue
 
@@ -83,7 +83,7 @@ def main() -> None:
 
     mlflow.set_experiment(experiment_name="IKEM")
     with mlflow.start_run(run_name="📂 Dataset: Embeddings"):
-        mlflow.log_artifacts(str(DESTINATION))
+        mlflow.log_artifacts(str(EMBEDDINGS_PATH))
 
 
 if __name__ == "__main__":

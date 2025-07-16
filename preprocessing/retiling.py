@@ -14,11 +14,7 @@ from rationai.tiling.typing import TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
-
-BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
-SLIDES_PATH = BASE_FOLDER / "data_tiff" / "20x"
-DATAFRAME_PATH = BASE_FOLDER / "data_czi" / "Fab_IBD_AI_12_2024.csv"
-TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
+from preprocessing.paths import DATAFRAME_PATH, TISSUE_MASKS_PATH
 
 
 @dataclass

@@ -18,6 +18,7 @@ dependencies = [
     "rationai-tiling",
     "openslide-python>=1.4.2",
     "openslide-bin>=4.0.0.8",
+    "h5py>=3.14.0",
 ]
 
 [tool.uv]

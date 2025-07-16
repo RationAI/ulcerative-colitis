@@ -12,10 +12,9 @@ from rationai.masks import (
     write_big_tiff,
 )
 
+from preprocessing.paths import SLIDES_PATH, TISSUE_MASKS_PATH
 
-BASE_FOLDER = Path("/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/")
-SLIDES_PATH = BASE_FOLDER / "data_tiff" / "20x"
-TISSUE_MASKS_PATH = BASE_FOLDER / "tissue_masks" / "20x"
+
 LEVEL = 3
 
 
