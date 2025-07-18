@@ -45,6 +45,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
         self.val_metrics = MetricCollection(deepcopy(metrics), prefix="validation/")
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
+        print("Inside UlcerativeColitisModelAttentionMIL.init")
 
         # self.train_agg_metrics = AggregatedMetricCollection(
         #     deepcopy(metrics), aggregator=MaxAggregator(), prefix="train/agg/"
@@ -97,6 +98,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         return loss
 
     def validation_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
+        print("Inside UlcerativeColitisModelAttentionMIL.validation_step")
         bags, labels, metadatas = batch
 
         loss = torch.tensor(0.0, device=self.device)
