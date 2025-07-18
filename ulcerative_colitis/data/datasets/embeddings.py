@@ -32,6 +32,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
         minimum_region_size: int = 100,
         folder_embeddings: str | None = None,
     ) -> None:
+        print("Inside Embeddings.__init__")
         if folder_embeddings is not None:
             self.folder_embeddings = Path(folder_embeddings)
         if not self.folder_embeddings.exists():
@@ -44,6 +45,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
         super().__init__(uris=[uri])
 
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
+        print("Inside Embeddings.generate_datasets")
         self.slides = process_slides(self.slides, self.mode)
         return [
             EmbeddingsSlideBags(
@@ -107,6 +109,7 @@ class EmbeddingsSlideBags(Dataset[T], Generic[T]):
         minimum_region_size: int = 100,
         include_labels: bool = True,
     ) -> None:
+        print("Inside EmbeddingsSlideBags.__init__")
         self.slide_metadata = slide_metadata
         self.tiles = tiles.reset_index(drop=True)
         self.file_embeddings = file_embeddings
