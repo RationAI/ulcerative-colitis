@@ -1,5 +1,0 @@
-defaults:
-  - /data/transforms@transforms: train
-
-_target_: ulcerative_colitis.data.datasets.NeutrophilsTrain
-uris: ["mlflow-artifacts:/27/b343ca345c1442c1a92ae20de697a91c/artifacts/Ulcerative Colitis - train"]
