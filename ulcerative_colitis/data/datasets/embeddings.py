@@ -47,7 +47,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
         print("Inside Embeddings.generate_datasets")
         self.slides = process_slides(self.slides, self.mode)
-        return [
+        return (
             EmbeddingsSlideBags(
                 slide_metadata=slide,
                 tiles=self.filter_tiles_by_slide(slide["id"]),
@@ -59,7 +59,7 @@ class Embeddings(MetaTiledSlides[MILSample]):
                 include_labels=True,
             )
             for _, slide in self.slides.iterrows()
-        ]
+        )
 
 
 class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
@@ -84,7 +84,7 @@ class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
 
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
         self.slides = process_slides(self.slides, self.mode)
-        return [
+        return (
             EmbeddingsSlideBags(
                 slide_metadata=slide,
                 tiles=self.filter_tiles_by_slide(slide["id"]),
@@ -96,7 +96,7 @@ class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
                 include_labels=False,
             )
             for _, slide in self.slides.iterrows()
-        ]
+        )
 
 
 class EmbeddingsSlideBags(Dataset[T], Generic[T]):
