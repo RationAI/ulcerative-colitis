@@ -39,17 +39,17 @@ class Embeddings(MetaTiledSlides[MILSample]):
                 mlflow.artifacts.download_artifacts(uri_embeddings)
             )
 
-        self.mode = mode
+        self.mode = EmbeddingsMode(mode)
         self.minimum_region_size = minimum_region_size
         super().__init__(uris=[uri])
 
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
-        self.slides = process_slides(self.slides)
+        self.slides = process_slides(self.slides, self.mode)
         return [
             EmbeddingsSlideBags(
                 slide_metadata=slide,
                 tiles=self.filter_tiles_by_slide(slide["id"]),
-                embeddings_file=(self.folder_embeddings / slide["name"]).with_suffix(
+                file_embeddings=(self.folder_embeddings / slide["name"]).with_suffix(
                     ".h5"
                 ),
                 mode=self.mode,
@@ -76,17 +76,17 @@ class EmbeddingsPredict(MetaTiledSlides[MILPredictSample]):
                 mlflow.artifacts.download_artifacts(uri_embeddings)
             )
 
-        self.mode = mode
+        self.mode = EmbeddingsMode(mode)
         self.minimum_region_size = minimum_region_size
         super().__init__(uris=[uri])
 
     def generate_datasets(self) -> Iterable[Dataset[MILSample]]:
-        self.slides = process_slides(self.slides)
+        self.slides = process_slides(self.slides, self.mode)
         return [
             EmbeddingsSlideBags(
                 slide_metadata=slide,
                 tiles=self.filter_tiles_by_slide(slide["id"]),
-                embeddings_file=(self.folder_embeddings / slide["name"]).with_suffix(
+                file_embeddings=(self.folder_embeddings / slide["name"]).with_suffix(
                     ".h5"
                 ),
                 mode=self.mode,
@@ -110,9 +110,9 @@ class EmbeddingsSlideBags(Dataset[T], Generic[T]):
         self.slide_metadata = slide_metadata
         self.tiles = tiles.reset_index(drop=True)
         self.file_embeddings = file_embeddings
-        self.mode = mode
+        self.mode = EmbeddingsMode(mode)
         self.include_labels = include_labels
-        self.bag = self._create_bags(minimum_region_size)
+        self.bags = self._create_bags(minimum_region_size)
 
     def _create_bags(self, minimum_region_size: int) -> pd.DataFrame:
         bags = self.tiles.groupby("region").agg("size")
@@ -126,9 +126,9 @@ class EmbeddingsSlideBags(Dataset[T], Generic[T]):
         region_tiles = self.tiles.query(f"region == {region}")
 
         with h5py.File(self.file_embeddings, "r") as f:
-            region_embeddings = torch.from_numpy(
-                f["embeddings"][region_tiles.index.to_numpy()]
-            )
+            dataset = f["embeddings"]
+            assert isinstance(dataset, h5py.Dataset)
+            region_embeddings = torch.from_numpy(dataset[region_tiles.index.to_numpy()])
 
         metadata = MetadataMIL(
             slide=self.slide_metadata["name"],
