@@ -41,7 +41,6 @@ class DataModule(LightningDataModule):
             case "fit" | "validatie":
                 assert self.kfold_splits is not None and self.k is not None
                 dataset = instantiate(self.datasets["train"])
-                print("Inside DataModule.setup for fit/validation stage")
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
                 slide_indices = range(len(dataset.slides))
                 train_idx, val_idx = list(kf.split(slide_indices))[self.k - 1]

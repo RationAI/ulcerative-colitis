@@ -47,7 +47,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
         self.val_metrics = MetricCollection(deepcopy(metrics), prefix="validation/")
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
-        print("Inside UlcerativeColitisModelAttentionMIL.init")
 
         self.train_agg_metrics = AggregatedMetricCollection(
             deepcopy(metrics), aggregator=MaxAggregator(), prefix="train/agg/"
@@ -88,8 +87,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         self.train_metrics.update(torch.stack(outputs), torch.stack(labels))
         self.train_agg_metrics.update(
-            torch.tensor(outputs),
-            torch.tensor(labels),
+            torch.stack(outputs),
+            torch.stack(labels),
             [metadata["slide"] for metadata in metadatas],
         )
         self.log_dict(
@@ -100,7 +99,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         return loss
 
     def validation_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
-        print("Inside UlcerativeColitisModelAttentionMIL.validation_step")
         bags, labels, metadatas = batch
 
         loss = torch.tensor(0.0, device=self.device)
@@ -115,8 +113,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         self.val_metrics.update(torch.stack(outputs), torch.stack(labels))
         self.val_agg_metrics.update(
-            torch.tensor(outputs),
-            torch.tensor(labels),
+            torch.stack(outputs),
+            torch.stack(labels),
             [metadata["slide"] for metadata in metadatas],
         )
         self.log_dict(
@@ -134,8 +132,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
 
         self.test_metrics.update(torch.stack(outputs), torch.stack(labels))
         self.test_agg_metrics.update(
-            torch.tensor(outputs),
-            torch.tensor(labels),
+            torch.stack(outputs),
+            torch.stack(labels),
             [metadata["slide"] for metadata in metadatas],
         )
         self.log_dict(
