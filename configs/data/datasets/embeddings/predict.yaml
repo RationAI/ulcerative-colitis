@@ -1,5 +1,5 @@
 _target_: ulcerative_colitis.data.datasets.EmbeddingsPredict
 uri: "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/Ulcerative Colitis - test preliminary"
-uri_embeddings: "mlflow-artifacts:/86/121384a1394c4a7e9a30a3b378896138/artifacts/test preliminary"
+uri_embeddings: "mlflow-artifacts:/86/2fabe9bce14449259f2c8282633a33fd/artifacts/embedding_regions/train"
 mode: ???
 

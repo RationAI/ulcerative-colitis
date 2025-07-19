@@ -1,9 +1,8 @@
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, cast
 
-import h5py
 import mlflow
 import mlflow.artifacts
 import numpy as np
@@ -67,10 +66,13 @@ class _Embeddings(Dataset[T], Generic[T]):
         )
         region_tiles = slide_tiles.query(f"region == {region}")
         name = str(slide_metadata["name"])
-        with h5py.File((self.folder_embeddings / name).with_suffix(".h5"), "r") as f:
-            dataset = f["embeddings"]
-            assert isinstance(dataset, h5py.Dataset)
-            embeddings = torch.from_numpy(dataset[region_tiles.index.to_numpy()])
+        embeddings = cast(
+            "torch.Tensor",
+            torch.load(
+                (self.folder_embeddings / f"{name}_region_{region:03d}.pt"),
+                map_location="cpu",
+            ),
+        )
 
         metadata = MetadataMIL(
             slide=name,
