@@ -62,9 +62,9 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
         x = self.encoder(x)
         attention_weights = sigmoid_normalization(self.attention(x))
+        x = torch.sum(attention_weights * x, dim=0)
         x = self.classifier(x)
         x = x.sigmoid()
-        x = torch.sum(attention_weights * x, dim=0)
 
         if return_attention:
             return x.squeeze(), attention_weights.squeeze()
