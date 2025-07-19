@@ -35,7 +35,7 @@ def split_embeddings(path: Path, slide_tiles: pd.DataFrame, split: str) -> None:
 
         torch.save(
             region_embeddings,
-            EMBEDDING_REGIONS_PATH / split / f"{path.stem}_region_{region:02d}.pt",
+            EMBEDDING_REGIONS_PATH / split / f"{path.stem}_region_{region:03d}.pt",
         )
 
 
