@@ -18,12 +18,13 @@ def download_slides_tiles_dfs(uri: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
 
-def split_embeddings(path: Path, slide_tiles: pd.DataFrame) -> None:
+def split_embeddings(path: Path, slide_tiles: pd.DataFrame, split: str) -> None:
     """Split embeddings into individual slide files.
 
     Args:
         path (Path): Path to the .h5 file containing embeddings.
         slide_tiles (pd.DataFrame): DataFrame containing slide tile information.
+        split (str): The split name (e.g., "train", "test preliminary", "test final").
     """
     embeddings = cast("torch.Tensor", torch.load(path, map_location="cpu"))
 
@@ -34,7 +35,7 @@ def split_embeddings(path: Path, slide_tiles: pd.DataFrame) -> None:
 
         torch.save(
             region_embeddings,
-            EMBEDDING_REGIONS_PATH / f"{path.stem}_region_{region:02d}.pt",
+            EMBEDDING_REGIONS_PATH / split / f"{path.stem}_region_{region:02d}.pt",
         )
 
 
@@ -48,7 +49,9 @@ def main() -> None:
             slide_tiles = tiles.query(f"slide_id == {slide_metadata['id']!s}")
             slide_name = Path(slide_metadata["path"]).stem
             split_embeddings(
-                (EMBEDDINGS_PATH / split / slide_name).with_suffix(".pt"), slide_tiles
+                (EMBEDDINGS_PATH / split / slide_name).with_suffix(".pt"),
+                slide_tiles,
+                split,
             )
 
     mlflow.set_experiment(experiment_name="Ulcerative Colitis")
