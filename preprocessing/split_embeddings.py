@@ -41,7 +41,7 @@ def split_embeddings(path: Path, slide_tiles: pd.DataFrame) -> None:
 def main() -> None:
     uri = "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/"
     for split in ("train", "test preliminary", "test final"):
-        slides, tiles = download_slides_tiles_dfs(uri + split)
+        slides, tiles = download_slides_tiles_dfs(f"{uri}Ulcerative Colitis - {split}")
         (EMBEDDING_REGIONS_PATH / split).mkdir(parents=True, exist_ok=True)
 
         for _, slide_metadata in slides.iterrows():
