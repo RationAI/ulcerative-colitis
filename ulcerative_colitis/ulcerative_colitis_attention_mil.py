@@ -109,6 +109,14 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         bags, labels, metadatas = batch
 
         outputs = self(bags)
+        print(f"Outputs shape: {outputs.shape}")
+        print(f"Labels shape: {labels.shape}")
+        print(f"Outputs device: {outputs.device}")
+        print(f"Labels device: {labels.device}")
+        print(f"Outputs max value: {outputs.max()}")
+        print(f"Labels max value: {labels.max()}")
+        print(f"Outputs min value: {outputs.min()}")
+        print(f"Labels min value: {labels.min()}")
         loss = self.criterion(outputs, labels)
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
