@@ -8,6 +8,7 @@ import mlflow.artifacts
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset, Subset
 
 from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
@@ -48,6 +49,7 @@ class _Embeddings(Dataset[T], Generic[T]):
         self.minimum_region_size = minimum_region_size
         self.include_labels = include_labels
         self.bags = self._create_bags(minimum_region_size)
+        self.max_embeddings = int(self.bags.max().item())
 
     def _create_bags(self, minimum_region_size: int) -> pd.DataFrame:
         bags = self.tiles.groupby(["slide_id", "region"]).agg("size")
@@ -73,6 +75,8 @@ class _Embeddings(Dataset[T], Generic[T]):
                 map_location="cpu",
             ),
         )
+        pad_amount = self.max_embeddings - embeddings.shape[0]
+        embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
 
         metadata = MetadataMIL(
             slide=name,

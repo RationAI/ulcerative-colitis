@@ -58,17 +58,26 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             deepcopy(metrics), aggregator=MaxAggregator(), prefix="test/agg/"
         )
 
-    def forward(
-        self, x: Tensor, return_attention: bool = False
-    ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
+    def forward(self, x: Tensor) -> Output:
+        # x has shape (batch_size, num_tiles_padded, embedding_dim)
         x = self.encoder(x)
+        print(f"Input shape: {x.shape}")
         attention_weights = sigmoid_normalization(self.attention(x))
+        print(f"Attention weights shape: {attention_weights.shape}")
+        mask = (x.abs() > 1e-6).any(dim=-1, keepdim=True).float()
+        print(f"Mask shape: {mask.shape}")
+        attention_weights = attention_weights * mask
+        print(f"Masked attention weights shape: {attention_weights.shape}")
+        attention_weights = attention_weights / attention_weights.sum(
+            dim=0, keepdim=True
+        )
+        print(f"Normalized attention weights shape: {attention_weights.shape}")
         x = torch.sum(attention_weights * x, dim=0)
+        print(f"Weighted sum shape: {x.shape}")
         x = self.classifier(x)
+        print(f"Classifier output shape: {x.shape}")
         x = x.sigmoid()
-
-        if return_attention:
-            return x.squeeze(), attention_weights.squeeze()
+        print(f"Sigmoid output shape: {x.shape}")
 
         return x.squeeze()
 
