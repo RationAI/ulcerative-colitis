@@ -61,27 +61,15 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     def forward(self, x: Tensor) -> Output:
         # x has shape (batch_size, num_tiles_padded, embedding_dim)
         x = self.encoder(x)
-        print(f"Input shape: {x.shape}")
         attention_weights = sigmoid_normalization(self.attention(x))
-        print(f"Attention weights shape: {attention_weights.shape}")
         mask = (x.abs() > 1e-6).any(dim=-1, keepdim=True).float()
-        print(f"Mask shape: {mask.shape}")
-        print(f"Mask: {mask}")
         attention_weights = attention_weights * mask
-        print(f"Masked attention weights shape: {attention_weights.shape}")
-        print(f"Masked attention weights sum: {attention_weights.sum(dim=1)}")
         attention_weights = attention_weights / attention_weights.sum(
             dim=1, keepdim=True
         )
-        print(f"Normalized attention weights shape: {attention_weights.shape}")
         x = torch.sum(attention_weights * x, dim=1)
-        print(f"Weighted sum shape: {x.shape}")
-        print(f"Weighted sum: {x}")
         x = self.classifier(x)
-        print(f"Classifier output shape: {x.shape}")
-        print(f"Classifier output: {x}")
         x = x.sigmoid()
-        print(f"Sigmoid output shape: {x.shape}")
 
         return x.squeeze()
 
@@ -89,14 +77,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         bags, labels, metadatas = batch
 
         outputs = self(bags)
-        print(f"Outputs shape: {outputs.shape}")
-        print(f"Labels shape: {labels.shape}")
-        print(f"Outputs device: {outputs.device}")
-        print(f"Labels device: {labels.device}")
-        print(f"Outputs max value: {outputs.max()}")
-        print(f"Labels max value: {labels.max()}")
-        print(f"Outputs min value: {outputs.min()}")
-        print(f"Labels min value: {labels.min()}")
         loss = self.criterion(outputs, labels)
         self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
@@ -113,14 +93,6 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         bags, labels, metadatas = batch
 
         outputs = self(bags)
-        print(f"Outputs shape: {outputs.shape}")
-        print(f"Labels shape: {labels.shape}")
-        print(f"Outputs device: {outputs.device}")
-        print(f"Labels device: {labels.device}")
-        print(f"Outputs max value: {outputs.max()}")
-        print(f"Labels max value: {labels.max()}")
-        print(f"Outputs min value: {outputs.min()}")
-        print(f"Labels min value: {labels.min()}")
         loss = self.criterion(outputs, labels)
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
