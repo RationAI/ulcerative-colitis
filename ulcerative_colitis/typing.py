@@ -16,7 +16,6 @@ class MetadataMIL(TypedDict):
     level: int
     tile_extent_x: int
     tile_extent_y: int
-    tiles: pd.DataFrame
     x: Tensor  # Tensor[int]
     y: Tensor  # Tensor[int]
 

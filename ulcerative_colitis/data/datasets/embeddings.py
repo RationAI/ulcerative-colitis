@@ -86,7 +86,6 @@ class _Embeddings(Dataset[T], Generic[T]):
             level=slide_metadata["level"],
             tile_extent_x=slide_metadata["tile_extent_x"],
             tile_extent_y=slide_metadata["tile_extent_y"],
-            tiles=region_tiles,
             x=torch.from_numpy(region_tiles["x"].to_numpy()),
             y=torch.from_numpy(region_tiles["y"].to_numpy()),
         )
