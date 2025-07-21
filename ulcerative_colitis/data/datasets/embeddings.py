@@ -82,7 +82,7 @@ class _Embeddings(Dataset[T], Generic[T]):
 
         metadata = MetadataMIL(
             slide=name,
-            slide_path=Path(slide_metadata["path"]),
+            slide_path=slide_metadata["path"],
             level=slide_metadata["level"],
             tile_extent_x=slide_metadata["tile_extent_x"],
             tile_extent_y=slide_metadata["tile_extent_y"],

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import TypeAlias, TypedDict
 
 import pandas as pd
@@ -13,7 +12,7 @@ class Metadata(TypedDict):
 
 class MetadataMIL(TypedDict):
     slide: str
-    slide_path: Path
+    slide_path: str
     level: int
     tile_extent_x: int
     tile_extent_y: int
@@ -24,7 +23,7 @@ class MetadataMIL(TypedDict):
 
 class MetadataMILBatch(TypedDict):
     slide: list[str]
-    slide_path: list[Path]
+    slide_path: list[str]
     level: Tensor  # Tensor[int]
     tile_extent_x: Tensor  # Tensor[int]
     tile_extent_y: Tensor  # Tensor[int]
