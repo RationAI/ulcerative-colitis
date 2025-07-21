@@ -49,11 +49,13 @@ class _Embeddings(Dataset[T], Generic[T]):
         self.minimum_region_size = minimum_region_size
         self.include_labels = include_labels
         self.bags = self._create_bags(minimum_region_size)
-        self.max_embeddings = int(self.bags.max().item())
+        self.max_embeddings = int(self.bags["size"].max())
 
     def _create_bags(self, minimum_region_size: int) -> pd.DataFrame:
-        bags = self.tiles.groupby(["slide_id", "region"]).agg("size")
-        return bags[bags >= minimum_region_size].reset_index()
+        bags = self.tiles.groupby(["slide_id", "region"]).size()
+        return (
+            bags[bags >= minimum_region_size].reset_index().rename(columns={0: "size"})
+        )
 
     def __len__(self) -> int:
         return len(self.bags)
