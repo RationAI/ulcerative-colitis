@@ -22,6 +22,17 @@ class MetadataMIL(TypedDict):
     y: Tensor  # Tensor[int]
 
 
+class MetadataMILBatch(TypedDict):
+    slide: list[str]
+    slide_path: list[Path]
+    level: Tensor  # Tensor[int]
+    tile_extent_x: Tensor  # Tensor[int]
+    tile_extent_y: Tensor  # Tensor[int]
+    tiles: pd.DataFrame
+    x: Tensor  # Tensor[int]
+    y: Tensor  # Tensor[int]
+
+
 class MetadataBatch(TypedDict):
     slide: list[str]
     x: Tensor  # Tensor[int]
@@ -51,7 +62,7 @@ TrainInput: TypeAlias = tuple[Tensor, Tensor, TrainMetadataBatch]
 TestInput: TypeAlias = tuple[Tensor, Tensor, MetadataBatch]
 PredictInput: TypeAlias = tuple[Tensor, MetadataBatch]
 
-MILInput: TypeAlias = tuple[list[Tensor], list[Tensor], list[MetadataMIL]]
-MILPredictInput: TypeAlias = tuple[list[Tensor], list[MetadataMIL]]
+MILInput: TypeAlias = tuple[Tensor, Tensor, MetadataMILBatch]
+MILPredictInput: TypeAlias = tuple[Tensor, MetadataMILBatch]
 
 Output: TypeAlias = Tensor

@@ -84,22 +84,12 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
         bags, labels, metadatas = batch
 
-        loss = torch.tensor(0.0, device=self.device)
-        outputs = []
-        for bag, label in zip(bags, labels, strict=True):
-            output = self(bag)
-            loss += self.criterion(output, label)
-            outputs.append(output)
-
-        loss /= len(bags)
+        outputs = self(bags)
+        loss = self.criterion(outputs, labels)
         self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
-        self.train_metrics.update(torch.stack(outputs), torch.stack(labels))
-        self.train_agg_metrics.update(
-            torch.stack(outputs),
-            torch.stack(labels),
-            [metadata["slide"] for metadata in metadatas],
-        )
+        self.train_metrics.update(outputs, labels)
+        self.train_agg_metrics.update(outputs, labels, metadatas["slide"])
         self.log_dict(
             self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -110,22 +100,12 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     def validation_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, metadatas = batch
 
-        loss = torch.tensor(0.0, device=self.device)
-        outputs = []
-        for bag, label in zip(bags, labels, strict=True):
-            output = self(bag)
-            loss += self.criterion(output, label)
-            outputs.append(output)
-
-        loss /= len(bags)
+        outputs = self(bags)
+        loss = self.criterion(outputs, labels)
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
-        self.val_metrics.update(torch.stack(outputs), torch.stack(labels))
-        self.val_agg_metrics.update(
-            torch.stack(outputs),
-            torch.stack(labels),
-            [metadata["slide"] for metadata in metadatas],
-        )
+        self.val_metrics.update(outputs, labels)
+        self.val_agg_metrics.update(outputs, labels, metadatas["slide"])
         self.log_dict(
             self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -134,17 +114,10 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, metadatas = batch
 
-        outputs = []
-        for bag in bags:
-            output = self(bag)
-            outputs.append(output)
+        outputs = self(bags)
 
-        self.test_metrics.update(torch.stack(outputs), torch.stack(labels))
-        self.test_agg_metrics.update(
-            torch.stack(outputs),
-            torch.stack(labels),
-            [metadata["slide"] for metadata in metadatas],
-        )
+        self.test_metrics.update(outputs, labels)
+        self.test_agg_metrics.update(outputs, labels, metadatas["slide"])
         self.log_dict(
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )

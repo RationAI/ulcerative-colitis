@@ -32,7 +32,6 @@ class DataModule(LightningDataModule):
             raise ValueError("kfold_splits cannot be None if k is set.")
 
         self.datasets = datasets
-        self.collate_fn = lambda x: tuple(map(list, zip(*x, strict=True)))
 
         self.setup("")  # fix W0201 [attribute-defined-outside-init]
 
@@ -60,7 +59,6 @@ class DataModule(LightningDataModule):
             batch_size=self.batch_size,
             sampler=AutoWeightedRandomSampler(self.train, self.target_column),
             drop_last=True,
-            collate_fn=self.collate_fn,
             num_workers=self.num_workers,
             persistent_workers=self.num_workers > 0,
         )
@@ -69,7 +67,6 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.val,
             batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
             num_workers=self.num_workers,
             persistent_workers=self.num_workers > 0,
         )
@@ -78,7 +75,6 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.test,
             batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
             num_workers=self.num_workers,
         )
 
@@ -86,6 +82,5 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.predict,
             batch_size=self.batch_size,
-            collate_fn=self.collate_fn,
             num_workers=self.num_workers,
         )
