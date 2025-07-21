@@ -66,16 +66,20 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         print(f"Attention weights shape: {attention_weights.shape}")
         mask = (x.abs() > 1e-6).any(dim=-1, keepdim=True).float()
         print(f"Mask shape: {mask.shape}")
+        print(f"Mask: {mask}")
         attention_weights = attention_weights * mask
         print(f"Masked attention weights shape: {attention_weights.shape}")
+        print(f"Masked attention weights sum: {attention_weights.sum(dim=0)}")
         attention_weights = attention_weights / attention_weights.sum(
             dim=0, keepdim=True
         )
         print(f"Normalized attention weights shape: {attention_weights.shape}")
         x = torch.sum(attention_weights * x, dim=1)
         print(f"Weighted sum shape: {x.shape}")
+        print(f"Weighted sum: {x}")
         x = self.classifier(x)
         print(f"Classifier output shape: {x.shape}")
+        print(f"Classifier output: {x}")
         x = x.sigmoid()
         print(f"Sigmoid output shape: {x.shape}")
 
