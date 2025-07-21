@@ -72,7 +72,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             dim=0, keepdim=True
         )
         print(f"Normalized attention weights shape: {attention_weights.shape}")
-        x = torch.sum(attention_weights * x, dim=0)
+        x = torch.sum(attention_weights * x, dim=1)
         print(f"Weighted sum shape: {x.shape}")
         x = self.classifier(x)
         print(f"Classifier output shape: {x.shape}")
