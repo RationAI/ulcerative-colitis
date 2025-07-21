@@ -79,6 +79,7 @@ class _Embeddings(Dataset[T], Generic[T]):
         )
         pad_amount = self.max_embeddings - embeddings.shape[0]
         embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
+        print("Embedding shape:", embeddings.shape)
 
         metadata = MetadataMIL(
             slide=name,
