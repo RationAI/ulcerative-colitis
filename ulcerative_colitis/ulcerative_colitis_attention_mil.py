@@ -89,7 +89,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
         self.train_metrics.update(outputs, labels)
-        self.train_agg_metrics.update(outputs, labels, metadatas["slide"])
+        self.train_agg_metrics.update(outputs, labels, [m["slide"] for m in metadatas])
         self.log_dict(
             self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -105,7 +105,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
         self.val_metrics.update(outputs, labels)
-        self.val_agg_metrics.update(outputs, labels, metadatas["slide"])
+        self.val_agg_metrics.update(outputs, labels, [m["slide"] for m in metadatas])
         self.log_dict(
             self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -117,7 +117,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         outputs = self(bags)
 
         self.test_metrics.update(outputs, labels)
-        self.test_agg_metrics.update(outputs, labels, metadatas["slide"])
+        self.test_agg_metrics.update(outputs, labels, [m["slide"] for m in metadatas])
         self.log_dict(
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )

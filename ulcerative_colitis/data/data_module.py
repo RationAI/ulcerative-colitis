@@ -1,14 +1,16 @@
 from collections.abc import Iterable
 
+import torch
 from hydra.utils import instantiate
 from lightning import LightningDataModule
 from omegaconf import DictConfig
 from sklearn.model_selection import KFold
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 from ulcerative_colitis.data.datasets.embeddings import EmbeddingsSubset
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
-from ulcerative_colitis.typing import MILInput, MILPredictInput
+from ulcerative_colitis.typing import MetadataMIL, MILInput, MILPredictInput
 
 
 class DataModule(LightningDataModule):
@@ -60,6 +62,7 @@ class DataModule(LightningDataModule):
             sampler=AutoWeightedRandomSampler(self.train, self.target_column),
             drop_last=True,
             num_workers=self.num_workers,
+            collate_fn=collate_fn,
             persistent_workers=self.num_workers > 0,
         )
 
@@ -68,6 +71,7 @@ class DataModule(LightningDataModule):
             self.val,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            collate_fn=collate_fn,
             persistent_workers=self.num_workers > 0,
         )
 
@@ -75,6 +79,7 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.test,
             batch_size=self.batch_size,
+            collate_fn=collate_fn,
             num_workers=self.num_workers,
         )
 
@@ -82,5 +87,19 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.predict,
             batch_size=self.batch_size,
+            collate_fn=collate_fn,
             num_workers=self.num_workers,
         )
+
+
+def collate_fn(batch: list[tuple[Tensor, Tensor, MetadataMIL]]) -> MILInput:
+    bags = []
+    labels = []
+    metadatas = []
+    for bag, label, metadata in batch:
+        bags.append(bag)
+        labels.append(label)
+        metadatas.append(metadata)
+    bags = torch.stack(bags)
+    labels = torch.stack(labels)
+    return bags, labels, metadatas
