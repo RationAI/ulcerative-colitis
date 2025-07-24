@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeVar, cast
 
@@ -11,16 +10,11 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, Subset
 
+from ulcerative_colitis.data.datasets import LabelMode, get_label, process_slides
 from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
 
 
 T = TypeVar("T", bound=MILSample | MILPredictSample)
-
-
-class EmbeddingsMode(Enum):
-    NEUTROPHILS = "neutrophils"
-    NANCY_HIGH = "nancy_high"
-    NANCY_LOW = "nancy_low"
 
 
 class _Embeddings(Dataset[T], Generic[T]):
@@ -28,12 +22,12 @@ class _Embeddings(Dataset[T], Generic[T]):
         self,
         uri: str,
         uri_embeddings: str,
-        mode: EmbeddingsMode | str,
+        mode: LabelMode | str,
         minimum_region_size: int = 100,
         folder_embeddings: str | None = None,
         include_labels: bool = True,
     ) -> None:
-        self.mode = EmbeddingsMode(mode)
+        self.mode = LabelMode(mode)
         artifacts = Path(mlflow.artifacts.download_artifacts(uri))
         self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
         self.slides = pd.read_parquet(artifacts / "slides.parquet")
@@ -104,7 +98,7 @@ class Embeddings(_Embeddings[MILSample]):
         self,
         uri: str,
         uri_embeddings: str,
-        mode: EmbeddingsMode | str,
+        mode: LabelMode | str,
         minimum_region_size: int = 100,
         folder_embeddings: str | None = None,
     ) -> None:
@@ -123,7 +117,7 @@ class EmbeddingsPredict(_Embeddings[MILPredictSample]):
         self,
         uri: str,
         uri_embeddings: str,
-        mode: EmbeddingsMode | str,
+        mode: LabelMode | str,
         minimum_region_size: int = 100,
         folder_embeddings: str | None = None,
     ) -> None:
@@ -146,28 +140,3 @@ class EmbeddingsSubset(Subset[MILSample]):
         self.slides = dataset.slides.iloc[list(slide_indices)].reset_index()
         bag_indices = np.flatnonzero(dataset.bags["slide_id"].isin(self.slides["id"]))
         super().__init__(dataset, bag_indices.tolist())
-
-
-def process_slides(slides: pd.DataFrame, mode: EmbeddingsMode) -> pd.DataFrame:
-    match mode:
-        case EmbeddingsMode.NEUTROPHILS:
-            slides["neutrophils"] = slides["nancy_index"] >= 2
-        case EmbeddingsMode.NANCY_LOW:
-            slides = slides[slides["nancy_index"] < 2]
-        case EmbeddingsMode.NANCY_HIGH:
-            slides = slides[slides["nancy_index"] >= 2]
-            slides["ulceration"] = slides["nancy_index"] == 4
-            slides["nancy_index"] -= 2
-
-    slides["name"] = slides["path"].apply(lambda x: Path(x).stem)
-    return slides
-
-
-def get_label(slide_metadata: pd.Series, mode: EmbeddingsMode) -> torch.Tensor:
-    match mode:
-        case EmbeddingsMode.NEUTROPHILS:
-            return torch.tensor(slide_metadata["neutrophils"]).float()
-        case EmbeddingsMode.NANCY_LOW:
-            return torch.tensor(slide_metadata["nancy_index"]).float()
-        case EmbeddingsMode.NANCY_HIGH:
-            return torch.tensor(slide_metadata["ulceration"]).float()

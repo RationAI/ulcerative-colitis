@@ -5,6 +5,16 @@ import pandas as pd
 from torch import Tensor
 
 
+class Metadata(TypedDict):
+    slide: str
+    x: int
+    y: int
+
+
+Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
+PredictSample: TypeAlias = tuple[Tensor, Metadata]
+
+
 class MetadataMIL(TypedDict):
     slide: str
     slide_path: Path
