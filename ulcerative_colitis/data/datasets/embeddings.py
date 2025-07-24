@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, Subset
 
-from ulcerative_colitis.data.datasets import LabelMode, get_label, process_slides
+from ulcerative_colitis.data.datasets.tiles import LabelMode, get_label, process_slides
 from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
 
 

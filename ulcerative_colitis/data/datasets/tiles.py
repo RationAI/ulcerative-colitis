@@ -7,7 +7,7 @@ from albumentations.pytorch import ToTensorV2
 from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
 from torch.utils.data import Dataset
 
-from ulcerative_colitis.data.datasets import LabelMode, get_label, process_slides
+from ulcerative_colitis.data.datasets.labels import LabelMode, get_label, process_slides
 from ulcerative_colitis.typing import Metadata, PredictSample, Sample
 
 
