@@ -22,16 +22,25 @@ from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
 
 
 class UlcerativeColitisModelAttentionMIL(LightningModule):
-    def __init__(self, lr: float | None = None) -> None:
+    def __init__(self, foundation: str, lr: float | None = None) -> None:
         super().__init__()
+        match foundation:
+            case "prov-gigapath" | "UNI2-h":
+                input_dim = 1536
+            case "UNI":
+                input_dim = 1024
+            case "Virchow" | "Virchow2":
+                input_dim = 2560
+            case _:
+                raise ValueError(f"Unknown foundation model: {foundation}")
+
         self.encoder = nn.Identity()
         self.attention = nn.Sequential(
-            nn.Linear(1536, 512),
+            nn.Linear(input_dim, 512),
             nn.Tanh(),
             nn.Linear(512, 1),
         )
-        # self.classifier = nn.Linear(1536, 1)
-        self.classifier = MLP(1536, 512, 128, 1)
+        self.classifier = MLP(input_dim, 512, 128, 1)
         self.criterion = nn.BCELoss()
         self.lr = lr
 

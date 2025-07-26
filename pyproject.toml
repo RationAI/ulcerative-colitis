@@ -21,6 +21,8 @@ dependencies = [
     "h5py>=3.14.0",
     "ipywidgets>=8.1.7",
     "click>=8.1.8",
+    "shapely>=2.1.1",
+    "histopath>=0.1.0",
 ]
 
 [tool.uv]
