@@ -29,8 +29,8 @@ def process_slides(slides: pd.DataFrame, mode: LabelMode | None = None) -> pd.Da
 def get_label(slide_metadata: pd.Series, mode: LabelMode) -> torch.Tensor:
     match mode:
         case LabelMode.NEUTROPHILS:
-            return torch.tensor(slide_metadata["neutrophils"]).float()
+            return torch.tensor(slide_metadata["neutrophils"].item()).float()
         case LabelMode.NANCY_LOW:
-            return torch.tensor(slide_metadata["nancy_index"]).float()
+            return torch.tensor(slide_metadata["nancy_index"].item()).float()
         case LabelMode.NANCY_HIGH:
-            return torch.tensor(slide_metadata["ulceration"]).float()
+            return torch.tensor(slide_metadata["ulceration"].item()).float()

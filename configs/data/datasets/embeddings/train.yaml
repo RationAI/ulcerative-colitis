@@ -2,5 +2,5 @@ _target_: ulcerative_colitis.data.datasets.Embeddings
 uri: "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/Ulcerative Colitis - train"
 uri_embeddings: "mlflow-artifacts:/86/2fabe9bce14449259f2c8282633a33fd/artifacts/embedding_regions/train"
 mode: ???
-folder_embeddings: "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embedding_regions/train"
+folder_embeddings: "/mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis/embedding_regions/prov-gigapath/train"
 
