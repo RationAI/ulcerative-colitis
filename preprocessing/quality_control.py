@@ -5,15 +5,22 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import aiohttp
 import mlflow
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import (
+    ClientConnectorError,
+    ClientSession,
+    ClientTimeout,
+    ServerDisconnectedError,
+)
 
 from preprocessing.paths import BASE_FOLDER, QC_MASKS_PATH, SLIDES_PATH_FTN
 
 
-REQUEST_LIMIT = 4
+REQUEST_LIMIT = 2
 REQUEST_TIMEOUT = 21 * 60  # 21 minutes
 REPORT_REQUEST_TIMEOUT = 4 * 60  # 4 minutes
+MAX_RETRIES = 3
 
 EXPERIMENT_NAME = "Ulcerative Colitis"
 
@@ -32,29 +39,53 @@ semaphore = asyncio.Semaphore(REQUEST_LIMIT)
 
 
 async def put_request(
-    session: ClientSession, url: str, data: dict[str, Any], retry: int = 2
+    session: ClientSession, url: str, data: dict[str, Any], retry: int = MAX_RETRIES
 ) -> str:
-    timeout = ClientTimeout(total=REQUEST_TIMEOUT)
+    timeout = ClientTimeout(total=REQUEST_TIMEOUT, connect=60)  # Add connect timeout
 
-    try:
-        async with semaphore, session.put(url, json=data, timeout=timeout) as response:
-            result = await response.text()
+    for attempt in range(retry + 1):
+        try:
+            async with (
+                semaphore,
+                session.put(url, json=data, timeout=timeout) as response,
+            ):
+                result = await response.text()
 
-            print(
-                f"Processed {data['wsi_path']}:\n\tStatus: {response.status} \n\tResponse: {result}\n"
-            )
+                print(
+                    f"Processed {data['wsi_path']}:\n\tStatus: {response.status} \n\tResponse: {result}\n"
+                )
 
-            if response.status == 500 and retry > 0:
-                print(f"Retrying {data['wsi_path']} due to server error.")
-                return await put_request(session, url, data, retry - 1)
+                if response.status == 500 and attempt < retry:
+                    print(
+                        f"Retrying {data['wsi_path']} due to server error (attempt {attempt + 1}/{retry + 1})."
+                    )
+                    await asyncio.sleep(2**attempt)  # Exponential backoff
+                    continue
+                else:
+                    return result
+
+        except (ServerDisconnectedError, ClientConnectorError, TimeoutError) as e:
+            slide_name = Path(data["wsi_path"]).name
+            if attempt < retry:
+                wait_time = 2**attempt
+                print(
+                    f"Connection error for {slide_name} (attempt {attempt + 1}/{retry + 1}): {type(e).__name__}. "
+                    f"Retrying in {wait_time} seconds..."
+                )
+                await asyncio.sleep(wait_time)
+                continue
             else:
-                return result
-    except TimeoutError:
-        slide_name = Path(data["wsi_path"]).name
-        print(
-            f"Request to {url} timed out after {REQUEST_TIMEOUT} seconds. Slide: {slide_name}"
-        )
-        return "Timeout"
+                print(
+                    f"Failed to process {slide_name} after {retry + 1} attempts: {type(e).__name__}"
+                )
+                return f"Failed: {type(e).__name__}"
+
+        except Exception as e:
+            slide_name = Path(data["wsi_path"]).name
+            print(f"Unexpected error processing {slide_name}: {e}")
+            return f"Error: {e}"
+
+    return "Max retries exceeded"
 
 
 async def generate_report(
@@ -80,14 +111,22 @@ async def generate_report(
             print(
                 f"Report generation:\n\tStatus: {response.status} \n\tResponse: {result}\n"
             )
-    except TimeoutError:
-        print(
-            f"Report generation request to {url} timed out after {REPORT_REQUEST_TIMEOUT} seconds."
-        )
+    except (ServerDisconnectedError, ClientConnectorError, TimeoutError) as e:
+        print(f"Report generation failed: {type(e).__name__}")
+    except Exception as e:
+        print(f"Unexpected error during report generation: {e}")
 
 
 async def main(output_path: str, report_path: str) -> None:
-    async with ClientSession() as session:
+    # Use connector with better connection handling
+    connector = aiohttp.TCPConnector(
+        limit=REQUEST_LIMIT,
+        limit_per_host=REQUEST_LIMIT,
+        keepalive_timeout=30,
+        enable_cleanup_closed=True,
+    )
+
+    async with ClientSession(connector=connector) as session:
         tasks = [
             put_request(
                 session=session,
