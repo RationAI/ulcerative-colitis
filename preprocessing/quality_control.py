@@ -31,7 +31,9 @@ SLIDES: list[Path] = list(Path(SLIDES_PATH_FTN).resolve().rglob("*.tiff"))
 semaphore = asyncio.Semaphore(REQUEST_LIMIT)
 
 
-async def put_request(session: ClientSession, url: str, data: dict[str, Any]) -> str:
+async def put_request(
+    session: ClientSession, url: str, data: dict[str, Any], retry: int = 2
+) -> str:
     timeout = ClientTimeout(total=REQUEST_TIMEOUT)
 
     try:
@@ -42,7 +44,11 @@ async def put_request(session: ClientSession, url: str, data: dict[str, Any]) ->
                 f"Processed {data['wsi_path']}:\n\tStatus: {response.status} \n\tResponse: {result}\n"
             )
 
-            return result
+            if response.status == 500 and retry > 0:
+                print(f"Retrying {data['wsi_path']} due to server error.")
+                return await put_request(session, url, data, retry - 1)
+            else:
+                return result
     except TimeoutError:
         slide_name = Path(data["wsi_path"]).name
         print(
