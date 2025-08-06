@@ -14,7 +14,7 @@ from rationai.tiling.typing import TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
-from preprocessing.paths import DATAFRAME_PATH, TISSUE_MASKS_PATH
+from preprocessing.paths import DATAFRAME_PATH_IKEM, TISSUE_MASKS_PATH
 
 
 @dataclass
@@ -37,7 +37,7 @@ source = OpenSlideTileSource(mpp=0.5, tile_extent=224, stride=112)
 tissue_mask = TissueMask(
     tile_extent=source.tile_extent, absolute_roi_extent=112, relative_roi_offset=0
 )
-df = pd.read_csv(DATAFRAME_PATH, index_col=0)
+df = pd.read_csv(DATAFRAME_PATH_IKEM, index_col=0)
 
 
 def stem_to_case_id(stem: str) -> str:

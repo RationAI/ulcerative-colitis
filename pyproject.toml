@@ -23,6 +23,7 @@ dependencies = [
     "click>=8.1.8",
     "shapely>=2.1.1",
     "histopath>=0.1.0",
+    "openpyxl>=3.1.5",
 ]
 
 [tool.uv]

@@ -12,7 +12,7 @@ from rationai.masks import (
     write_big_tiff,
 )
 
-from preprocessing.paths import SLIDES_PATH, TISSUE_MASKS_PATH
+from preprocessing.paths import SLIDES_PATH_IKEM, TISSUE_MASKS_PATH
 
 
 LEVEL = 3
@@ -31,7 +31,7 @@ def process_slide(slide_path: Path) -> None:
 
 
 def main() -> None:
-    slides = SLIDES_PATH.rglob("*.tiff")
+    slides = SLIDES_PATH_IKEM.rglob("*.tiff")
     process_items(list(slides), process_item=process_slide)
 
     mlflow.set_experiment(experiment_name="IKEM")

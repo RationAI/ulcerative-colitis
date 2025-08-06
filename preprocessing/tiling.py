@@ -14,7 +14,7 @@ from rationai.tiling.typing import Sized2, TiledSlideMetadata, TileMetadata
 from rationai.tiling.writers import save_mlflow_dataset
 from sklearn.model_selection import train_test_split
 
-from preprocessing.paths import DATAFRAME_PATH, SLIDES_PATH, TISSUE_MASKS_PATH
+from preprocessing.paths import DATAFRAME_PATH_IKEM, SLIDES_PATH_IKEM, TISSUE_MASKS_PATH
 from preprocessing.tissue_regions import add_regions
 from preprocessing.typing import (
     UlcerativeColitisSlideMetadata,
@@ -58,7 +58,7 @@ source = OpenSlideTileSource(mpp=0.5, tile_extent=TILE_SIZE, stride=STRIDE)
 tissue_mask = TissueMask(
     tile_extent=source.tile_extent, absolute_roi_extent=112, relative_roi_offset=0
 )
-df = pd.read_csv(DATAFRAME_PATH, index_col=0).query("Lokalita != 'ileum'")
+df = pd.read_csv(DATAFRAME_PATH_IKEM, index_col=0).query("Lokalita != 'ileum'")
 
 
 def stem_to_case_id(stem: str) -> str:
@@ -69,7 +69,7 @@ def stem_to_case_id(stem: str) -> str:
 def get_slides(df: pd.DataFrame) -> list[Path]:
     return [
         slide_path
-        for slide_path in SLIDES_PATH.glob("*.tiff")
+        for slide_path in SLIDES_PATH_IKEM.glob("*.tiff")
         if stem_to_case_id(slide_path.stem) in df.index
     ]
 
