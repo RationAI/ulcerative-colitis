@@ -86,7 +86,7 @@ class DataModule(LightningDataModule):
         return DataLoader(
             self.predict,
             batch_size=self.batch_size,
-            collate_fn=collate_fn,
+            collate_fn=collate_fn_predict,
             num_workers=self.num_workers,
         )
 
@@ -102,3 +102,13 @@ def collate_fn(batch: list[tuple[Tensor, Tensor, MetadataMIL]]) -> MILInput:
     bags = torch.stack(bags)
     labels = torch.stack(labels)
     return bags, labels, metadatas
+
+
+def collate_fn_predict(batch: list[tuple[Tensor, MetadataMIL]]) -> MILPredictInput:
+    bags = []
+    metadatas = []
+    for bag, metadata in batch:
+        bags.append(bag)
+        metadatas.append(metadata)
+    bags = torch.stack(bags)
+    return bags, metadatas
