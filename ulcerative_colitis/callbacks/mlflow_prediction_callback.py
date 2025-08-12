@@ -15,13 +15,10 @@ class MLFlowPredictionCallback(Callback):
         dataloader_idx: int = 0,
     ) -> None:
         assert isinstance(trainer.logger, MLFlowLogger)
-
-        metadatas = batch[1]
-        for output, metadata in zip(outputs.cpu(), metadatas, strict=True):
-            trainer.logger.log_table(
-                {
-                    "slide": metadata["slide"],
-                    "prediction": output.item(),
-                },
-                artifact_file="predictions.json",
-            )
+        trainer.logger.log_table(
+            {
+                "slide": [m["slide_name"] for m in batch[1]],
+                "prediction": outputs.tolist(),
+            },
+            artifact_file="predictions.json",
+        )

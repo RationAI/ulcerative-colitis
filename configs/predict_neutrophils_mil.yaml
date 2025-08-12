@@ -18,14 +18,11 @@ data:
   num_workers: 4
   predict:
     mode: neutrophils
-    slide_names:
-      - 5005_23_HE
-      - 1468_23_HE
 
 model: {}
 
 metadata:
-  experiment_name: IKEM
+  experiment_name: 'Ulcerative Colitis'
   run_name: '🎯 Predicting: Ulcerative Colitis - Neutrophils MIL'
   description: 'Ulcerative Colitis'
   user: AdamK

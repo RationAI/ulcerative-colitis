@@ -95,7 +95,9 @@ class MaskBuilderCallback(Callback):
         dataloader_idx: int = 0,
     ) -> None:
         for bag, metadata in zip(*batch, strict=True):
-            mask_builders = self.get_mask_builders(metadata["slide"], trainer)
+            mask_builders = self.get_mask_builders(metadata["slide_name"], trainer)
+
+            bag = bag[: len(metadata["x"])]
 
             bag = pl_module.encoder(bag)
             attention_weights = torch.softmax(pl_module.attention(bag), dim=0).cpu()
