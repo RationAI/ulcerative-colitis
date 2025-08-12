@@ -1910,7 +1910,7 @@ dependencies = [
 
 [[package]]
 name = "ray"
-version = "2.45.0"
+version = "2.48.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1923,11 +1923,11 @@ dependencies = [
     { name = "requests" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/ff/3934b5d66c955e9d8b3fce0ff4891e91dde6b34f5b67c276082d0df006ae/ray-2.45.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:d3c33113f4196b923d7895fdcbf6b680a1642dd121444e974401c350da7ac809", size = 68378579 },
-    { url = "https://files.pythonhosted.org/packages/13/41/7ae7d6b7643550eb8983e271c129391426dcb2ae86eaa73401acf96a7b7b/ray-2.45.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:eeeff1da4803a5d2321a2bcb5fc16e20d8f104543e8ddf4f30d1acf6fa22fac2", size = 65685864 },
-    { url = "https://files.pythonhosted.org/packages/fe/47/ba4085d709cbdc91b78220ddc34e6c47c914783157536657e86ecc156310/ray-2.45.0-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:11582102a1757591a75376c4947db9819d5fab765e3ed307c884ed6761db8646", size = 67518145 },
-    { url = "https://files.pythonhosted.org/packages/03/e7/fd7445238e967508c9f9f6aa70dccbd5d6f9303f5d1a91a034625d6ee75b/ray-2.45.0-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:482d45f2f867fbec814595ce99fe558e9ff124327a61a486a4975e6a7c224a7e", size = 68457896 },
-    { url = "https://files.pythonhosted.org/packages/75/fb/857f9bb7afdc745909ea468cf6dd8169e0f371072205f332c140c8367ea6/ray-2.45.0-cp312-cp312-win_amd64.whl", hash = "sha256:31284755041291b51ff6b667f891e70da779d3496732831c570631e87396f680", size = 25908968 },
+    { url = "https://files.pythonhosted.org/packages/41/53/0d105e1baa6c8c9582f90154ba3f0ca08d58129384ea2707b2e59449b03b/ray-2.48.0-cp312-cp312-macosx_12_0_arm64.whl", hash = "sha256:8de799f3b0896f48d306d5e4a04fc6037a08c495d45f9c79935344e5693e3cf8", size = 67302857 },
+    { url = "https://files.pythonhosted.org/packages/df/c5/7de1e9d92a45b1805fe828dcbd18b4c5a1f35ab3cad9134efeb20a3ab3e5/ray-2.48.0-cp312-cp312-macosx_12_0_x86_64.whl", hash = "sha256:5a6f57126eac9dd3286289e07e91e87b054792f9698b6f7ccab88b624816b542", size = 69823198 },
+    { url = "https://files.pythonhosted.org/packages/b4/a6/e7c969bd371c65b7c233d86f23610489e15164ee7eadb3eb78f9d55eda4d/ray-2.48.0-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:f1cf33d260316f92f77558185f1c36fc35506d76ee7fdfed9f5b70f9c4bdba7f", size = 69151702 },
+    { url = "https://files.pythonhosted.org/packages/61/02/1894be2ab930b599de0f1f77f785b86c78bda4873c6c2dd65d1de5b40837/ray-2.48.0-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:a42ed3b640f4b599a3fc8067c83ee60497c0f03d070d7a7df02a388fa17a546b", size = 70124265 },
+    { url = "https://files.pythonhosted.org/packages/79/8c/d3653d17337fc787af108411d9c9a38333c9fbdf247283ee56dd096d3360/ray-2.48.0-cp312-cp312-win_amd64.whl", hash = "sha256:e15fdffa6b60d5729f6025691396b8a01dc3461ba19dc92bba354ec1813ed6b1", size = 26745570 },
 ]
 
 [package.optional-dependencies]
@@ -2458,6 +2458,7 @@ dependencies = [
     { name = "rationai-masks" },
     { name = "rationai-mlkit" },
     { name = "rationai-tiling" },
+    { name = "ray" },
     { name = "shapely" },
     { name = "timm" },
     { name = "torch" },
@@ -2487,6 +2488,7 @@ requires-dist = [
     { name = "rationai-masks", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" },
     { name = "rationai-mlkit", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git?branch=fix%2Fmetrics" },
     { name = "rationai-tiling", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" },
+    { name = "ray", specifier = "==2.48.0" },
     { name = "shapely", specifier = ">=2.1.1" },
     { name = "timm" },
     { name = "torch", specifier = ">=2.4.0" },

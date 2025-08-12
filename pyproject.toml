@@ -24,6 +24,7 @@ dependencies = [
     "shapely>=2.1.1",
     "histopath>=0.1.0",
     "openpyxl>=3.1.5",
+    "ray==2.48.0",
 ]
 
 [tool.uv]

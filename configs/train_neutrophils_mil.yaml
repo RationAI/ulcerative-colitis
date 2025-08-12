@@ -33,12 +33,11 @@ data:
     minimum_region_size: 100
 
 model:
-  foundation: prov-gigapath
   lr: 0.000001
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
-  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL ${model.foundation} (fold ${data.k}/${data.kfold_splits})'
+  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Neutrophils MIL (fold ${data.k}/${data.kfold_splits})'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

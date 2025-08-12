@@ -43,8 +43,7 @@ class DataModule(LightningDataModule):
                 assert self.kfold_splits is not None and self.k is not None
                 dataset = instantiate(self.datasets["train"])
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
-                slide_indices = range(len(dataset.slides))
-                train_idx, val_idx = list(kf.split(slide_indices))[self.k - 1]
+                train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k - 1]
                 self.train = EmbeddingsSubset(dataset, train_idx)
                 self.val = EmbeddingsSubset(dataset, val_idx)
             case "test":
