@@ -23,7 +23,7 @@ trainer:
       patience: 10 
 
 data:
-  batch_size: 32
+  batch_size: 8
   target_column: nancy_index
   num_workers: 4
   kfold_splits: 5
@@ -35,7 +35,7 @@ model:
   lr: 0.00001
 
 metadata:
-  experiment_name: IKEM
+  experiment_name: 'Ulcerative Colitis'
   run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Nancy Low MIL (fold ${data.k}/${data.kfold_splits})'
   description: 'Ulcerative Colitis'
   user: AdamK

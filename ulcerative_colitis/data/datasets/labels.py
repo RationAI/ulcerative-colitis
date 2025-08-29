@@ -16,9 +16,9 @@ def process_slides(slides: pd.DataFrame, mode: LabelMode | None = None) -> pd.Da
         case LabelMode.NEUTROPHILS:
             slides["neutrophils"] = slides["nancy_index"] >= 2
         case LabelMode.NANCY_LOW:
-            slides = slides[slides["nancy_index"] < 2]
+            slides = slides[slides["nancy_index"] < 2].copy()
         case LabelMode.NANCY_HIGH:
-            slides = slides[slides["nancy_index"] >= 2]
+            slides = slides[slides["nancy_index"] >= 2].copy()
             slides["ulceration"] = slides["nancy_index"] == 4
             slides["nancy_index"] -= 2
 
