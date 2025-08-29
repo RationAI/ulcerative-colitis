@@ -58,7 +58,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         x = x.sigmoid()
         x = torch.sum(attention_weights * x, dim=1)
 
-        return x
+        return x.squeeze(-1)
 
     def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
