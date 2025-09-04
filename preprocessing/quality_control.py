@@ -1,91 +1,76 @@
-# Credits: https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/prostate-cancer/-/blob/feature/preprocessing-masks/preprocessing/masks/quality_control.py?ref_type=heads
-
 import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any
 
-import aiohttp
+import click
 import mlflow
-from aiohttp import (
-    ClientConnectorError,
-    ClientSession,
-    ClientTimeout,
-    ServerDisconnectedError,
+from aiohttp import ClientSession, ClientTimeout
+
+from preprocessing.paths import (
+    BASE_FOLDER,
+    QC_MASKS_PATH,
+    SLIDES_PATH_FTN,
+    SLIDES_PATH_IKEM,
 )
 
-from preprocessing.paths import BASE_FOLDER, QC_MASKS_PATH, SLIDES_PATH_FTN
 
-
-REQUEST_LIMIT = 2
-REQUEST_TIMEOUT = 21 * 60  # 21 minutes
-REPORT_REQUEST_TIMEOUT = 4 * 60  # 4 minutes
-MAX_RETRIES = 3
-
-EXPERIMENT_NAME = "Ulcerative Colitis"
+REQUEST_LIMIT = 4
+REQUEST_TIMEOUT = 30 * 60  # 30 minutes
+MAX_REQUEST_RETRY_ATTEMPTS = 5
+BACKOFF_BASE = 2  # 2 seconds
 
 URL = "http://rayservice-qc-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/"
 
-OUTPUT_DIR = QC_MASKS_PATH / "FTN"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-# report.html is logged to MLflow
-
-# Resolve to remove the symlinks
-SLIDES: list[Path] = list(Path(SLIDES_PATH_FTN).resolve().rglob("*.tiff"))
+EXPERIMENT_NAME = "Ulcerative Colitis"
 
 
 semaphore = asyncio.Semaphore(REQUEST_LIMIT)
 
 
 async def put_request(
-    session: ClientSession, url: str, data: dict[str, Any], retry: int = MAX_RETRIES
-) -> str:
-    timeout = ClientTimeout(total=REQUEST_TIMEOUT, connect=60)  # Add connect timeout
+    session: ClientSession, url: str, data: dict[str, Any]
+) -> tuple[int, str]:
+    timeout = ClientTimeout(total=REQUEST_TIMEOUT)
 
-    for attempt in range(retry + 1):
-        try:
-            async with (
-                semaphore,
-                session.put(url, json=data, timeout=timeout) as response,
-            ):
-                result = await response.text()
+    try:
+        async with semaphore, session.put(url, json=data, timeout=timeout) as response:
+            text = await response.text()
 
-                print(
-                    f"Processed {data['wsi_path']}:\n\tStatus: {response.status} \n\tResponse: {result}\n"
-                )
+            return response.status, text
+    except TimeoutError:
+        print(
+            f"Failed to process {data['wsi_path']}:\n\tTimeout after {REQUEST_TIMEOUT} seconds\n"
+        )
 
-                if response.status == 500 and attempt < retry:
-                    print(
-                        f"Retrying {data['wsi_path']} due to server error (attempt {attempt + 1}/{retry + 1})."
-                    )
-                    await asyncio.sleep(2**attempt)  # Exponential backoff
-                    continue
-                else:
-                    return result
+        return -1, "Timeout"
 
-        except (ServerDisconnectedError, ClientConnectorError, TimeoutError) as e:
-            slide_name = Path(data["wsi_path"]).name
-            if attempt < retry:
-                wait_time = 2**attempt
-                print(
-                    f"Connection error for {slide_name} (attempt {attempt + 1}/{retry + 1}): {type(e).__name__}. "
-                    f"Retrying in {wait_time} seconds..."
-                )
-                await asyncio.sleep(wait_time)
-                continue
-            else:
-                print(
-                    f"Failed to process {slide_name} after {retry + 1} attempts: {type(e).__name__}"
-                )
-                return f"Failed: {type(e).__name__}"
 
-        except Exception as e:
-            slide_name = Path(data["wsi_path"]).name
-            print(f"Unexpected error processing {slide_name}: {e}")
-            return f"Error: {e}"
+async def repeatable_put_request(
+    session: ClientSession, url: str, data: dict[str, Any], num_repeats: int
+) -> None:
+    for attempt in range(1, num_repeats + 1):
+        status, text = await put_request(session, url, data)
 
-    return "Max retries exceeded"
+        if status == -1 and text == "Timeout":
+            return
+
+        if status == 500 and text == "Internal Server Error":
+            att_count = f"attempt {attempt}/{MAX_REQUEST_RETRY_ATTEMPTS}"
+            print(
+                f"Unexpected status 500 received for {data['wsi_path']} ({att_count}):\n\tResponse: {text}\n"
+            )
+            await asyncio.sleep(BACKOFF_BASE**attempt)
+
+            continue
+
+        print(
+            f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
+        )
+
+        return
+
+    print(f"Failed to process {data['wsi_path']}:\n\tAll retry attempts failed\n")
 
 
 async def generate_report(
@@ -94,86 +79,90 @@ async def generate_report(
     url = URL + "report"
 
     data = {
-        "backgrounds": [str(slide) for slide in slides],
+        "backgrounds": [str(slide.resolve()) for slide in slides],
         "mask_dir": output_dir,
         "save_location": save_location,
+        "compute_metrics": True,
     }
 
-    try:
-        async with (
-            semaphore,
-            session.put(
-                url, json=data, timeout=ClientTimeout(total=REPORT_REQUEST_TIMEOUT)
-            ) as response,
-        ):
-            result = await response.text()
+    async with semaphore, session.put(url, json=data) as response:
+        result = await response.text()
 
-            print(
-                f"Report generation:\n\tStatus: {response.status} \n\tResponse: {result}\n"
-            )
-    except (ServerDisconnectedError, ClientConnectorError, TimeoutError) as e:
-        print(f"Report generation failed: {type(e).__name__}")
-    except Exception as e:
-        print(f"Unexpected error during report generation: {e}")
+        print(
+            f"Report generation:\n\tStatus: {response.status} \n\tResponse: {result}\n"
+        )
 
 
-async def main(output_path: str, report_path: str) -> None:
-    # Use connector with better connection handling
-    connector = aiohttp.TCPConnector(
-        limit=REQUEST_LIMIT,
-        limit_per_host=REQUEST_LIMIT,
-        keepalive_timeout=30,
-        enable_cleanup_closed=True,
-    )
-
-    async with ClientSession(connector=connector) as session:
+async def quality_control(
+    output_path: str, report_path: str, slides: list[Path]
+) -> None:
+    async with ClientSession() as session:
         tasks = [
-            put_request(
+            repeatable_put_request(
                 session=session,
                 url=URL,
                 data={
-                    "wsi_path": str(slide),
+                    "wsi_path": str(slide.resolve()),
                     "output_path": output_path,
                     "mask_level": 3,
                     "sample_level": 1,
                     "check_residual": True,
                     "check_folding": True,
                     "check_focus": True,
+                    "wb_correction": True,
                 },
+                num_repeats=MAX_REQUEST_RETRY_ATTEMPTS,
             )
-            for slide in SLIDES
+            for slide in slides
         ]
 
+        # Processing of the slides
         await asyncio.gather(*tasks)
 
+        # Report generation
         await generate_report(
             session=session,
-            slides=SLIDES,
+            slides=slides,
             output_dir=output_path,
             save_location=report_path,
         )
 
-        # Save the report to MLflow
-        mlflow.log_artifact(report_path)
 
-
-if __name__ == "__main__":
+@click.command()
+@click.option(
+    "--cohort",
+    type=click.Choice(["FTN", "IKEM"]),
+    required=True,
+    help="Cohort to process",
+)
+def main(cohort: str) -> None:
     mlflow.set_experiment(experiment_name=EXPERIMENT_NAME)
 
     with (
-        mlflow.start_run(run_name="🎭 Quality Control Masks: FTN"),
+        mlflow.start_run(run_name=f"🎭 Quality Control Masks: {cohort}"),
         tempfile.TemporaryDirectory(
             prefix="qc_masks_report_", dir=Path(BASE_FOLDER).as_posix()
         ) as tmp_dir,  # Create a temporary directory for the report
     ):
         report_path = Path(tmp_dir) / "report.html"
+        output_dir = QC_MASKS_PATH / cohort
 
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         report_path.parent.mkdir(parents=True, exist_ok=True)
 
+        slides_folder = SLIDES_PATH_FTN if cohort == "FTN" else SLIDES_PATH_IKEM
+
         asyncio.run(
-            main(
-                output_path=OUTPUT_DIR.absolute().as_posix(),
+            quality_control(
+                output_path=output_dir.absolute().as_posix(),
                 report_path=report_path.absolute().as_posix(),
+                slides=list(slides_folder.glob("*.tiff")),
             )
         )
+
+        mlflow.log_artifact(local_path=str(report_path), artifact_path="report")
+        mlflow.log_artifacts(local_dir=str(output_dir), artifact_path="qc_masks")
+
+
+if __name__ == "__main__":
+    main()
