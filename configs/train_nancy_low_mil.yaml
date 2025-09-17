@@ -16,10 +16,10 @@ trainer:
     - _target_: lightning.pytorch.callbacks.ModelCheckpoint
       save_top_k: 1
       monitor: validation/kappa
-      mode: min
+      mode: max
     - _target_: lightning.pytorch.callbacks.EarlyStopping
       monitor: validation/kappa
-      mode: min
+      mode: max
       patience: 20
 
 data:

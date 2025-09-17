@@ -5,7 +5,7 @@ from typing import Any
 
 import click
 import mlflow
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientConnectionError, ClientSession, ClientTimeout
 
 from preprocessing.paths import (
     BASE_FOLDER,
@@ -45,6 +45,11 @@ async def put_request(
 
         return -1, "Timeout"
 
+    except ClientConnectionError:
+        print(f"Failed to process {data['wsi_path']}:\n\tConnection error\n")
+
+        return -1, "Connection error"
+
 
 async def repeatable_put_request(
     session: ClientSession, url: str, data: dict[str, Any], num_repeats: int
@@ -54,6 +59,13 @@ async def repeatable_put_request(
 
         if status == -1 and text == "Timeout":
             return
+
+        if status == -1 and text == "Connection error":
+            att_count = f"attempt {attempt}/{MAX_REQUEST_RETRY_ATTEMPTS}"
+            print(f"Connection error received for {data['wsi_path']} ({att_count})\n")
+            await asyncio.sleep(BACKOFF_BASE**attempt)
+
+            continue
 
         if status == 500 and text == "Internal Server Error":
             att_count = f"attempt {attempt}/{MAX_REQUEST_RETRY_ATTEMPTS}"
