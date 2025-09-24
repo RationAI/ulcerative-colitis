@@ -147,6 +147,8 @@ async def quality_control(
             config=config,
         )
 
+        logger.experiment.log_artifact(logger.run_id, report_path)
+
 
 @hydra.main(config_path="../configs", config_name="quality_control", version_base=None)
 @autolog
@@ -174,9 +176,6 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                 logger=logger,
             )
         )
-
-        logger.experiment.log_artifact(logger.run_id, report_path)
-        logger.experiment.log_artifacts(logger.run_id, config.output_path, "qc_masks")
 
 
 if __name__ == "__main__":
