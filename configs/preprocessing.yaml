@@ -1,0 +1,23 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - _self_
+
+
+paths:
+  base_folder: /mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis
+
+  slides_ikem: ${paths.base_folder}/data_tiff/ikem/20x
+  slides_ftn: ${paths.base_folder}/data_tiff/ftn
+  slides_knl_patos: ${paths.base_folder}/data_tiff/knl_patos
+
+  table_ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
+  table_ftn: ${paths.base_folder}/data_czi/ftn/IBD_AI_FTN.xlsx
+  table_knl_patos: ${paths.base_folder}/data_czi/knl_patos/IBD_AI_Liberec.xlsx
+
+  qc_masks: ${paths.base_folder}/qc_masks
+
+  tissue_masks: ${paths.base_folder}/tissue_masks
+
+  embeddings: ${paths.base_folder}/embeddings
+

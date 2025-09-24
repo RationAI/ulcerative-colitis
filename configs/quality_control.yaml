@@ -1,0 +1,28 @@
+defaults:
+  - preprocessing
+  - _self_
+
+cohort: ???
+output_path: ${paths.qc_masks}/${cohort}
+slides_folder: ${paths.base_folder}/data_tiff/${cohort}
+
+request_limit: 4
+
+connection_parameters:
+  url: http://rayservice-qc-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/
+  request_timeout: 1800 # 30 minutes
+  num_repeats: 5
+
+qc_parameters:
+  mask_level: 3
+  sample_level: 1
+  check_residual: True
+  check_folding: True
+  check_focus: True
+  wb_correction: True
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '🎭 Quality Control Masks: ${cohort}'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
