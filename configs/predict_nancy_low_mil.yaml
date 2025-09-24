@@ -1,0 +1,30 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.predict: embeddings/predict
+  - _self_
+
+seed: ${random_seed:}
+mode: predict
+checkpoint: ???
+
+trainer:
+  callbacks:
+    - _target_: ulcerative_colitis.callbacks.MaskBuilderCallback
+    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
+
+data:
+  batch_size: 1
+  num_workers: 4
+  predict:
+    mode: nancy_low
+
+model: {}
+
+metadata:
+  experiment_name: 'Ulcerative Colitis'
+  run_name: '🎯 Predicting: Ulcerative Colitis - Nancy Low MIL'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+

@@ -1,0 +1,27 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.test: embeddings/test
+  - _self_
+
+seed: ${random_seed:}
+mode: test
+checkpoint: ???
+
+trainer: {}
+
+data:
+  batch_size: 32
+  num_workers: 4
+  test:
+    mode: nancy_low
+
+model: {}
+
+metadata:
+  experiment_name: 'Ulcerative Colitis' 
+  run_name: '📏 Testing: Ulcerative Colitis - Nancy Low MIL'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+
