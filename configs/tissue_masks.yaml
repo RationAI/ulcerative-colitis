@@ -1,0 +1,14 @@
+defaults:
+  - preprocessing
+  - _self_
+
+cohort: ???
+output_path: ${paths.qc_masks}/${cohort}
+slides_folder: ${paths.base_folder}/data_tiff/${cohort}
+level: 3
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '📂 Tissue Masks: Ulcerative Colitis ${cohort}'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
