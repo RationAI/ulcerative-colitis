@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 cohort: ???
-output_path: ${paths.qc_masks}/${cohort}
+output_path: ${paths.tissue_masks}/${cohort}
 slides_folder: ${paths.base_folder}/data_tiff/${cohort}
 level: 3
 
