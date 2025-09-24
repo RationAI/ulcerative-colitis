@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import hydra
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientConnectionError, ClientSession, ClientTimeout
 from lightning.pytorch.loggers import Logger
 from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
@@ -34,6 +34,8 @@ async def put_request(
         )
 
         return -1, "Timeout"
+    except ClientConnectionError:
+        return -1, "Connection error"
 
 
 def artifacts(wsi_stem: str) -> list[str]:
@@ -59,6 +61,15 @@ async def repeatable_put_request(
 
         if status == -1 and text == "Timeout":
             return
+
+        if status == -1 and text == "Connection error":
+            att_count = f"attempt {attempt}/{config.num_repeats}"
+            print(
+                f"Connection error received for {data['wsi_path']} ({att_count}). Retrying...\n"
+            )
+            await asyncio.sleep(2**attempt)
+
+            continue
 
         if status == 500 and text == "Internal Server Error":
             att_count = f"attempt {attempt}/{config.num_repeats}"
