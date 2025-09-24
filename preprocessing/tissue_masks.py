@@ -19,6 +19,9 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ray._private.worker import RemoteFunction0
 
 
+ray.init(runtime_env={"excludes": [".git", ".venv"]})
+
+
 def process_slide(slide_path: Path, level: int, output_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
         mpp_x, mpp_y = slide_resolution(slide, level=level)
