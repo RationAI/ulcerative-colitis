@@ -10,7 +10,7 @@ request_limit: 4
 
 connection_parameters:
   url: http://rayservice-qc-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/
-  request_timeout: 1800 # 30 minutes
+  request_timeout: 3600 # 60 minutes
   num_repeats: 5
 
 qc_parameters:

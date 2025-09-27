@@ -41,7 +41,7 @@ async def put_request(
 def artifacts(wsi_stem: str) -> list[str]:
     return [
         f"{wsi_stem}.csv",
-        f"FoldingFunction_folding_test_{wsi_stem}.tiff",
+        # f"FoldingFunction_folding_test_{wsi_stem}.tiff",
         f"Piqe_focus_score_piqe_median_{wsi_stem}.tiff",
         f"Piqe_piqe_median_activity_mask_{wsi_stem}.tiff",
         f"ResidualArtifactsAndCoverage_coverage_mask_{wsi_stem}.tiff",
