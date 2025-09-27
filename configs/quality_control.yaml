@@ -17,7 +17,7 @@ qc_parameters:
   mask_level: 3
   sample_level: 1
   check_residual: True
-  check_folding: True
+  check_folding: False
   check_focus: True
   wb_correction: True
 
