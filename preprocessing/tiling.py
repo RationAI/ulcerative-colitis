@@ -5,6 +5,7 @@ from typing import Any, cast
 import hydra
 import mlflow.artifacts
 import pandas as pd
+import ray
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
@@ -14,6 +15,9 @@ from ratiopath.tiling import grid_tiles
 from ratiopath.tiling.read_slide_tiles import _read_openslide_tiles
 from ratiopath.tiling.utils import row_hash
 from sklearn.model_selection import train_test_split
+
+
+ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
 def stem_to_case_id(stem: str) -> str:
