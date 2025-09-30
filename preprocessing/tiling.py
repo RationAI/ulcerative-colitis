@@ -147,7 +147,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     return slides.to_pandas(), tiles.to_pandas()
 
 
-@hydra.main(config_path="../configs", config_name="quality_control", version_base=None)
+@hydra.main(config_path="../configs", config_name="tiling", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     # 70 / 15 / 15 - train / test preliminary / test final
