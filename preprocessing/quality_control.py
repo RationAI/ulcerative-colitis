@@ -173,9 +173,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
 
     Path(config.output_path).mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(
-        prefix="qc_masks_report_", dir=Path(config.paths.base_folder).as_posix()
-    ) as tmp_dir:
+    with tempfile.TemporaryDirectory(prefix="qc_masks_report_") as tmp_dir:
         report_path = Path(tmp_dir) / "report.html"
 
         asyncio.run(

@@ -7,17 +7,49 @@ defaults:
 paths:
   base_folder: /mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis
 
-  slides_ikem: ${paths.base_folder}/data_tiff/ikem/20x
-  slides_ftn: ${paths.base_folder}/data_tiff/ftn
-  slides_knl_patos: ${paths.base_folder}/data_tiff/knl_patos
+  slides:
+    ikem: ${paths.base_folder}/data_tiff/ikem/20x
+    ftn: ${paths.base_folder}/data_tiff/ftn
+    knl_patos: ${paths.base_folder}/data_tiff/knl_patos
 
-  table_ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
-  table_ftn: ${paths.base_folder}/data_czi/ftn/IBD_AI_FTN.xlsx
-  table_knl_patos: ${paths.base_folder}/data_czi/knl_patos/IBD_AI_Liberec.xlsx
+  tables:
+    ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
+    ftn: ${paths.base_folder}/data_czi/ftn/IBD_AI_FTN.xlsx
+    knl_patos: ${paths.base_folder}/data_czi/knl_patos/IBD_AI_Liberec.xlsx
 
-  qc_masks: ${paths.base_folder}/qc_masks
+  qc_masks:
+    ikem: ${paths.base_folder}/qc_masks/ikem
+    ftn: ${paths.base_folder}/qc_masks/ftn
+    knl_patos: ${paths.base_folder}/qc_masks/knl_patos
 
-  tissue_masks: ${paths.base_folder}/tissue_masks
+  tissue_masks:
+    ikem: ${paths.base_folder}/tissue_masks/ikem
+    ftn: ${paths.base_folder}/tissue_masks/ftn
+    knl_patos: ${paths.base_folder}/tissue_masks/knl_patos
 
-  embeddings: ${paths.base_folder}/embeddings
+  embeddings:
+    ikem:
+      prov-gigapath: ${paths.base_folder}/embeddings/ikem/prov-gigapath
+    ftn:
+      prov-gigapath: ${paths.base_folder}/embeddings/ftn/prov-gigapath
+    knl_patos:
+      prov-gigapath: ${paths.base_folder}/embeddings/knl_patos
+    
+uris:
+  qc_masks:
+    ikem: "mlflow-artifacts:/86/bd492a97f5814e069411dc9031c031ce/artifacts/qc_masks"
+    ftn: "mlflow-artifacts:/86/580ef09912404470abbbbae72e4b1cef/artifacts/qc_masks"
+    knl_patos: ???
 
+  tissue_masks:
+    ikem: "mlflow-artifacts:/86/195d0dd68ca84fc2ad64156d10df786d/artifacts/tissue_masks"
+    ftn: "mlflow-artifacts:/86/f94e472e469f4191be75e498046ab5dd/artifacts/tissue_masks"
+    knl_patos: ???
+
+  embeddings:
+    ikem:
+      prov-gigapath: ???
+    ftn:
+      prov-gigapath: ???
+    knl_patos:
+      prov-gigapath: ???
