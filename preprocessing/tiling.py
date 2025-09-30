@@ -17,8 +17,8 @@ from sklearn.model_selection import train_test_split
 
 
 def stem_to_case_id(stem: str) -> str:
-    case_id, year, _ = stem.split("_", maxsplit=2)
-    return f"{case_id.zfill(5)}/{year}"
+    case_id, year, *_ = stem.split("_")
+    return f"{case_id}/{year}"
 
 
 def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[str]:
