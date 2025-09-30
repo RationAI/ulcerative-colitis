@@ -56,9 +56,7 @@ def qc_agg(row: dict[str, Any], qc_folder: Path) -> dict[str, Any]:
     qc_df = cast("pd.Series", pd.read_csv(qc_file).T.squeeze())
 
     row["blur_mean"] = qc_df["mean_coverage(Piqe)"]
-    row["blur_median"] = qc_df["median_coverage(Piqe)"]
     row["artifacts_mean"] = qc_df["mean_coverage(ResidualArtifactsAndCoverage)"]
-    row["artifacts_median"] = qc_df["median_coverage(ResidualArtifactsAndCoverage)"]
 
     return row
 
@@ -136,17 +134,18 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     )
 
     tiles = slides.flat_map(tile, num_cpus=0.2, memory=128 * 1024**2)
-    # tiles = tiles.map_batches(
-    #     partial(tissue, tissue_folder=tissue_folder), num_cpus=1, memory=4 * 1024**3
-    # )
-    # tiles = tiles.filter(
-    #     partial(filter_tissue, threshold=config.tissue_threshold),
-    #     num_cpus=0.1,
-    #     memory=128 * 1024**2,
-    # )
-    # tiles = tiles.map_batches(
-    #     partial(qc, qc_folder=qc_folder), num_cpus=1, memory=4 * 1024**3
-    # )
+    tiles = tiles.repartition(target_num_rows_per_block=128)
+    tiles = tiles.map_batches(
+        partial(tissue, tissue_folder=tissue_folder), num_cpus=1, memory=4 * 1024**3
+    )
+    tiles = tiles.filter(
+        partial(filter_tissue, threshold=config.tissue_threshold),
+        num_cpus=0.1,
+        memory=128 * 1024**2,
+    )
+    tiles = tiles.map_batches(
+        partial(qc, qc_folder=qc_folder), num_cpus=1, memory=4 * 1024**3
+    )
 
     return slides.to_pandas(), tiles.to_pandas()
 
