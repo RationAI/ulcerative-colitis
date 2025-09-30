@@ -136,7 +136,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     tiles = slides.flat_map(tile, num_cpus=0.2, memory=128 * 1024**2)
     tiles = tiles.repartition(target_num_rows_per_block=128)
     tiles = tiles.map_batches(
-        partial(tissue, tissue_folder=tissue_folder), num_cpus=1, memory=4 * 1024**3
+        partial(tissue, tissue_folder=tissue_folder), num_cpus=0.5, memory=2 * 1024**3
     )
     tiles = tiles.filter(
         partial(filter_tissue, threshold=config.tissue_threshold),
@@ -144,7 +144,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
         memory=128 * 1024**2,
     )
     tiles = tiles.map_batches(
-        partial(qc, qc_folder=qc_folder), num_cpus=1, memory=4 * 1024**3
+        partial(qc, qc_folder=qc_folder), num_cpus=0.5, memory=2 * 1024**3
     )
 
     return slides.to_pandas(), tiles.to_pandas()
