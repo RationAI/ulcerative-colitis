@@ -25,6 +25,7 @@ dependencies = [
     "histopath>=0.1.0",
     "openpyxl>=3.1.5",
     "ray==2.48.0",
+    "ratiopath>=1.0.3",
 ]
 
 [tool.uv]

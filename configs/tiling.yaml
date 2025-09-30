@@ -1,0 +1,29 @@
+defaults:
+  - preprocessing
+  - _self_
+
+cohort: ???
+
+slides_folder: ${paths.slides.${cohort}}
+table_folder: ${paths.tables.${cohort}}
+qc_folder: ${paths.qc_masks.${cohort}}
+tissue_folder: ${paths.tissue_masks.${cohort}}
+
+qc_uri: ${uris.qc_masks.${cohort}}
+tissue_uri: ${uris.tissue_masks.${cohort}}
+
+qc_download: True
+tissue_download: True
+
+tissue_threshold: 0.5
+
+tile_extent: 224
+stride: 112
+mpp: 0.33
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '📂 Dataset: ${cohort} (mpp = ${mpp})'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
+
