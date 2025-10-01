@@ -49,6 +49,21 @@ def artifacts(wsi_stem: str) -> list[str]:
     ]
 
 
+def artifacts_exist(wsi_stem: str, output_path: Path) -> bool:
+    return all((output_path / artifact).exists() for artifact in artifacts(wsi_stem))
+
+
+def log_artifacts(
+    logger: MLFlowLogger,
+    wsi_stem: str,
+    output_path: Path,
+) -> None:
+    for artifact in artifacts(wsi_stem):
+        logger.experiment.log_artifact(
+            logger.run_id, output_path / artifact, "qc_masks"
+        )
+
+
 async def repeatable_put_request(
     session: ClientSession,
     data: dict[str, Any],
@@ -56,6 +71,12 @@ async def repeatable_put_request(
     config: DictConfig,
     logger: MLFlowLogger,
 ) -> None:
+    if artifacts_exist(Path(data["wsi_path"]).stem, Path(data["output_path"])):
+        log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
+
+        print(f"Skipped {data['wsi_path']}:\n\tArtifacts already exist\n")
+        return
+
     for attempt in range(1, config.num_repeats + 1):
         status, text = await put_request(session, data, semaphore, config)
 
@@ -80,11 +101,7 @@ async def repeatable_put_request(
 
             continue
 
-        for artifact in artifacts(Path(data["wsi_path"]).stem):
-            logger.experiment.log_artifact(
-                logger.run_id, Path(data["output_path"]) / artifact, "qc_masks"
-            )
-
+        log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
         print(
             f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
         )
