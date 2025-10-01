@@ -47,7 +47,7 @@ def get_tissue_folder(config: DictConfig) -> Path:
 
 def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     case_id = stem_to_case_id(Path(row["path"]).stem)
-    row["nancy"] = df.loc[case_id, "Nancy"]
+    row["nancy_index"] = df.loc[case_id, "Nancy"]
     return row
 
 
@@ -117,6 +117,17 @@ def qc(batch: dict[str, Any], qc_folder: Path) -> dict[str, Any]:
     return batch
 
 
+def select(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "slide_id": row["slide_id"],
+        "x": row["tile_x"],
+        "y": row["tile_y"],
+        "tissue": row["tissue"],
+        "blur": row["blur"],
+        "artifacts": row["artifacts"],
+    }
+
+
 def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     qc_folder = get_qc_folder(config)
     tissue_folder = get_tissue_folder(config)
@@ -146,6 +157,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     tiles = tiles.map_batches(
         partial(qc, qc_folder=qc_folder), num_cpus=0.2, memory=1024**3
     )
+    tiles = tiles.map(select, num_cpus=0.1, memory=128 * 1024**2)
 
     return slides.to_pandas(), tiles.to_pandas()
 
