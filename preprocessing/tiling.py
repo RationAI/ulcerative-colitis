@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import hydra
 import mlflow.artifacts
+import numpy as np
 import pandas as pd
 import ray
 from lightning.pytorch.loggers import Logger
@@ -12,7 +13,6 @@ from rationai.mlkit.autolog import autolog
 from rationai.tiling.writers import save_mlflow_dataset
 from ratiopath.ray import read_slides
 from ratiopath.tiling import grid_tiles
-from ratiopath.tiling.read_slide_tiles import _read_openslide_tiles
 from ratiopath.tiling.utils import row_hash
 from sklearn.model_selection import train_test_split
 
@@ -80,12 +80,41 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def read_tile_overlays(overlay_path: str, df: pd.DataFrame) -> pd.Series:
+    from ratiopath.openslide import OpenSlide
+
+    with OpenSlide(overlay_path) as overlay:
+
+        def get_tile(row: pd.Series) -> np.ndarray:
+            resolution = (row["mpp_x"] + row["mpp_y"]) / 2
+            level = overlay.closest_level(resolution)
+            overlay_resolution = overlay.slide_resolution(level)
+            resolution_factor = np.asarray(overlay_resolution) / np.asarray(resolution)
+
+            roi_coords = tuple(
+                np.round(
+                    np.asarray((row["tile_x"], row["tile_y"])) * resolution_factor
+                ).astype(int)
+            )
+            roi_extent = tuple(
+                np.round(
+                    np.asarray((row["tile_extent_x"], row["tile_extent_y"]))
+                    * resolution_factor
+                ).astype(int)
+            )
+
+            rgba_region = overlay.read_region_relative(roi_coords, level, roi_extent)
+            grayscale_region = rgba_region.convert("L")
+            return np.asarray(grayscale_region)
+
+        return df.apply(get_tile, axis=1)
+
+
 def tissue(batch: dict[str, Any], tissue_folder: Path) -> dict[str, Any]:
     df = pd.DataFrame(batch)
     for path, group in df.groupby("path"):
         tissue_file = tissue_folder / f"{Path(str(path)).stem}.tiff"
-        tile_series = _read_openslide_tiles(str(tissue_file), group)
-        tile_series = tile_series.apply(lambda x: x[:, :, 0])
+        tile_series = read_tile_overlays(str(tissue_file), group)
 
         df.loc[group.index, "tissue"] = tile_series.apply(
             lambda x: (x == 255).sum() / x.size
@@ -107,8 +136,7 @@ def qc(batch: dict[str, Any], qc_folder: Path) -> dict[str, Any]:
             "ResidualArtifactsAndCoverage_coverage_mask",
         ]:
             qc_file = qc_folder / f"{qc_prefix}_{Path(str(path)).stem}.tiff"
-            tile_series = _read_openslide_tiles(str(qc_file), group)
-            tile_series = tile_series.apply(lambda x: x[:, :, 0])
+            tile_series = read_tile_overlays(str(qc_file), group)
 
             df.loc[group.index, qc_prefix] = tile_series.apply(lambda x: x.mean() / 255)
 
