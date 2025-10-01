@@ -37,7 +37,7 @@ paths:
     
 uris:
   qc_masks:
-    ikem: "mlflow-artifacts:/86/bd492a97f5814e069411dc9031c031ce/artifacts/qc_masks"
+    ikem: "mlflow-artifacts:/86/203703bfa1c14f29874832e91b5cae32/artifacts/qc_masks"
     ftn: "mlflow-artifacts:/86/580ef09912404470abbbbae72e4b1cef/artifacts/qc_masks"
     knl_patos: ???
 
