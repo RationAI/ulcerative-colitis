@@ -155,6 +155,8 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     # 70 / 15 / 15 - train / test preliminary / test final
     df = pd.read_csv(config.table_path, index_col=0)
+    if config.cohort == "ikem":
+        df = df.query("Lokalita != 'ileum'")
 
     train, test = train_test_split(
         df, test_size=0.3, stratify=df["Nancy"], random_state=42
