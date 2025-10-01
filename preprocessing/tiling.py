@@ -71,6 +71,8 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
             "level": row["level"],
             "tile_extent_x": row["tile_extent_x"],
             "tile_extent_y": row["tile_extent_y"],
+            "mpp_x": row["mpp_x"],
+            "mpp_y": row["mpp_y"],
         }
         for x, y in grid_tiles(
             slide_extent=(row["extent_x"], row["extent_y"]),

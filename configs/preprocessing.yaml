@@ -8,7 +8,7 @@ paths:
   base_folder: /mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis
 
   slides:
-    ikem: ${paths.base_folder}/data_tiff/ikem/20x
+    ikem: ${paths.base_folder}/data_tiff/ikem
     ftn: ${paths.base_folder}/data_tiff/ftn
     knl_patos: ${paths.base_folder}/data_tiff/knl_patos
 
