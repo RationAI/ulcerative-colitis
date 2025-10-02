@@ -1,0 +1,15 @@
+defaults:
+  - preprocessing
+  - _self_
+
+cohort: ???
+
+output_folder: ${paths.tile_masks.${cohort}}
+tiling_uris: ${uris.tilling.${cohort}}
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '📂 Tile masks: ${cohort}'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
+
