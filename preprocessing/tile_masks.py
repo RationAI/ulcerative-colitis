@@ -33,7 +33,7 @@ def download_slide_tiles(uris: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def process_slide(
     slide: pd.Series,
-    output_path: Path,
+    output_folder: Path,
     tiles_ref: ray.ObjectRef,
 ) -> None:
     tiles = cast("pd.DataFrame", ray.get(tiles_ref))
@@ -45,7 +45,7 @@ def process_slide(
         size=(slide["extent_x"], slide["extent_y"]),
     )
 
-    mask_path = output_path / "outlines" / f"{Path(slide['path']).stem}.tiff"
+    mask_path = output_folder / f"{Path(slide['path']).stem}.tiff"
     write_big_tiff(
         pyvips.Image.new_from_array(np.array(mask)),
         mask_path,
@@ -76,15 +76,15 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     slides, tiles = download_slide_tiles(config.tiling_uris)
     tiles_ref = ray.put(tiles)
 
-    output_path = Path(config.output_path)
+    output_folder = Path(config.output_folder)
 
     process_items(
         (slide for _, slide in slides.iterrows()),
-        make_remote_process_slide(output_path, tiles_ref),
+        make_remote_process_slide(output_folder, tiles_ref),
     )
 
     logger.experiment.log_artifacts(
-        run_id=logger.run_id, local_dir=str(output_path), artifact_path="tile_masks"
+        run_id=logger.run_id, local_dir=str(output_folder), artifact_path="tile_masks"
     )
 
 
