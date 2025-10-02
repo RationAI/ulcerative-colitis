@@ -95,13 +95,13 @@ def read_tile_overlays(overlay_path: str, df: pd.DataFrame) -> pd.Series:
 
             roi_coords = tuple(
                 np.round(
-                    np.asarray((row["tile_x"], row["tile_y"])) * resolution_factor
+                    np.asarray((row["tile_x"], row["tile_y"])) / resolution_factor
                 ).astype(int)
             )
             roi_extent = tuple(
                 np.round(
                     np.asarray((row["tile_extent_x"], row["tile_extent_y"]))
-                    * resolution_factor
+                    / resolution_factor
                 ).astype(int)
             )
 
