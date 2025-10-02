@@ -81,6 +81,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     process_items(
         (slide for _, slide in slides.iterrows()),
         make_remote_process_slide(output_folder, tiles_ref),
+        max_concurrent=10,
     )
 
     logger.experiment.log_artifacts(
