@@ -144,20 +144,23 @@ def process_output(output: torch.Tensor, model: FoundationModel) -> torch.Tensor
 
 def save_embeddings(
     slide_tiles_embeddings: torch.Tensor,
-    slide_tiles_coords: torch.Tensor,
+    slide_tiles_x_coords: torch.Tensor,
+    slide_tiles_y_coords: torch.Tensor,
     embeddings_path: Path,
 ) -> None:
     """Save the slide embeddings to the specified path.
 
     Args:
         slide_tiles_embeddings (torch.Tensor): The embeddings to save.
-        slide_tiles_coords (torch.Tensor): The coordinates of the tiles.
+        slide_tiles_x_coords (torch.Tensor): The x-coordinates of the tiles.
+        slide_tiles_y_coords (torch.Tensor): The y-coordinates of the tiles.
         embeddings_path (Path): The path to save the embeddings to.
     """
     embeddings_path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "embeddings": slide_tiles_embeddings,
-        "coords": slide_tiles_coords,
+        "x_coords": slide_tiles_x_coords,
+        "y_coords": slide_tiles_y_coords,
     }
     torch.save(data, embeddings_path)
 
@@ -195,15 +198,17 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                 slide_tiles_dataloader = DataLoader(
                     slide_dataset,
                     batch_size=config.dataloader.batch_size,
-                    shuffle=config.dataloader.shuffle,
                     num_workers=config.dataloader.num_workers,
                     persistent_workers=config.dataloader.persistent_workers,
                 )
                 slide_tiles_embeddings = torch.zeros(
                     (len(slide_dataset), embedding_dim), dtype=torch.float32
                 )
-                slide_tiles_coords = torch.zeros(
-                    (len(slide_dataset), 2), dtype=torch.int32
+                slide_tiles_x_coords = torch.zeros(
+                    (len(slide_dataset),), dtype=torch.int32
+                )
+                slide_tiles_y_coords = torch.zeros(
+                    (len(slide_dataset),), dtype=torch.int32
                 )
 
                 for i, (x, metadata) in enumerate(slide_tiles_dataloader):
@@ -212,12 +217,14 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                     start = i * config.dataloader.batch_size
                     end = start + embeddings.size(0)
                     slide_tiles_embeddings[start:end] = embeddings.to("cpu")
-                    slide_tiles_coords[start:end] = torch.stack(
-                        [metadata["x"], metadata["y"]], dim=-1
-                    )
+                    slide_tiles_x_coords[start:end] = metadata["x"].to("cpu")
+                    slide_tiles_y_coords[start:end] = metadata["y"].to("cpu")
 
                 save_embeddings(
-                    slide_tiles_embeddings, slide_tiles_coords, embeddings_path
+                    slide_tiles_embeddings,
+                    slide_tiles_x_coords,
+                    slide_tiles_y_coords,
+                    embeddings_path,
                 )
 
     logger.experiment.log_artifacts(
