@@ -21,7 +21,7 @@ ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 def download_slide_tiles(uri: str, cohort: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     slidess, tiless = [], []
-    for partition in ("train", "preliminary test", "final test"):
+    for partition in ("train", "test preliminary", "test final"):
         path = Path(
             mlflow.artifacts.download_artifacts(f"{uri}/{partition} - {cohort}")
         )
