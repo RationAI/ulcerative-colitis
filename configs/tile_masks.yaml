@@ -5,7 +5,7 @@ defaults:
 cohort: ???
 
 output_folder: ${paths.tile_masks.${cohort}}
-tiling_uri: ${uris.tilling.${cohort}}
+tiling_uri: ${uris.tiling.${cohort}}
 
 metadata:
   experiment_name: Ulcerative Colitis
