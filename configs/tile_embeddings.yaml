@@ -1,0 +1,26 @@
+defaults:
+  - preprocessing
+  - _self_
+
+cohort: ???
+token: ???
+model: prov-gigapath
+
+tiling_uri: ${uris.tiling.${cohort}}
+
+output_folder: ${paths.embeddings.${cohort}.${model}}
+
+skip_existing: False
+
+dataloader:
+  batch_size: 2048
+  num_workers: 8
+  persistent_workers: True
+  shuffle: False
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '📂 Tile Embeddings: ${cohort}'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
+

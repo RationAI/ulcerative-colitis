@@ -1,27 +1,21 @@
-from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
 
 import albumentations as A
-import click
-import mlflow
-import pandas as pd
+import hydra
 import timm
 import torch
 from huggingface_hub import login
+from lightning.pytorch.loggers import Logger
+from mlflow import MlflowClient
+from omegaconf import DictConfig
+from rationai.mlkit.autolog import autolog
+from rationai.mlkit.lightning.loggers import MLFlowLogger
 from timm.layers.mlp import SwiGLUPacked
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from preprocessing.paths import EMBEDDING_REGIONS_PATH, EMBEDDINGS_PATH
 from ulcerative_colitis.data.datasets import TilesPredict
-
-
-URIS = [
-    "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/Ulcerative Colitis - test preliminary",
-    "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/Ulcerative Colitis - test final",
-    "mlflow-artifacts:/86/0f605c9479574c8498f64ffea5f87508/artifacts/Ulcerative Colitis - train",
-]
 
 
 class FoundationModel(Enum):
@@ -32,24 +26,25 @@ class FoundationModel(Enum):
     VIRCHOW2 = "Virchow2"
 
 
-def load_dataset(uris: Iterable[str]) -> TilesPredict:
+def load_dataset(uri: str) -> TilesPredict:
     """Load the dataset for tile embeddings.
 
     Assumes that the dataset has 224x224 RGB tiles.
 
     Args:
-        uris (Iterable[str]): The URIs of the datasets to load.
+        uri (str): The URI of the dataset.
 
     Returns:
         TilesPredict: The dataset object for tile embeddings.
     """
-    transforms = A.Compose(
-        [
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-        ]
+    return TilesPredict(
+        (uri,),
+        transforms=A.Compose(
+            [
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            ]
+        ),
     )
-
-    return TilesPredict(uris, transforms=transforms)
 
 
 def load_tile_encoder(model: FoundationModel) -> torch.nn.Module:
@@ -147,114 +142,89 @@ def process_output(output: torch.Tensor, model: FoundationModel) -> torch.Tensor
     return output
 
 
-def save_embeddings(slide_embeddings: torch.Tensor, slide_path: Path) -> None:
+def save_embeddings(
+    slide_tiles_embeddings: torch.Tensor,
+    slide_tiles_coords: torch.Tensor,
+    embeddings_path: Path,
+) -> None:
     """Save the slide embeddings to the specified path.
 
     Args:
-        slide_embeddings (torch.Tensor): The embeddings to save.
-        slide_path (Path): The path to save the embeddings to.
+        slide_tiles_embeddings (torch.Tensor): The embeddings to save.
+        slide_tiles_coords (torch.Tensor): The coordinates of the tiles.
+        embeddings_path (Path): The path to save the embeddings to.
     """
-    slide_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(slide_embeddings, slide_path)
+    embeddings_path.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "embeddings": slide_tiles_embeddings,
+        "coords": slide_tiles_coords,
+    }
+    torch.save(data, embeddings_path)
 
 
-def save_embeddings_regions(
-    slide_embeddings: torch.Tensor, slide_path: Path, tiles: pd.DataFrame
-) -> None:
-    """Save the slide embeddings and their corresponding tile regions.
-
-    Args:
-        slide_embeddings (torch.Tensor): The embeddings to save.
-        slide_path (Path): The path to save the embeddings to.
-        tiles (pd.DataFrame): The DataFrame containing tile metadata.
-    """
-    folder = EMBEDDING_REGIONS_PATH / slide_path.relative_to(EMBEDDINGS_PATH).parent
-    folder.mkdir(parents=True, exist_ok=True)
-
-    tiles = tiles.reset_index(drop=True)
-    for region in tiles["region"].unique():
-        region_tiles = tiles.query(f"region == {region}")
-        region_embeddings = slide_embeddings[region_tiles.index.to_numpy()]
-
-        torch.save(
-            region_embeddings,
-            folder / f"{slide_path.stem}_region_{region:03d}.pt",
-        )
-
-
-@click.command()
-@click.option(
-    "--token",
-    type=str,
-    help="Hugging Face token for accessing private models and datasets.",
-    required=True,
+@hydra.main(
+    config_path="../../configs", config_name="slide_embeddings", version_base=None
 )
-@click.option(
-    "--model",
-    type=click.Choice([m.value for m in FoundationModel]),
-    help="The foundation model to use for tile embeddings.",
-    default=FoundationModel.PROV_GIGAPATH.value,
-)
-@click.option(
-    "--batch-size",
-    type=int,
-    help="Batch size for processing tiles.",
-    default=2048,
-)
-def main(token: str, model: str | FoundationModel, batch_size: int) -> None:
-    login(token=token)
-    model = FoundationModel(model)
+@autolog
+def main(config: DictConfig, logger: Logger | None = None) -> None:
+    assert logger is not None, "Need logger"
+    assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
+    assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
+    assert logger.run_id is not None, "Need run_id"
+
+    login(config.token)
+    model = FoundationModel(config.model)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tile_encoder = load_tile_encoder(model).to(device).eval()
     embedding_dim = embeddings_dimension(model)
 
+    output_folder = Path(config.output_folder)
+
     with torch.no_grad():
-        for uri in URIS:
-            dataset = load_dataset((uri,))
-            partition = uri.split(" - ")[-1]
+        for partition in ("train", "test preliminary", "test final"):
+            dataset = load_dataset(f"{config.tiling_uri}/{partition} - {config.cohort}")
 
             for slide_dataset in tqdm(
                 dataset.generate_datasets(), desc=f"{partition}: "
             ):
                 slide_name = str(slide_dataset.slide_metadata["name"])
-                slide_path = (
-                    EMBEDDINGS_PATH / model.value / partition / slide_name
-                ).with_suffix(".pt")
+                embeddings_path = (output_folder / slide_name).with_suffix(".pt")
 
-                if slide_path.exists():
+                if config.skip_existing and embeddings_path.exists():
                     continue
 
-                slide_dataloader = DataLoader(
+                slide_tiles_dataloader = DataLoader(
                     slide_dataset,
-                    batch_size=batch_size,
-                    shuffle=False,
-                    num_workers=8,
-                    persistent_workers=True,
+                    batch_size=config.dataloader.batch_size,
+                    shuffle=config.dataloader.shuffle,
+                    num_workers=config.dataloader.num_workers,
+                    persistent_workers=config.dataloader.persistent_workers,
                 )
-                slide_embeddings = torch.zeros(
+                slide_tiles_embeddings = torch.zeros(
                     (len(slide_dataset), embedding_dim), dtype=torch.float32
                 )
-                for i, (x, _) in enumerate(slide_dataloader):
-                    x = x.to(device)
-                    embeddings = process_output(tile_encoder(x), model)
-                    start = i * batch_size
-                    end = start + embeddings.size(0)
-                    slide_embeddings[start:end] = embeddings.to("cpu")
-
-                save_embeddings(slide_embeddings, slide_path)
-                save_embeddings_regions(
-                    slide_embeddings,
-                    slide_path,
-                    slide_dataset.slide_tiles.tiles,
+                slide_tiles_coords = torch.zeros(
+                    (len(slide_dataset), 2), dtype=torch.int32
                 )
 
-    mlflow.set_experiment(experiment_name="Ulcerative Colitis")
-    with mlflow.start_run(run_name=f"📂 Dataset: Embeddings - {model.value}"):
-        mlflow.log_artifacts(str(EMBEDDINGS_PATH / model.value))
+                for i, (x, metadata) in enumerate(slide_tiles_dataloader):
+                    x = x.to(device)
+                    embeddings = process_output(tile_encoder(x), model)
+                    start = i * config.dataloader.batch_size
+                    end = start + embeddings.size(0)
+                    slide_tiles_embeddings[start:end] = embeddings.to("cpu")
+                    slide_tiles_coords[start:end] = torch.stack(
+                        [metadata["x"], metadata["y"]], dim=-1
+                    )
 
-    with mlflow.start_run(run_name=f"📂 Dataset: Embedding Regions - {model.value}"):
-        mlflow.log_artifacts(str(EMBEDDING_REGIONS_PATH / model.value))
+                save_embeddings(
+                    slide_tiles_embeddings, slide_tiles_coords, embeddings_path
+                )
+
+    logger.experiment.log_artifacts(
+        run_id=logger.run_id, local_dir=str(output_folder), artifact_path="embeddings"
+    )
 
 
 if __name__ == "__main__":
