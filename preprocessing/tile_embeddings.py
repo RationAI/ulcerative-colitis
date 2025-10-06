@@ -229,7 +229,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
 
                 logger.experiment.log_artifact(
                     run_id=logger.run_id,
-                    local_path=str(output_folder),
+                    local_path=str(embeddings_path),
                     artifact_path="embeddings",
                 )
 
