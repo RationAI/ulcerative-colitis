@@ -4,7 +4,7 @@ defaults:
 
 cohort: ???
 token: ???
-model: prov-gigapath
+model: ???
 
 tiling_uri: ${uris.tiling.${cohort}}
 
@@ -20,7 +20,7 @@ dataloader:
 
 metadata:
   experiment_name: Ulcerative Colitis
-  run_name: '📂 Tile Embeddings: ${cohort}'
+  run_name: '📂 Tile Embeddings: ${cohort} ${model}'
   description: 'Ulcerative Colitis' 
   user: AdamK
 
