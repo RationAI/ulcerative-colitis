@@ -19,10 +19,12 @@ from ray._private.worker import RemoteFunction0
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
-def download_slide_tiles(uris: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def download_slide_tiles(uri: str, cohort: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     slidess, tiless = [], []
-    for uri in uris:
-        path = Path(mlflow.artifacts.download_artifacts(uri))
+    for partition in ("train", "preliminary test", "final test"):
+        path = Path(
+            mlflow.artifacts.download_artifacts(f"{uri}/{partition} - {cohort}")
+        )
         slidess.append(pd.read_parquet(path / "slides.parquet"))
         tiless.append(pd.read_parquet(path / "tiles.parquet"))
 
@@ -73,7 +75,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
     assert logger.run_id is not None, "Need run_id"
 
-    slides, tiles = download_slide_tiles(config.tiling_uris)
+    slides, tiles = download_slide_tiles(config.tiling_uri, config.cohort)
     tiles_ref = ray.put(tiles)
 
     output_folder = Path(config.output_folder)

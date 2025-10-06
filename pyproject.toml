@@ -12,7 +12,7 @@ dependencies = [
     "torchvision>=0.17.2",
     "albumentations>=1.4.14",
     "ipykernel",
-    "timm",
+    "timm==1.0.20",
     "rationai-mlkit",
     "rationai-masks",
     "rationai-tiling",

@@ -59,14 +59,7 @@ uris:
     knl_patos:
       prov-gigapath: ???
 
-  tilling:
-    ikem:
-      - "mlflow-artifacts:/86/ed97b0590d8f49be903558f0bf6371e6/artifacts/train - ikem"
-      - "mlflow-artifacts:/86/ed97b0590d8f49be903558f0bf6371e6/artifacts/test preliminary - ikem"
-      - "mlflow-artifacts:/86/ed97b0590d8f49be903558f0bf6371e6/artifacts/test final - ikem"
-    ftn:
-      - "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/train - ftn"
-      - "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test preliminary - ftn"
-      - "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test final - ftn"
-    knl_patos:
-      - ???
+  tiling:
+    ikem: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts"
+    ftn: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts"
+    knl_patos: ???
