@@ -162,9 +162,7 @@ def save_embeddings(
     torch.save(data, embeddings_path)
 
 
-@hydra.main(
-    config_path="../../configs", config_name="slide_embeddings", version_base=None
-)
+@hydra.main(config_path="../configs", config_name="tile_embeddings", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
