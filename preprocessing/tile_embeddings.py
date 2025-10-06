@@ -227,9 +227,11 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                     embeddings_path,
                 )
 
-    logger.experiment.log_artifacts(
-        run_id=logger.run_id, local_dir=str(output_folder), artifact_path="embeddings"
-    )
+                logger.experiment.log_artifact(
+                    run_id=logger.run_id,
+                    local_path=str(output_folder),
+                    artifact_path="embeddings",
+                )
 
 
 if __name__ == "__main__":
