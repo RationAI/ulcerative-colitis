@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from ulcerative_colitis.data.datasets.embeddings import EmbeddingsSubset
+from ulcerative_colitis.data.datasets.tile_embeddings import TileEmbeddingsSubset
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
 from ulcerative_colitis.typing import MetadataMIL, MILInput, MILPredictInput
 
@@ -44,8 +44,8 @@ class DataModule(LightningDataModule):
                 dataset = instantiate(self.datasets["train"])
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
                 train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k - 1]
-                self.train = EmbeddingsSubset(dataset, train_idx)
-                self.val = EmbeddingsSubset(dataset, val_idx)
+                self.train = TileEmbeddingsSubset(dataset, train_idx)
+                self.val = TileEmbeddingsSubset(dataset, val_idx)
             case "test":
                 self.test = instantiate(self.datasets["test"])
             case "predict":

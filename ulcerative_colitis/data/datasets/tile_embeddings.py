@@ -16,16 +16,16 @@ from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
 T = TypeVar("T", bound=MILSample | MILPredictSample)
 
 
-class _Embeddings(Dataset[T], Generic[T]):
+class _TileEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
         uri: str,
         uri_embeddings: str,
-        mode: LabelMode | str,
+        mode: LabelMode | str | None = None,
         folder_embeddings: Path | str | None = None,
-        include_labels: bool = True,
+        padding: bool = True,
     ) -> None:
-        self.mode = LabelMode(mode)
+        self.mode = LabelMode(mode) if mode is not None else None
         artifacts = Path(mlflow.artifacts.download_artifacts(uri))
         self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
         self.slides = pd.read_parquet(artifacts / "slides.parquet")
@@ -38,13 +38,13 @@ class _Embeddings(Dataset[T], Generic[T]):
                 mlflow.artifacts.download_artifacts(uri_embeddings)
             )
 
-        self.include_labels = include_labels
+        self.padding = padding
         self.max_embeddings = self.tiles["slide_id"].value_counts().max()
 
     def __len__(self) -> int:
         return len(self.slides)
 
-    def __getitem__(self, idx: int) -> MILSample | MILPredictSample:
+    def __getitem__(self, idx: int) -> T:
         slide_metadata = self.slides.iloc[idx]
         tiles = self.tiles.query(f"slide_id == {slide_metadata['id']!s}")
         slide_name = str(slide_metadata["name"])
@@ -56,9 +56,11 @@ class _Embeddings(Dataset[T], Generic[T]):
             ),
         )
         pad_amount = self.max_embeddings - embeddings.shape[0]
-        embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
+        if self.padding:
+            embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
 
         metadata = MetadataMIL(
+            slide_id=slide_metadata["id"],
             slide_name=slide_name,
             slide_path=Path(slide_metadata["path"]),
             level=slide_metadata["level"],
@@ -69,7 +71,7 @@ class _Embeddings(Dataset[T], Generic[T]):
             y=torch.from_numpy(tiles["y"].to_numpy()),
         )
 
-        if not self.include_labels:
+        if self.mode is None:
             return embeddings, metadata
 
         label = get_label(slide_metadata, self.mode)
@@ -77,44 +79,44 @@ class _Embeddings(Dataset[T], Generic[T]):
         return embeddings, label, metadata
 
 
-class Embeddings(_Embeddings[MILSample]):
+class TileEmbeddings(_TileEmbeddings[MILSample]):
     def __init__(
         self,
         uri: str,
         uri_embeddings: str,
         mode: LabelMode | str,
-        folder_embeddings: str | None = None,
+        folder_embeddings: Path | str | None = None,
+        padding: bool = True,
     ) -> None:
         super().__init__(
             uri=uri,
             uri_embeddings=uri_embeddings,
             mode=mode,
             folder_embeddings=folder_embeddings,
-            include_labels=True,
         )
 
 
-class EmbeddingsPredict(_Embeddings[MILPredictSample]):
+class TileEmbeddingsPredict(_TileEmbeddings[MILPredictSample]):
     def __init__(
         self,
         uri: str,
         uri_embeddings: str,
-        mode: LabelMode | str,
-        folder_embeddings: str | None = None,
+        mode: LabelMode | str | None = None,
+        folder_embeddings: Path | str | None = None,
+        padding: bool = True,
     ) -> None:
         super().__init__(
             uri=uri,
             uri_embeddings=uri_embeddings,
             mode=mode,
             folder_embeddings=folder_embeddings,
-            include_labels=False,
         )
 
 
-class EmbeddingsSubset(Subset[MILSample]):
+class TileEmbeddingsSubset(Subset[MILSample]):
     def __init__(
         self,
-        dataset: Embeddings,
+        dataset: TileEmbeddings,
         indices: Sequence[int],
     ) -> None:
         super().__init__(dataset, indices)
