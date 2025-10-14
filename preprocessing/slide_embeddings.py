@@ -1,0 +1,136 @@
+import asyncio
+import os
+import tempfile
+from pathlib import Path
+
+import hydra
+import mlflow.data.pandas_dataset
+import pandas as pd
+import torch
+from aiohttp import ClientResponse, ClientSession, ClientTimeout
+from lightning.pytorch.loggers import Logger
+from mlflow.tracking import MlflowClient
+from omegaconf import DictConfig
+from rationai.mlkit.autolog import autolog
+from rationai.mlkit.lightning.loggers import MLFlowLogger
+from requests import RequestException
+
+from ulcerative_colitis.data.datasets import TileEmbeddingsPredict
+
+
+async def post_request(
+    session: ClientSession,
+    data: bytes,
+    semaphore: asyncio.Semaphore,
+    config: DictConfig,
+    length: int,
+) -> ClientResponse:
+    timeout = ClientTimeout(total=config.request_timeout)
+
+    async with (
+        semaphore,
+        session.post(f"{config.url}/{length}", json=data, timeout=timeout) as response,
+    ):
+        return response
+
+
+async def repeatable_post_request(
+    session: ClientSession,
+    data: bytes,
+    semaphore: asyncio.Semaphore,
+    config: DictConfig,
+    length: int,
+    slide_id: str,
+) -> tuple[str, list[float] | None]:
+    for _ in range(config.num_repeats):
+        try:
+            response = await post_request(session, data, semaphore, config, length)
+
+            response.raise_for_status()
+            result = await response.json()
+
+            return slide_id, result["embeddings"][-1]
+
+        except RequestException:
+            continue
+
+    return slide_id, None
+
+
+async def slide_embeddings(
+    dataset: TileEmbeddingsPredict,
+    semaphore: asyncio.Semaphore,
+    config: DictConfig,
+) -> pd.DataFrame:
+    async with ClientSession() as session:
+        tasks = []
+        for x, metadata in dataset:
+            coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
+            tasks.append(
+                repeatable_post_request(
+                    session=session,
+                    semaphore=semaphore,
+                    config=config.connection_parameters,
+                    data=x.numpy().tobytes() + coords.numpy().tobytes(),
+                    length=len(x),
+                    slide_id=str(metadata["slide_name"]),
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+
+    return pd.DataFrame(results, columns=["slide_id", "embedding"])
+
+
+def save_mlflow_dataset(
+    df: pd.DataFrame, dataset_name: str, logger: MLFlowLogger
+) -> None:
+    with tempfile.TemporaryDirectory(dir=os.getcwd()) as tmp_dir:
+        path = Path(tmp_dir) / "slide_embeddings.parquet"
+        df.to_parquet(path, index=False)
+
+        logger.experiment.log_artifact(logger.run_id, path, dataset_name)
+
+    slide_dataset = mlflow.data.pandas_dataset.from_pandas(
+        df,
+        name=dataset_name,
+    )
+
+    mlflow.log_input(slide_dataset, context="embeddings")
+
+
+@hydra.main(config_path="../configs", config_name="slide_embeddings", version_base=None)
+@autolog
+def main(config: DictConfig, logger: Logger | None = None) -> None:
+    assert logger is not None, "Need logger"
+    assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
+    assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
+    assert logger.run_id is not None, "Need run_id"
+
+    semaphore = asyncio.Semaphore(config.request_limit)
+
+    for split in ["train", "test preliminary", "test final"]:
+        tiling_uri = f"{config.tiling_uri}/{split} - {config.cohort}"
+        embeddings_uri = f"{config.embeddings_uri}/{split} - {config.cohort}"
+        embeddings_folder = Path(config.embeddings_folder) / split
+
+        dataset = TileEmbeddingsPredict(
+            uri=tiling_uri,
+            uri_embeddings=embeddings_uri,
+            folder_embeddings=embeddings_folder if config.embeddings_download else None,
+            padding=False,
+        )
+
+        slide_embeddings_df = asyncio.run(
+            slide_embeddings(
+                dataset=dataset,
+                semaphore=semaphore,
+                config=config,
+            )
+        )
+
+        save_mlflow_dataset(slide_embeddings_df, f"{split} - {config.cohort}", logger)
+
+
+if __name__ == "__main__":
+    main()

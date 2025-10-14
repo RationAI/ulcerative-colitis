@@ -1,0 +1,28 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - paths
+  - uris
+  - _self_
+
+cohort: ???
+
+embeddings_uri: ${uris.embeddings.${cohort}.prov-gigapath}
+tiling_uri: ${uris.tiling.${cohort}}
+
+embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
+embeddings_download: True
+
+request_limit: 10
+
+connection_parameters:
+  url: http://rayservice-models-svc.rationai-jobs-ns.svc.cluster.local:8000/gigapath-slide-encoder
+  request_timeout: 300 # 5 minutes
+  num_repeats: 5
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  run_name: '📂 Slide Embeddings: ${cohort}'
+  description: 'Ulcerative Colitis' 
+  user: AdamK
+

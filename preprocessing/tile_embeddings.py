@@ -1,3 +1,5 @@
+# TODO: Refactor to use Tile Encoder as service
+
 from enum import Enum
 from pathlib import Path
 
