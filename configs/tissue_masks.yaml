@@ -1,5 +1,7 @@
 defaults:
-  - preprocessing
+  - hydra: default
+  - logger: mlflow
+  - uris
   - _self_
 
 cohort: ???

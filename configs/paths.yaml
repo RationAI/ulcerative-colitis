@@ -1,9 +1,3 @@
-defaults:
-  - hydra: default
-  - logger: mlflow
-  - _self_
-
-
 paths:
   base_folder: /mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis
 
@@ -39,27 +33,3 @@ paths:
     ikem: ${paths.base_folder}/tile_masks/ikem
     ftn: ${paths.base_folder}/tile_masks/ftn
     knl_patos: ${paths.base_folder}/tile_masks/knl_patos
-    
-uris:
-  qc_masks:
-    ikem: "mlflow-artifacts:/86/203703bfa1c14f29874832e91b5cae32/artifacts/qc_masks"
-    ftn: "mlflow-artifacts:/86/580ef09912404470abbbbae72e4b1cef/artifacts/qc_masks"
-    knl_patos: ???
-
-  tissue_masks:
-    ikem: "mlflow-artifacts:/86/195d0dd68ca84fc2ad64156d10df786d/artifacts/tissue_masks"
-    ftn: "mlflow-artifacts:/86/f94e472e469f4191be75e498046ab5dd/artifacts/tissue_masks"
-    knl_patos: ???
-
-  embeddings:
-    ikem:
-      prov-gigapath: ???
-    ftn:
-      prov-gigapath: ???
-    knl_patos:
-      prov-gigapath: ???
-
-  tiling:
-    ikem: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts"
-    ftn: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts"
-    knl_patos: ???
