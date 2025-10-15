@@ -52,6 +52,7 @@ async def repeatable_post_request(
             return slide_id, result["embeddings"][-1]
 
         except RequestException:
+            print(f"Request failed for slide {slide_id}, retrying...")
             continue
 
     return slide_id, None
@@ -62,6 +63,7 @@ async def slide_embeddings(
     semaphore: asyncio.Semaphore,
     config: DictConfig,
 ) -> pd.DataFrame:
+    print(f"Using embedding server at {config.connection_parameters.url}")
     async with ClientSession() as session:
         tasks = []
         for x, metadata in dataset:
@@ -77,7 +79,9 @@ async def slide_embeddings(
                 )
             )
 
+        print(f"Sending {len(tasks)} requests to the embedding server...")
         results = await asyncio.gather(*tasks)
+        print("All requests completed.")
 
     return pd.DataFrame(results, columns=["slide_id", "embedding"])
 
@@ -110,10 +114,12 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     semaphore = asyncio.Semaphore(config.request_limit)
 
     for split in ["train", "test preliminary", "test final"]:
+        print(f"Processing {split} set...")
         tiling_uri = f"{config.tiling_uri}/{split} - {config.cohort}"
         embeddings_uri = f"{config.embeddings_uri}/{split} - {config.cohort}"
         embeddings_folder = Path(config.embeddings_folder) / split
 
+        print(f"Loading dataset from {tiling_uri}...")
         dataset = TileEmbeddingsPredict(
             tiling_uri=tiling_uri,
             embeddings_uri=embeddings_uri,
@@ -121,6 +127,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             padding=False,
         )
 
+        print(f"Computing slide embeddings for {len(dataset)} tiles...")
         slide_embeddings_df = asyncio.run(
             slide_embeddings(
                 dataset=dataset,
@@ -129,6 +136,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             )
         )
 
+        print(f"Saving slide embeddings to {split} - {config.cohort}...")
         save_mlflow_dataset(slide_embeddings_df, f"{split} - {config.cohort}", logger)
 
 
