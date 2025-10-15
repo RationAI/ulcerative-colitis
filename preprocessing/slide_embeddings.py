@@ -69,7 +69,6 @@ async def slide_embeddings(
     async with ClientSession() as session:
         pending = set()
         results = []
-        max_pending = config.request_limit * 5
         for x, metadata in DataLoader(dataset, batch_size=None):
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             pending.add(
@@ -85,7 +84,7 @@ async def slide_embeddings(
                 )
             )
 
-            if len(pending) >= max_pending:
+            if len(pending) >= config.request_limit:
                 done, pending = await asyncio.wait(
                     pending, return_when=asyncio.FIRST_COMPLETED
                 )
