@@ -6,6 +6,7 @@ from pathlib import Path
 import hydra
 import mlflow.data.pandas_dataset
 import pandas as pd
+import requests
 import torch
 from aiohttp import (
     ClientError,
@@ -89,17 +90,25 @@ async def slide_embeddings(
         results = []
         for x, metadata in DataLoader(dataset, batch_size=None):
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
-            result = await asyncio.create_task(
-                repeatable_post_request(
-                    session=session,
-                    semaphore=semaphore,
-                    config=config.connection_parameters,
-                    data=x.numpy().tobytes() + coords.numpy().tobytes(),
-                    length=len(x),
-                    slide_id=str(metadata["slide_id"]),
-                )
+
+            result = requests.post(
+                f"{config.connection_parameters.url}/{len(x)}",
+                data=x.numpy().tobytes() + coords.numpy().tobytes(),
+                timeout=config.connection_parameters.request_timeout,
+                headers={"Content-Type": "application/octet-stream"},
             )
-            results.append(result)
+            results.append((str(metadata["slide_id"]), result.json()["embeddings"][-1]))
+            # result = await asyncio.create_task(
+            #     repeatable_post_request(
+            #         session=session,
+            #         semaphore=semaphore,
+            #         config=config.connection_parameters,
+            #         data=x.numpy().tobytes() + coords.numpy().tobytes(),
+            #         length=len(x),
+            #         slide_id=str(metadata["slide_id"]),
+            #     )
+            # )
+            # results.append(result)
             # pending.add(
             #     asyncio.create_task(
             #         repeatable_post_request(
