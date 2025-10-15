@@ -57,6 +57,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
                 map_location="cpu",
             ),
         )
+        print(embeddings_dict)
 
         embeddings = align_tile_embeddings(tiles, embeddings_dict)
         pad_amount = self.max_embeddings - embeddings.shape[0]

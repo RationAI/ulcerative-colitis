@@ -68,7 +68,7 @@ async def slide_embeddings(
     async with ClientSession() as session:
         tasks = []
         for x, metadata in DataLoader(dataset):
-            print(f"Processing slide {metadata['id']} with {len(x)} tiles...")
+            print(f"Processing slide {metadata['slide_id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             tasks.append(
                 repeatable_post_request(
@@ -77,7 +77,7 @@ async def slide_embeddings(
                     config=config.connection_parameters,
                     data=x.numpy().tobytes() + coords.numpy().tobytes(),
                     length=len(x),
-                    slide_id=str(metadata["id"]),
+                    slide_id=str(metadata["slide_id"]),
                 )
             )
 
