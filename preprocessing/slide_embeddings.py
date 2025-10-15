@@ -115,9 +115,9 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         embeddings_folder = Path(config.embeddings_folder) / split
 
         dataset = TileEmbeddingsPredict(
-            uri=tiling_uri,
-            uri_embeddings=embeddings_uri,
-            folder_embeddings=embeddings_folder if config.embeddings_download else None,
+            tiling_uri=tiling_uri,
+            embeddings_uri=embeddings_uri,
+            embeddings_folder=embeddings_folder if config.embeddings_download else None,
             padding=False,
         )
 

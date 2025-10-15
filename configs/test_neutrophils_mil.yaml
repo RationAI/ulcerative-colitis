@@ -1,11 +1,14 @@
 defaults:
   - hydra: default
   - logger: mlflow
-  - /data/datasets@data.test: embeddings/test
+  - /data/datasets@data.test: tile_embeddings/tile_embeddings
+  - paths
+  - uris
   - _self_
 
 seed: ${random_seed:}
 mode: test
+cohort: ???
 checkpoint: ???
 
 trainer: {}
@@ -15,12 +18,15 @@ data:
   num_workers: 4
   test:
     mode: neutrophils
+    tiling_uri: '${uris.tiling.${cohort}}/test preliminary - ${cohort}'
+    embeddings_uri: ${uris.embeddings.${cohort}.prov-gigapath}
+    embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
 
 model: {}
 
 metadata:
   experiment_name: 'Ulcerative Colitis' 
-  run_name: '📏 Testing: Ulcerative Colitis - Neutrophils MIL'
+  run_name: '📏 Testing: Ulcerative Colitis - Neutrophils MIL ${cohort}'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

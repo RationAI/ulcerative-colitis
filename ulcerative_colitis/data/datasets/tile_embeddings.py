@@ -19,23 +19,23 @@ T = TypeVar("T", bound=MILSample | MILPredictSample)
 class _TileEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
-        uri: str,
-        uri_embeddings: str,
+        tiling_uri: str,
+        embeddings_uri: str,
         mode: LabelMode | str | None = None,
-        folder_embeddings: Path | str | None = None,
+        embeddings_folder: Path | str | None = None,
         padding: bool = True,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
-        artifacts = Path(mlflow.artifacts.download_artifacts(uri))
+        artifacts = Path(mlflow.artifacts.download_artifacts(tiling_uri))
         self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
         self.slides = pd.read_parquet(artifacts / "slides.parquet")
         self.slides = process_slides(self.slides, self.mode)
 
-        if folder_embeddings is not None:
-            self.folder_embeddings = Path(folder_embeddings)
+        if embeddings_folder is not None:
+            self.folder_embeddings = Path(embeddings_folder)
         if not self.folder_embeddings.exists():
             self.folder_embeddings = Path(
-                mlflow.artifacts.download_artifacts(uri_embeddings)
+                mlflow.artifacts.download_artifacts(embeddings_uri)
             )
 
         self.padding = padding
@@ -72,44 +72,46 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         )
 
         if self.mode is None:
-            return embeddings, metadata
+            return embeddings, metadata  # type: ignore[return-value]
 
         label = get_label(slide_metadata, self.mode)
 
-        return embeddings, label, metadata
+        return embeddings, label, metadata  # type: ignore[return-value]
 
 
 class TileEmbeddings(_TileEmbeddings[MILSample]):
     def __init__(
         self,
-        uri: str,
-        uri_embeddings: str,
+        tiling_uri: str,
+        embeddings_uri: str,
         mode: LabelMode | str,
-        folder_embeddings: Path | str | None = None,
+        embeddings_folder: Path | str | None = None,
         padding: bool = True,
     ) -> None:
         super().__init__(
-            uri=uri,
-            uri_embeddings=uri_embeddings,
+            tiling_uri=tiling_uri,
+            embeddings_uri=embeddings_uri,
+            embeddings_folder=embeddings_folder,
             mode=mode,
-            folder_embeddings=folder_embeddings,
+            padding=padding,
         )
 
 
 class TileEmbeddingsPredict(_TileEmbeddings[MILPredictSample]):
     def __init__(
         self,
-        uri: str,
-        uri_embeddings: str,
+        tiling_uri: str,
+        embeddings_uri: str,
         mode: LabelMode | str | None = None,
-        folder_embeddings: Path | str | None = None,
+        embeddings_folder: Path | str | None = None,
         padding: bool = True,
     ) -> None:
         super().__init__(
-            uri=uri,
-            uri_embeddings=uri_embeddings,
+            tiling_uri=tiling_uri,
+            embeddings_uri=embeddings_uri,
+            embeddings_folder=embeddings_folder,
             mode=mode,
-            folder_embeddings=folder_embeddings,
+            padding=padding,
         )
 
 
