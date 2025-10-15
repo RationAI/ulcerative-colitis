@@ -11,9 +11,9 @@ uris:
 
   embeddings:
     ikem:
-      prov-gigapath: ???
+      prov-gigapath: "mlflow-artifacts:/86/d6346f4504dd4f3da92fc6080df3db81/artifacts/embeddings"
     ftn:
-      prov-gigapath: ???
+      prov-gigapath: "mlflow-artifacts:/86/5ad6eb380be14a259bb59b190a66e8bb/artifacts/embeddings"
     knl_patos:
       prov-gigapath: ???
 
