@@ -31,7 +31,9 @@ async def post_request(
     config: DictConfig,
     length: int,
 ) -> ClientResponse:
-    timeout = ClientTimeout(total=config.request_timeout)
+    timeout = ClientTimeout(
+        total=config.request_timeout, sock_read=config.request_timeout
+    )
 
     print(f"Sending request to {config.url}/{length}...")
     async with (
@@ -61,6 +63,8 @@ async def repeatable_post_request(
             print(f"Response status for slide {slide_id}: {response.status}")
             response.raise_for_status()
             print("Response OK, parsing...")
+            body = await response.read()
+            print(f"Response body length for slide {slide_id}: {len(body)}")
             result = await response.json()
             print(f"Request succeeded for slide {slide_id}. ✅")
 
