@@ -16,7 +16,7 @@ embeddings_download: True
 request_limit: 10
 
 connection_parameters:
-  url: http://rayservice-models-svc.rationai-jobs-ns.svc.cluster.local:8000/gigapath-slide-encoder
+  url: http://rayservice-models-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/gigapath-slide-encoder
   request_timeout: 300 # 5 minutes
   num_repeats: 5
 
