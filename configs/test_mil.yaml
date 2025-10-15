@@ -15,7 +15,7 @@ data_mode: ???
 trainer: {}
 
 data:
-  batch_size: 32
+  batch_size: 8
   num_workers: 4
   test:
     mode: ${data_mode}
