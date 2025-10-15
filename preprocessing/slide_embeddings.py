@@ -58,7 +58,9 @@ async def repeatable_post_request(
         try:
             response = await post_request(session, data, semaphore, config, length)
 
+            print(f"Response status for slide {slide_id}: {response.status}")
             response.raise_for_status()
+            print("Response OK, parsing...")
             result = await response.json()
             print(f"Request succeeded for slide {slide_id}. ✅")
 
