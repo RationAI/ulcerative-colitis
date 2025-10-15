@@ -73,13 +73,15 @@ async def slide_embeddings(
             print(f"Processing slide {metadata['slide_id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             tasks.append(
-                repeatable_post_request(
-                    session=session,
-                    semaphore=semaphore,
-                    config=config.connection_parameters,
-                    data=x.numpy().tobytes() + coords.numpy().tobytes(),
-                    length=len(x),
-                    slide_id=str(metadata["slide_id"]),
+                asyncio.create_task(
+                    repeatable_post_request(
+                        session=session,
+                        semaphore=semaphore,
+                        config=config.connection_parameters,
+                        data=x.numpy().tobytes() + coords.numpy().tobytes(),
+                        length=len(x),
+                        slide_id=str(metadata["slide_id"]),
+                    )
                 )
             )
 
