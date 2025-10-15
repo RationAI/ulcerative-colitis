@@ -10,7 +10,7 @@ seed: ${random_seed:}
 mode: test
 cohort: ???
 checkpoint: ???
-data_mode: neutrophils
+data_mode: ???
 
 trainer: {}
 
