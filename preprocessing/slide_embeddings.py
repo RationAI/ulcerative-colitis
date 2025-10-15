@@ -119,7 +119,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         print(f"Processing {split} set...")
         tiling_uri = f"{config.tiling_uri}/{split} - {config.cohort}"
         embeddings_uri = f"{config.embeddings_uri}/{split} - {config.cohort}"
-        embeddings_folder = Path(config.embeddings_folder) / split
+        embeddings_folder = Path(config.embeddings_folder)
 
         print(f"Loading dataset from {tiling_uri}...")
         dataset = TileEmbeddingsPredict(
