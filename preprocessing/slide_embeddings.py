@@ -13,7 +13,6 @@ from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from requests import RequestException
 from torch.utils.data import DataLoader
 
 from ulcerative_colitis.data.datasets import TileEmbeddingsPredict
@@ -55,6 +54,7 @@ async def repeatable_post_request(
 
             response.raise_for_status()
             result = await response.json()
+            print(f"Request succeeded for slide {slide_id}. ✅")
 
             return slide_id, result["embeddings"][-1]
 
