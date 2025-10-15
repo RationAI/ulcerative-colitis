@@ -31,7 +31,7 @@ async def post_request(
     print(f"Sending request to {config.url}/{length}...")
     async with (
         semaphore,
-        session.post(f"{config.url}/{length}", json=data, timeout=timeout) as response,
+        session.post(f"{config.url}/{length}", data=data, timeout=timeout) as response,
     ):
         return response
 
@@ -46,7 +46,6 @@ async def repeatable_post_request(
 ) -> tuple[str, list[float] | None]:
     for _ in range(config.num_repeats):
         try:
-            print(f"Sending request for slide {slide_id} attempt {_ + 1}...")
             response = await post_request(session, data, semaphore, config, length)
 
             response.raise_for_status()
@@ -72,7 +71,6 @@ async def slide_embeddings(
         results = []
         max_pending = config.request_limit * 5
         for x, metadata in DataLoader(dataset, batch_size=None):
-            print(f"Processing slide {metadata['slide_id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             pending.add(
                 asyncio.create_task(
