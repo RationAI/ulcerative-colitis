@@ -67,7 +67,7 @@ async def slide_embeddings(
     print(f"Using embedding server at {config.connection_parameters.url}")
     async with ClientSession() as session:
         tasks = []
-        for x, metadata in DataLoader(dataset):
+        for x, metadata in DataLoader(dataset, batch_size=None):
             print(f"Processing slide {metadata['slide_id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             tasks.append(
