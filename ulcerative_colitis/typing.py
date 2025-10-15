@@ -16,7 +16,7 @@ PredictSample: TypeAlias = tuple[Tensor, Metadata]
 
 
 class MetadataMIL(TypedDict):
-    slide_id: str
+    id: str
     slide_name: str
     slide_path: Path
     level: int
