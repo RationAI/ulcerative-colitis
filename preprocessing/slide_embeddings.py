@@ -123,7 +123,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         dataset = TileEmbeddingsPredict(
             tiling_uri=tiling_uri,
             embeddings_uri=embeddings_uri,
-            embeddings_folder=embeddings_folder if config.embeddings_download else None,
+            embeddings_folder=None if config.embeddings_download else embeddings_folder,
             padding=False,
         )
 

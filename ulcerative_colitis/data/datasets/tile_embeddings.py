@@ -33,12 +33,12 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         self.slides = pd.read_parquet(artifacts / "slides.parquet")
         self.slides = process_slides(self.slides, self.mode)
 
-        if embeddings_folder is not None:
-            self.folder_embeddings = Path(embeddings_folder)
-        if not self.folder_embeddings.exists():
-            self.folder_embeddings = Path(
+        if embeddings_folder is None or not Path(embeddings_folder).exists():
+            self.embeddings_folder = Path(
                 mlflow.artifacts.download_artifacts(embeddings_uri)
             )
+        else:
+            self.embeddings_folder = Path(embeddings_folder)
 
         self.padding = padding
         self.max_embeddings = self.tiles["slide_id"].value_counts().max()
@@ -53,7 +53,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         embeddings_dict = cast(
             "dict[str, torch.Tensor]",
             torch.load(
-                (self.folder_embeddings / slide_name).with_suffix(".pt"),
+                (self.embeddings_folder / slide_name).with_suffix(".pt"),
                 map_location="cpu",
             ),
         )
