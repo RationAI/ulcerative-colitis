@@ -28,6 +28,7 @@ async def post_request(
 ) -> ClientResponse:
     timeout = ClientTimeout(total=config.request_timeout)
 
+    print(f"Sending request to {config.url}/{length}...")
     async with (
         semaphore,
         session.post(f"{config.url}/{length}", json=data, timeout=timeout) as response,
@@ -45,6 +46,7 @@ async def repeatable_post_request(
 ) -> tuple[str, list[float] | None]:
     for _ in range(config.num_repeats):
         try:
+            print(f"Sending request for slide {slide_id} attempt {_ + 1}...")
             response = await post_request(session, data, semaphore, config, length)
 
             response.raise_for_status()
@@ -129,7 +131,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             padding=False,
         )
 
-        print(f"Computing slide embeddings for {len(dataset)} tiles...")
+        print(f"Computing slide embeddings for {len(dataset)} slides...")
         slide_embeddings_df = asyncio.run(
             slide_embeddings(
                 dataset=dataset,
