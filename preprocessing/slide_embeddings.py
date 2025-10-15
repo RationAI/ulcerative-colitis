@@ -7,7 +7,7 @@ import hydra
 import mlflow.data.pandas_dataset
 import pandas as pd
 import torch
-from aiohttp import ClientResponse, ClientSession, ClientTimeout
+from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout
 from lightning.pytorch.loggers import Logger
 from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
@@ -31,7 +31,12 @@ async def post_request(
     print(f"Sending request to {config.url}/{length}...")
     async with (
         semaphore,
-        session.post(f"{config.url}/{length}", data=data, timeout=timeout) as response,
+        session.post(
+            f"{config.url}/{length}",
+            data=data,
+            timeout=timeout,
+            headers={"Content-Type": "application/octet-stream"},
+        ) as response,
     ):
         return response
 
@@ -53,8 +58,8 @@ async def repeatable_post_request(
 
             return slide_id, result["embeddings"][-1]
 
-        except RequestException:
-            print(f"Request failed for slide {slide_id}, retrying...")
+        except ClientError as e:
+            print(f"Request failed for slide {slide_id}, retrying... Error: {e}")
             continue
 
     return slide_id, None
