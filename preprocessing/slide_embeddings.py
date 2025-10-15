@@ -83,26 +83,37 @@ async def slide_embeddings(
         results = []
         for x, metadata in DataLoader(dataset, batch_size=None):
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
-            pending.add(
-                asyncio.create_task(
-                    repeatable_post_request(
-                        session=session,
-                        semaphore=semaphore,
-                        config=config.connection_parameters,
-                        data=x.numpy().tobytes() + coords.numpy().tobytes(),
-                        length=len(x),
-                        slide_id=str(metadata["slide_id"]),
-                    )
+            result = await asyncio.create_task(
+                repeatable_post_request(
+                    session=session,
+                    semaphore=semaphore,
+                    config=config.connection_parameters,
+                    data=x.numpy().tobytes() + coords.numpy().tobytes(),
+                    length=len(x),
+                    slide_id=str(metadata["slide_id"]),
                 )
             )
+            results.append(result)
+            # pending.add(
+            #     asyncio.create_task(
+            #         repeatable_post_request(
+            #             session=session,
+            #             semaphore=semaphore,
+            #             config=config.connection_parameters,
+            #             data=x.numpy().tobytes() + coords.numpy().tobytes(),
+            #             length=len(x),
+            #             slide_id=str(metadata["slide_id"]),
+            #         )
+            #     )
+            # )
 
-            if len(pending) >= config.request_limit:
-                done, pending = await asyncio.wait(
-                    pending, return_when=asyncio.FIRST_COMPLETED
-                )
+            # if len(pending) >= config.request_limit:
+            #     done, pending = await asyncio.wait(
+            #         pending, return_when=asyncio.FIRST_COMPLETED
+            #     )
 
-                for d in done:
-                    results.append(d.result())
+            #     for d in done:
+            #         results.append(d.result())
 
         print(f"Sending {len(pending)} requests to the embedding server...")
         results.extend(await asyncio.gather(*pending))
