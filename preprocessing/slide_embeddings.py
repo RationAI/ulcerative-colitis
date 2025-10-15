@@ -68,11 +68,13 @@ async def slide_embeddings(
 ) -> pd.DataFrame:
     print(f"Using embedding server at {config.connection_parameters.url}")
     async with ClientSession() as session:
-        tasks = []
+        pending = set()
+        results = []
+        max_pending = config.request_limit * 5
         for x, metadata in DataLoader(dataset, batch_size=None):
             print(f"Processing slide {metadata['slide_id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
-            tasks.append(
+            pending.add(
                 asyncio.create_task(
                     repeatable_post_request(
                         session=session,
@@ -85,8 +87,16 @@ async def slide_embeddings(
                 )
             )
 
-        print(f"Sending {len(tasks)} requests to the embedding server...")
-        results = await asyncio.gather(*tasks)
+            if len(pending) >= max_pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+
+                for d in done:
+                    results.append(d.result())
+
+        print(f"Sending {len(pending)} requests to the embedding server...")
+        results.extend(await asyncio.gather(*pending))
         print("All requests completed.")
 
     return pd.DataFrame(results, columns=["slide_id", "embedding"])
