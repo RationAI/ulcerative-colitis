@@ -10,6 +10,7 @@ seed: ${random_seed:}
 mode: test
 cohort: ???
 checkpoint: ???
+data_mode: neutrophils
 
 trainer: {}
 
@@ -17,7 +18,7 @@ data:
   batch_size: 32
   num_workers: 4
   test:
-    mode: neutrophils
+    mode: ${data_mode}
     tiling_uri: '${uris.tiling.${cohort}}/test preliminary - ${cohort}'
     embeddings_uri: ${uris.embeddings.${cohort}.prov-gigapath}
     embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
@@ -26,7 +27,7 @@ model: {}
 
 metadata:
   experiment_name: 'Ulcerative Colitis' 
-  run_name: '📏 Testing: Ulcerative Colitis - Neutrophils MIL ${cohort}'
+  run_name: '📏 Testing: Ulcerative Colitis - ${data_mode} ${cohort} MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
