@@ -13,7 +13,7 @@ tiling_uri: ${uris.tiling.${cohort}}
 embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
 embeddings_download: True
 
-request_limit: 5
+request_limit: 1
 
 connection_parameters:
   url: http://rayservice-models-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/gigapath-slide-encoder
