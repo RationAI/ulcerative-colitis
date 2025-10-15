@@ -1,9 +1,11 @@
+import warnings
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Generic, TypeVar, cast
 
 import mlflow
 import mlflow.artifacts
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -46,15 +48,17 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
 
     def __getitem__(self, idx: int) -> T:
         slide_metadata = self.slides.iloc[idx]
-        tiles = self.tiles.query(f"slide_id == {slide_metadata['id']!s}")
+        tiles = self.tiles[self.tiles["slide_id"] == slide_metadata["id"]]
         slide_name = str(slide_metadata["name"])
-        embeddings = cast(
-            "torch.Tensor",
+        embeddings_dict = cast(
+            "dict[str, torch.Tensor]",
             torch.load(
                 (self.folder_embeddings / slide_name).with_suffix(".pt"),
                 map_location="cpu",
             ),
         )
+
+        embeddings = align_tile_embeddings(tiles, embeddings_dict)
         pad_amount = self.max_embeddings - embeddings.shape[0]
         if self.padding:
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
@@ -124,3 +128,31 @@ class TileEmbeddingsSubset(Subset[MILSample]):
         super().__init__(dataset, indices)
         self.slides = dataset.slides.iloc[list(indices)].reset_index()
         self.tiles = dataset.tiles.query(f"slide_id in {tuple(self.slides['id'])}")
+
+
+def align_tile_embeddings(
+    tiles: pd.DataFrame, embeddings_dict: dict[str, torch.Tensor]
+) -> torch.Tensor:
+    if (tiles["x"] == embeddings_dict["x_coords"].numpy()).all() and (
+        tiles["y"] == embeddings_dict["y_coords"].numpy()
+    ).all():
+        return embeddings_dict["embeddings"]
+
+    warnings.warn(
+        "Tile coordinates are not aligned with embeddings coordinates.", stacklevel=2
+    )
+
+    embeddings_df = pd.DataFrame(
+        {
+            "x": embeddings_dict["x_coords"].numpy(),
+            "y": embeddings_dict["y_coords"].numpy(),
+            "embeddings": list(embeddings_dict["embeddings"].numpy()),
+        }
+    )
+
+    merged = tiles.merge(embeddings_df, on=["x", "y"], how="left")
+
+    if merged["embeddings"].isnull().any():
+        raise ValueError("Some tiles do not have corresponding embeddings.")
+
+    return torch.from_numpy(np.stack(merged["embeddings"].tolist()))
