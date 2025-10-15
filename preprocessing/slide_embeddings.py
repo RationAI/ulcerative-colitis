@@ -14,6 +14,7 @@ from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from requests import RequestException
+from torch.utils.data import DataLoader
 
 from ulcerative_colitis.data.datasets import TileEmbeddingsPredict
 
@@ -66,7 +67,7 @@ async def slide_embeddings(
     print(f"Using embedding server at {config.connection_parameters.url}")
     async with ClientSession() as session:
         tasks = []
-        for x, metadata in dataset:
+        for x, metadata in DataLoader(dataset):
             print(f"Processing slide {metadata['id']} with {len(x)} tiles...")
             coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
             tasks.append(
