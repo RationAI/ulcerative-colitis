@@ -7,7 +7,13 @@ import hydra
 import mlflow.data.pandas_dataset
 import pandas as pd
 import torch
-from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout
+from aiohttp import (
+    ClientError,
+    ClientResponse,
+    ClientSession,
+    ClientTimeout,
+    TCPConnector,
+)
 from lightning.pytorch.loggers import Logger
 from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
@@ -71,7 +77,8 @@ async def slide_embeddings(
     config: DictConfig,
 ) -> pd.DataFrame:
     print(f"Using embedding server at {config.connection_parameters.url}")
-    async with ClientSession() as session:
+    connector = TCPConnector(limit_per_host=config.request_limit)
+    async with ClientSession(connector=connector) as session:
         pending = set()
         results = []
         for x, metadata in DataLoader(dataset, batch_size=None):
