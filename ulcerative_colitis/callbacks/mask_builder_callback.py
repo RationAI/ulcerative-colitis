@@ -8,7 +8,7 @@ from lightning import Callback, Trainer
 from rationai.masks.mask_builders import ScalarMaskBuilder
 
 from ulcerative_colitis.data import DataModule
-from ulcerative_colitis.typing import MILPredictInput, Output
+from ulcerative_colitis.typing import Output, TileEmbeddingsPredictInput
 from ulcerative_colitis.ulcerative_colitis_attention_mil import (
     UlcerativeColitisModelAttentionMIL,
 )
@@ -90,7 +90,7 @@ class MaskBuilderCallback(Callback):
         trainer: Trainer,
         pl_module: UlcerativeColitisModelAttentionMIL,
         outputs: Output,
-        batch: MILPredictInput,
+        batch: TileEmbeddingsPredictInput,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:

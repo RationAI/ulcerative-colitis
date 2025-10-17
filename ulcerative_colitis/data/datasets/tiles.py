@@ -8,10 +8,10 @@ from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
 from torch.utils.data import Dataset
 
 from ulcerative_colitis.data.datasets.labels import LabelMode, get_label, process_slides
-from ulcerative_colitis.typing import Metadata, PredictSample, Sample
+from ulcerative_colitis.typing import MetadataTiles, TilesPredictSample, TilesSample
 
 
-T = TypeVar("T", bound=Sample | PredictSample)
+T = TypeVar("T", bound=TilesSample | TilesPredictSample)
 
 
 class _Tiles(Dataset[T], Generic[T]):
@@ -43,10 +43,10 @@ class _Tiles(Dataset[T], Generic[T]):
     def __len__(self) -> int:
         return len(self.slide_tiles)
 
-    def __getitem__(self, idx: int) -> Sample | PredictSample:
+    def __getitem__(self, idx: int) -> TilesSample | TilesPredictSample:
         image = self.slide_tiles[idx]
-        metadata = Metadata(
-            slide=self.slide_tiles.slide_path.stem,
+        metadata = MetadataTiles(
+            slide_id=self.slide_tiles.slide_path.stem,
             x=self.slide_tiles.tiles.iloc[idx]["x"],
             y=self.slide_tiles.tiles.iloc[idx]["y"],
         )
@@ -63,7 +63,7 @@ class _Tiles(Dataset[T], Generic[T]):
         return image, label, metadata
 
 
-class Tiles(MetaTiledSlides[Sample]):
+class Tiles(MetaTiledSlides[TilesSample]):
     def __init__(
         self,
         uris: Iterable[str],
@@ -74,7 +74,7 @@ class Tiles(MetaTiledSlides[Sample]):
         self.mode = LabelMode(mode)
         super().__init__(uris=uris)
 
-    def generate_datasets(self) -> Iterable[_Tiles[Sample]]:
+    def generate_datasets(self) -> Iterable[_Tiles[TilesSample]]:
         self.slides = process_slides(self.slides, self.mode)
         return (
             _Tiles(
@@ -88,7 +88,7 @@ class Tiles(MetaTiledSlides[Sample]):
         )
 
 
-class TilesPredict(MetaTiledSlides[PredictSample]):
+class TilesPredict(MetaTiledSlides[TilesPredictSample]):
     def __init__(
         self,
         uris: Iterable[str],
@@ -97,7 +97,7 @@ class TilesPredict(MetaTiledSlides[PredictSample]):
         self.transforms = transforms
         super().__init__(uris=uris)
 
-    def generate_datasets(self) -> Iterable[_Tiles[PredictSample]]:
+    def generate_datasets(self) -> Iterable[_Tiles[TilesPredictSample]]:
         self.slides = process_slides(self.slides)
         return (
             _Tiles(

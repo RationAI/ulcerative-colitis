@@ -17,6 +17,11 @@ uris:
     knl_patos:
       prov-gigapath: ???
 
+  slide_embeddings:
+    ikem: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
+    ftn: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
+    knl_patos: ???
+
   tiling:
     ikem: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts"
     ftn: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts"

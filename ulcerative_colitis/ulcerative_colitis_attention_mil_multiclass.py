@@ -16,7 +16,11 @@ from torchmetrics.classification import (
 )
 
 from ulcerative_colitis.modeling import sigmoid_normalization
-from ulcerative_colitis.typing import MILInput, MILPredictInput, Output
+from ulcerative_colitis.typing import (
+    Output,
+    TileEmbeddingsInput,
+    TileEmbeddingsPredictInput,
+)
 
 
 class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
@@ -81,7 +85,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
                 prog_bar=True,
             )
 
-    def training_step(self, batch: MILInput) -> Tensor:  # pylint: disable=arguments-differ
+    def training_step(self, batch: TileEmbeddingsInput) -> Tensor:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
         loss = torch.tensor(0.0, device=self.device)
@@ -101,7 +105,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
+    def validation_step(self, batch: TileEmbeddingsInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
         loss = torch.tensor(0.0, device=self.device)
@@ -120,7 +124,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         )
         self.log_dict(self.val_metrics)
 
-    def test_step(self, batch: MILInput) -> None:  # pylint: disable=arguments-differ
+    def test_step(self, batch: TileEmbeddingsInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
         outputs = []
@@ -134,7 +138,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         self.log_dict(self.test_metrics)
 
     def predict_step(  # pylint: disable=arguments-differ
-        self, batch: MILPredictInput, batch_idx: int, dataloader_idx: int = 0
+        self, batch: TileEmbeddingsPredictInput, batch_idx: int, dataloader_idx: int = 0
     ) -> Output:
         bags, _ = batch
 

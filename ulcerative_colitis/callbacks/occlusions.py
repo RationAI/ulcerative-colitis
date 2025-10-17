@@ -17,7 +17,7 @@ from rationai.mlkit.data.datasets import OpenSlideTilesDataset
 from tqdm import tqdm
 
 from ulcerative_colitis.data import DataModule
-from ulcerative_colitis.typing import MILPredictInput, Output
+from ulcerative_colitis.typing import Output, TileEmbeddingsPredictInput
 from ulcerative_colitis.ulcerative_colitis_attention_mil import (
     UlcerativeColitisModelAttentionMIL,
 )
@@ -160,7 +160,7 @@ class OcclusionCallback(Callback):
         trainer: Trainer,
         pl_module: UlcerativeColitisModelAttentionMIL,
         outputs: Output,
-        batch: MILPredictInput,
+        batch: TileEmbeddingsPredictInput,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:

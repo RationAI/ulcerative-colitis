@@ -11,11 +11,15 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, Subset
 
-from ulcerative_colitis.data.datasets.tiles import LabelMode, get_label, process_slides
-from ulcerative_colitis.typing import MetadataMIL, MILPredictSample, MILSample
+from ulcerative_colitis.data.datasets.labels import LabelMode, get_label, process_slides
+from ulcerative_colitis.typing import (
+    MetadataTileEmbeddings,
+    TileEmbeddingsPredictSample,
+    TileEmbeddingsSample,
+)
 
 
-T = TypeVar("T", bound=MILSample | MILPredictSample)
+T = TypeVar("T", bound=TileEmbeddingsSample | TileEmbeddingsPredictSample)
 
 
 class _TileEmbeddings(Dataset[T], Generic[T]):
@@ -26,8 +30,14 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         mode: LabelMode | str | None = None,
         embeddings_folder: Path | str | None = None,
         padding: bool = True,
+        include_labels: bool = True,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
+        self.include_labels = include_labels
+
+        if self.include_labels and self.mode is None:
+            raise ValueError("Mode must be specified when including labels.")
+
         artifacts = Path(mlflow.artifacts.download_artifacts(tiling_uri))
         self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
         self.slides = pd.read_parquet(artifacts / "slides.parquet")
@@ -63,7 +73,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         if self.padding:
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
 
-        metadata = MetadataMIL(
+        metadata = MetadataTileEmbeddings(
             slide_id=slide_metadata["id"],
             slide_name=slide_name,
             slide_path=Path(slide_metadata["path"]),
@@ -75,15 +85,16 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
             y=torch.from_numpy(tiles["y"].to_numpy()),
         )
 
-        if self.mode is None:
+        if not self.include_labels:
             return embeddings, metadata  # type: ignore[return-value]
 
+        assert self.mode is not None
         label = get_label(slide_metadata, self.mode)
 
         return embeddings, label, metadata  # type: ignore[return-value]
 
 
-class TileEmbeddings(_TileEmbeddings[MILSample]):
+class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
     def __init__(
         self,
         tiling_uri: str,
@@ -98,10 +109,11 @@ class TileEmbeddings(_TileEmbeddings[MILSample]):
             embeddings_folder=embeddings_folder,
             mode=mode,
             padding=padding,
+            include_labels=True,
         )
 
 
-class TileEmbeddingsPredict(_TileEmbeddings[MILPredictSample]):
+class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
     def __init__(
         self,
         tiling_uri: str,
@@ -116,10 +128,11 @@ class TileEmbeddingsPredict(_TileEmbeddings[MILPredictSample]):
             embeddings_folder=embeddings_folder,
             mode=mode,
             padding=padding,
+            include_labels=False,
         )
 
 
-class TileEmbeddingsSubset(Subset[MILSample]):
+class TileEmbeddingsSubset(Subset[TileEmbeddingsSample]):
     def __init__(
         self,
         dataset: TileEmbeddings,

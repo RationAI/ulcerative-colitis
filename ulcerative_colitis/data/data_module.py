@@ -8,9 +8,13 @@ from sklearn.model_selection import KFold
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from ulcerative_colitis.data.datasets.tile_embeddings import TileEmbeddingsSubset
+from ulcerative_colitis.data.datasets import create_subset
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
-from ulcerative_colitis.typing import MetadataMIL, MILInput, MILPredictInput
+from ulcerative_colitis.typing import (
+    Metadata,
+    TileEmbeddingsInput,
+    TileEmbeddingsPredictInput,
+)
 
 
 class DataModule(LightningDataModule):
@@ -44,14 +48,14 @@ class DataModule(LightningDataModule):
                 dataset = instantiate(self.datasets["train"])
                 kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
                 train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k - 1]
-                self.train = TileEmbeddingsSubset(dataset, train_idx)
-                self.val = TileEmbeddingsSubset(dataset, val_idx)
+                self.train = create_subset(dataset, train_idx)
+                self.val = create_subset(dataset, val_idx)
             case "test":
                 self.test = instantiate(self.datasets["test"])
             case "predict":
                 self.predict = instantiate(self.datasets["predict"])
 
-    def train_dataloader(self) -> Iterable[MILInput]:
+    def train_dataloader(self) -> Iterable[TileEmbeddingsInput]:
         if self.target_column is None:
             raise ValueError("target_column must be provided for training")
 
@@ -65,7 +69,7 @@ class DataModule(LightningDataModule):
             persistent_workers=self.num_workers > 0,
         )
 
-    def val_dataloader(self) -> Iterable[MILInput]:
+    def val_dataloader(self) -> Iterable[TileEmbeddingsInput]:
         return DataLoader(
             self.val,
             batch_size=self.batch_size,
@@ -74,7 +78,7 @@ class DataModule(LightningDataModule):
             persistent_workers=self.num_workers > 0,
         )
 
-    def test_dataloader(self) -> Iterable[MILInput]:
+    def test_dataloader(self) -> Iterable[TileEmbeddingsInput]:
         return DataLoader(
             self.test,
             batch_size=self.batch_size,
@@ -82,7 +86,7 @@ class DataModule(LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def predict_dataloader(self) -> Iterable[MILPredictInput]:
+    def predict_dataloader(self) -> Iterable[TileEmbeddingsPredictInput]:
         return DataLoader(
             self.predict,
             batch_size=self.batch_size,
@@ -91,24 +95,28 @@ class DataModule(LightningDataModule):
         )
 
 
-def collate_fn(batch: list[tuple[Tensor, Tensor, MetadataMIL]]) -> MILInput:
-    bags = []
+def collate_fn(
+    batch: list[tuple[Tensor, Tensor, Metadata]],
+) -> tuple[Tensor, Tensor, list[Metadata]]:
+    inputs = []
     labels = []
     metadatas = []
-    for bag, label, metadata in batch:
-        bags.append(bag)
+    for input, label, metadata in batch:
+        inputs.append(input)
         labels.append(label)
         metadatas.append(metadata)
-    bags = torch.stack(bags)
+    inputs = torch.stack(inputs)
     labels = torch.stack(labels)
-    return bags, labels, metadatas
+    return inputs, labels, metadatas
 
 
-def collate_fn_predict(batch: list[tuple[Tensor, MetadataMIL]]) -> MILPredictInput:
-    bags = []
+def collate_fn_predict(
+    batch: list[tuple[Tensor, Metadata]],
+) -> tuple[Tensor, list[Metadata]]:
+    inputs = []
     metadatas = []
-    for bag, metadata in batch:
-        bags.append(bag)
+    for input, metadata in batch:
+        inputs.append(input)
         metadatas.append(metadata)
-    bags = torch.stack(bags)
-    return bags, metadatas
+    inputs = torch.stack(inputs)
+    return inputs, metadatas

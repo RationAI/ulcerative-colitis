@@ -6,16 +6,20 @@ from torch import Tensor
 
 
 class Metadata(TypedDict):
-    slide: str
+    slide_id: str
+
+
+class MetadataTiles(Metadata):
+    slide_id: str
     x: int
     y: int
 
 
-Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
-PredictSample: TypeAlias = tuple[Tensor, Metadata]
+TilesSample: TypeAlias = tuple[Tensor, Tensor, MetadataTiles]
+TilesPredictSample: TypeAlias = tuple[Tensor, MetadataTiles]
 
 
-class MetadataMIL(TypedDict):
+class MetadataTileEmbeddings(Metadata):
     slide_id: str
     slide_name: str
     slide_path: Path
@@ -27,10 +31,23 @@ class MetadataMIL(TypedDict):
     y: Tensor  # Tensor[int]
 
 
-MILSample: TypeAlias = tuple[Tensor, Tensor, MetadataMIL]
-MILPredictSample: TypeAlias = tuple[Tensor, MetadataMIL]
+TileEmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataTileEmbeddings]
+TileEmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataTileEmbeddings]
 
-MILInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataMIL]]
-MILPredictInput: TypeAlias = tuple[Tensor, list[MetadataMIL]]
+TileEmbeddingsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataTileEmbeddings]]
+TileEmbeddingsPredictInput: TypeAlias = tuple[Tensor, list[MetadataTileEmbeddings]]
+
+
+class MetadataSlideEmbeddings(Metadata):
+    slide_id: str
+    slide_name: str
+    slide_path: Path
+
+
+SlideEmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataSlideEmbeddings]
+SlideEmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataSlideEmbeddings]
+
+SlideEmbeddingsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataSlideEmbeddings]]
+SlideEmbeddingsPredictInput: TypeAlias = tuple[Tensor, list[MetadataSlideEmbeddings]]
 
 Output: TypeAlias = Tensor

@@ -1,7 +1,7 @@
 from lightning import Callback, LightningModule, Trainer
 from rationai.mlkit.lightning.loggers.mlflow import MLFlowLogger
 
-from ulcerative_colitis.typing import MILPredictInput, Output
+from ulcerative_colitis.typing import Output, TileEmbeddingsPredictInput
 
 
 class MLFlowPredictionCallback(Callback):
@@ -10,7 +10,7 @@ class MLFlowPredictionCallback(Callback):
         trainer: Trainer,
         pl_module: LightningModule,
         outputs: Output,
-        batch: MILPredictInput,
+        batch: TileEmbeddingsPredictInput,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
