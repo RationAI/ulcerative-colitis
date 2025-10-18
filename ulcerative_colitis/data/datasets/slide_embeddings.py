@@ -20,7 +20,7 @@ T = TypeVar("T", bound=SlideEmbeddingsSample | SlideEmbeddingsPredictSample)
 class _SlideEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
-        tilling_uri: str,
+        tiling_uri: str,
         slide_embeddings_uri: str,
         mode: LabelMode | str | None = None,
         include_labels: bool = True,
@@ -31,7 +31,7 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
 
-        artifacts_tiling = Path(mlflow.artifacts.download_artifacts(tilling_uri))
+        artifacts_tiling = Path(mlflow.artifacts.download_artifacts(tiling_uri))
         artifacts_slide_embeddings = Path(
             mlflow.artifacts.download_artifacts(slide_embeddings_uri)
         )
@@ -73,7 +73,7 @@ class SlideEmbeddings(_SlideEmbeddings[SlideEmbeddingsSample]):
         mode: LabelMode | str,
     ) -> None:
         super().__init__(
-            tilling_uri=tilling_uri,
+            tiling_uri=tilling_uri,
             slide_embeddings_uri=slide_embeddings_uri,
             mode=mode,
             include_labels=True,
@@ -88,7 +88,7 @@ class SlideEmbeddingsPredict(_SlideEmbeddings[SlideEmbeddingsPredictSample]):
         mode: LabelMode | str | None = None,
     ) -> None:
         super().__init__(
-            tilling_uri=tilling_uri,
+            tiling_uri=tilling_uri,
             slide_embeddings_uri=slide_embeddings_uri,
             mode=mode,
             include_labels=False,
