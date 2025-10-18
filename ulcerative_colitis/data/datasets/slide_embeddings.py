@@ -38,8 +38,7 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
         self.slides = pd.read_parquet(artifacts_tiling / "slides.parquet")
         self.slide_embeddings = pd.read_parquet(
             artifacts_slide_embeddings / "slide_embeddings.parquet",
-            index_col="slide_id",
-        )
+        ).set_index("slide_id")
 
         self.slides = process_slides(self.slides, self.mode)
 
