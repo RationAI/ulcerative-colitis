@@ -68,12 +68,12 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
 class SlideEmbeddings(_SlideEmbeddings[SlideEmbeddingsSample]):
     def __init__(
         self,
-        tilling_uri: str,
+        tiling_uri: str,
         slide_embeddings_uri: str,
         mode: LabelMode | str,
     ) -> None:
         super().__init__(
-            tiling_uri=tilling_uri,
+            tiling_uri=tiling_uri,
             slide_embeddings_uri=slide_embeddings_uri,
             mode=mode,
             include_labels=True,
@@ -83,12 +83,12 @@ class SlideEmbeddings(_SlideEmbeddings[SlideEmbeddingsSample]):
 class SlideEmbeddingsPredict(_SlideEmbeddings[SlideEmbeddingsPredictSample]):
     def __init__(
         self,
-        tilling_uri: str,
+        tiling_uri: str,
         slide_embeddings_uri: str,
         mode: LabelMode | str | None = None,
     ) -> None:
         super().__init__(
-            tiling_uri=tilling_uri,
+            tiling_uri=tiling_uri,
             slide_embeddings_uri=slide_embeddings_uri,
             mode=mode,
             include_labels=False,
