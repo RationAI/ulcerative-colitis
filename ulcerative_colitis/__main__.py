@@ -12,8 +12,11 @@ from ulcerative_colitis.data import DataModule
 # from ulcerative_colitis.ulcerative_colitis_attention_mil_multiclass import (
 #     UlcerativeColitisModelAttentionMILMulticlass,
 # )
-from ulcerative_colitis.ulcerative_colitis_attention_mil import (
-    UlcerativeColitisModelAttentionMIL,
+# from ulcerative_colitis.ulcerative_colitis_attention_mil import (
+#     UlcerativeColitisModelAttentionMIL,
+# )
+from ulcerative_colitis.ulcerative_colitis_slide_embeddings import (
+    UlcerativeColitisModelSlideEmbeddings,
 )
 
 
@@ -33,7 +36,8 @@ def main(config: DictConfig, logger: Logger | None) -> None:
         _target_=DataModule,
     )
     model = hydra.utils.instantiate(
-        config.model, _target_=UlcerativeColitisModelAttentionMIL
+        config.model,
+        _target_=UlcerativeColitisModelSlideEmbeddings,
     )
 
     trainer = hydra.utils.instantiate(config.trainer, _target_=Trainer, logger=logger)
