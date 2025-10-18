@@ -49,7 +49,7 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
         slide_metadata = self.slides.iloc[idx]
         slide_embedding = torch.from_numpy(
             self.slide_embeddings.loc[slide_metadata["id"]]["embedding"]
-        )
+        ).float()
 
         metadata = MetadataSlideEmbeddings(
             slide_id=slide_metadata["id"],
