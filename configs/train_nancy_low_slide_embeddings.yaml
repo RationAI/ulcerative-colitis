@@ -2,6 +2,7 @@ defaults:
   - hydra: default
   - logger: mlflow
   - /data/datasets@data.train: slide_embeddings/slide_embeddings
+  - uris
   - _self_
 
 seed: ${random_seed:}
