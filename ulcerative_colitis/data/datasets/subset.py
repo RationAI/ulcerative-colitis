@@ -2,7 +2,9 @@ from collections.abc import Sequence
 
 from torch.utils.data import Subset
 
-from ulcerative_colitis.data.datasets import SlideEmbeddings, TileEmbeddings, Tiles
+from ulcerative_colitis.data.datasets.slide_embeddings import SlideEmbeddings
+from ulcerative_colitis.data.datasets.tile_embeddings import TileEmbeddings
+from ulcerative_colitis.data.datasets.tiles import Tiles
 from ulcerative_colitis.typing import (
     SlideEmbeddingsSample,
     TileEmbeddingsSample,
