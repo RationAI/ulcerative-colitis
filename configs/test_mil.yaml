@@ -27,7 +27,7 @@ model: {}
 
 metadata:
   experiment_name: 'Ulcerative Colitis' 
-  run_name: '📏 Testing: Ulcerative Colitis - ${data_mode} ${cohort} MIL'
+  run_name: '📏 Testing: - ${data_mode} ${cohort} MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

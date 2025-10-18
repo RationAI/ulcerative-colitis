@@ -7,6 +7,8 @@ defaults:
 seed: ${random_seed:}
 mode: fit
 checkpoint: null
+cohort: ???
+data_mode: nancy_low
 
 trainer:
   enable_checkpointing: True
@@ -23,20 +25,22 @@ trainer:
       patience: 20
 
 data:
-  batch_size: 8
+  batch_size: 32
   target_column: nancy_index
   num_workers: 4
   kfold_splits: 5
   k: 1
   train:
-    mode: nancy_low
+    mode: ${data_mode}
+    tiling_uri: '${uris.tiling.${cohort}}/train - ${cohort}'
+    slide_embeddings_uri: ${uris.slide_embeddings.${cohort}}
 
 model:
   lr: 0.00001
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
-  run_name: '🏋️‍♂️ Training: - Nancy Low Slide Embeddings (fold ${data.k}/${data.kfold_splits})'
+  run_name: '🏋️‍♂️ Training: - ${data_mode} ${cohort} (fold ${data.k}/${data.kfold_splits}) Slide Embeddings'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
