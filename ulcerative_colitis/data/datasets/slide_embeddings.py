@@ -60,7 +60,7 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
         if self.mode is None:
             return slide_embedding, metadata  # type: ignore[return-value]
 
-        label = get_label(slide_metadata, self.mode)
+        label = get_label(slide_metadata, self.mode).unsqueeze(-1)
         return slide_embedding, label, metadata  # type: ignore[return-value]
 
 
