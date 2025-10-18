@@ -34,7 +34,7 @@ data:
   train:
     mode: ${data_mode}
     tiling_uri: '${uris.tiling.${cohort}}/train - ${cohort}'
-    slide_embeddings_uri: ${uris.slide_embeddings.${cohort}}
+    slide_embeddings_uri: '${uris.slide_embeddings.${cohort}}/train - ${cohort}'  # TODO all embeddings should be together
 
 model:
   lr: 0.00001
