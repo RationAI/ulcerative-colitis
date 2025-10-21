@@ -35,18 +35,22 @@ async def _post_request(
 ) -> list[float] | None:
     async with semaphore:
         url = f"{config.url}/{length}"
-        async with session.post(
-            url,
-            data=data,
-            headers={"Content-Type": "application/octet-stream"},
-        ) as response:
-            try:
-                response.raise_for_status()
-                result = await response.json()
-                return result["embeddings"][-1]
-            except ClientError as e:
-                print(f"Request failed: {e}")
-                return None
+        try:
+            async with session.post(
+                url,
+                data=data,
+                headers={"Content-Type": "application/octet-stream"},
+            ) as response:
+                try:
+                    response.raise_for_status()
+                    result = await response.json()
+                    return result["embeddings"][-1]
+                except ClientError as e:
+                    print(f"Request failed: {e}")
+                    return None
+        except TimeoutError:
+            print(f"Request to {url} timed out.")
+            return None
 
 
 async def post_request(

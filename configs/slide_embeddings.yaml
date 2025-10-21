@@ -17,7 +17,7 @@ request_limit: 10
 
 connection_parameters:
   url: http://rayservice-models-serve-svc.rationai-jobs-ns.svc.cluster.local:8000/gigapath-slide-encoder
-  request_timeout: 60 # 1 minute
+  request_timeout: 180 # 3 minutes
   num_repeats: 3
 
 metadata:
