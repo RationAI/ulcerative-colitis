@@ -21,8 +21,38 @@ uris:
     ikem: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
     ftn: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
     knl_patos: ???
+    all:
+      - ${uris.slide_embeddings.ikem}
+      - ${uris.slide_embeddings.ftn}
 
   tiling:
-    ikem: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts"
-    ftn: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts"
-    knl_patos: ???
+    ikem: 
+      train: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/train - ikem"
+      test_preliminary: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/test preliminary - ikem"
+      test_final: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/test final - ikem"
+      all:
+        - ${uris.tiling.ikem.train}
+        - ${uris.tiling.ikem.test_preliminary}
+        - ${uris.tiling.ikem.test_final}
+    ftn: 
+      train: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/train - ftn"
+      test_preliminary: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test preliminary - ftn"
+      test_final: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test final - ftn"
+      all:
+        - ${uris.tiling.ftn.train}
+        - ${uris.tiling.ftn.test_preliminary}
+        - ${uris.tiling.ftn.test_final}
+    knl_patos: 
+      train: ???
+      test_preliminary: ???
+      test_final: ???
+    all:
+      train:
+        - ${uris.tiling.ikem.train}
+        - ${uris.tiling.ftn.train}
+      test preliminary:
+        - ${uris.tiling.ikem.test_preliminary}
+        - ${uris.tiling.ftn.test_preliminary}
+      test final:
+        - ${uris.tiling.ikem.test_final}
+        - ${uris.tiling.ftn.test_final}

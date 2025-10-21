@@ -1,6 +1,6 @@
 _target_: ulcerative_colitis.data.datasets.SlideEmbeddingsPredict
-tiling_uri: ???
-slide_embeddings_uri: ???
+tiling_uris: ???
+slide_embeddings_uris: ???
 mode: ???
 
 

@@ -1,5 +1,6 @@
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from itertools import repeat
 from pathlib import Path
 from typing import Generic, TypeVar, cast
 
@@ -9,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 
 from ulcerative_colitis.data.datasets.labels import LabelMode, get_label, process_slides
 from ulcerative_colitis.typing import (
@@ -25,10 +26,10 @@ T = TypeVar("T", bound=TileEmbeddingsSample | TileEmbeddingsPredictSample)
 class _TileEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
-        tiling_uri: str,
-        embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        embeddings_uris: Iterable[str],
         mode: LabelMode | str | None = None,
-        embeddings_folder: Path | str | None = None,
+        embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
         include_labels: bool = True,
     ) -> None:
@@ -38,20 +39,53 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
 
-        artifacts = Path(mlflow.artifacts.download_artifacts(tiling_uri))
-        self.tiles = pd.read_parquet(artifacts / "tiles.parquet")
-        self.slides = pd.read_parquet(artifacts / "slides.parquet")
+        self.slides, self.tiles = self.download_artifacts(
+            tiling_uris, embeddings_uris, embeddings_folders
+        )
         self.slides = process_slides(self.slides, self.mode)
-
-        if embeddings_folder is None or not Path(embeddings_folder).exists():
-            self.embeddings_folder = Path(
-                mlflow.artifacts.download_artifacts(embeddings_uri)
-            )
-        else:
-            self.embeddings_folder = Path(embeddings_folder)
 
         self.padding = padding
         self.max_embeddings = self.tiles["slide_id"].value_counts().max()
+
+    def download_artifacts(
+        self,
+        tiling_uris: Iterable[str],
+        embeddings_uris: Iterable[str],
+        embeddings_folders: Iterable[Path | str | None] | None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if embeddings_folders is None:
+            embeddings_folders = repeat(None)
+
+        slide_dfs = []
+        tile_dfs = []
+        for tiling_uri, embeddings_uri, embeddings_folder in zip(
+            tiling_uris, embeddings_uris, embeddings_folders, strict=False
+        ):
+            slide_dfs.append(
+                pd.read_parquet(
+                    Path(mlflow.artifacts.download_artifacts(tiling_uri))
+                    / "slides.parquet"
+                )
+            )
+            tile_dfs.append(
+                pd.read_parquet(
+                    Path(mlflow.artifacts.download_artifacts(tiling_uri))
+                    / "tiles.parquet"
+                )
+            )
+
+            if embeddings_folder is None:
+                embeddings_folder = Path(
+                    mlflow.artifacts.download_artifacts(embeddings_uri)
+                )
+            embeddings_folder = Path(embeddings_folder)
+
+            slide_dfs[-1]["embeddings_folder"] = embeddings_folder
+
+        return (
+            pd.concat(slide_dfs, ignore_index=True),
+            pd.concat(tile_dfs, ignore_index=True),
+        )
 
     def __len__(self) -> int:
         return len(self.slides)
@@ -63,7 +97,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         embeddings_dict = cast(
             "dict[str, torch.Tensor]",
             torch.load(
-                (self.embeddings_folder / slide_name).with_suffix(".pt"),
+                (slide_metadata["embeddings_folder"] / slide_name).with_suffix(".pt"),
                 map_location="cpu",
             ),
         )
@@ -97,16 +131,16 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
 class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
     def __init__(
         self,
-        tiling_uri: str,
-        embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        embeddings_uris: Iterable[str],
         mode: LabelMode | str,
-        embeddings_folder: Path | str | None = None,
+        embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
     ) -> None:
         super().__init__(
-            tiling_uri=tiling_uri,
-            embeddings_uri=embeddings_uri,
-            embeddings_folder=embeddings_folder,
+            tiling_uris=tiling_uris,
+            embeddings_uris=embeddings_uris,
+            embeddings_folders=embeddings_folders,
             mode=mode,
             padding=padding,
             include_labels=True,
@@ -116,31 +150,20 @@ class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
 class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
     def __init__(
         self,
-        tiling_uri: str,
-        embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        embeddings_uris: Iterable[str],
         mode: LabelMode | str | None = None,
-        embeddings_folder: Path | str | None = None,
+        embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
     ) -> None:
         super().__init__(
-            tiling_uri=tiling_uri,
-            embeddings_uri=embeddings_uri,
-            embeddings_folder=embeddings_folder,
+            tiling_uris=tiling_uris,
+            embeddings_uris=embeddings_uris,
+            embeddings_folders=embeddings_folders,
             mode=mode,
             padding=padding,
             include_labels=False,
         )
-
-
-class TileEmbeddingsSubset(Subset[TileEmbeddingsSample]):
-    def __init__(
-        self,
-        dataset: TileEmbeddings,
-        indices: Sequence[int],
-    ) -> None:
-        super().__init__(dataset, indices)
-        self.slides = dataset.slides.iloc[list(indices)].reset_index()
-        self.tiles = dataset.tiles.query(f"slide_id in {tuple(self.slides['id'])}")
 
 
 def align_tile_embeddings(

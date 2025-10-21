@@ -7,8 +7,8 @@ defaults:
 
 cohort: ???
 
+tiling_uris: ${uris.tiling.${cohort}.all}
 embeddings_uri: ${uris.embeddings.${cohort}.prov-gigapath}
-tiling_uri: ${uris.tiling.${cohort}}
 
 embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
 embeddings_download: True

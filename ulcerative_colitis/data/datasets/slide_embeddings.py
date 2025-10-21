@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Generic, TypeVar
 
@@ -20,8 +21,8 @@ T = TypeVar("T", bound=SlideEmbeddingsSample | SlideEmbeddingsPredictSample)
 class _SlideEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
-        tiling_uri: str,
-        slide_embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        slide_embeddings_uris: Iterable[str],
         mode: LabelMode | str | None = None,
         include_labels: bool = True,
     ) -> None:
@@ -31,25 +32,45 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
 
-        artifacts_tiling = Path(mlflow.artifacts.download_artifacts(tiling_uri))
-        artifacts_slide_embeddings = Path(
-            mlflow.artifacts.download_artifacts(slide_embeddings_uri)
+        slides, slide_embeddings = self.download_artifacts(
+            tiling_uris, slide_embeddings_uris
         )
-        self.slides = pd.read_parquet(artifacts_tiling / "slides.parquet")
-        self.slide_embeddings = pd.read_parquet(
-            artifacts_slide_embeddings / "slide_embeddings.parquet",
-        ).set_index("slide_id")
+
+        self.slides = slides.merge(
+            slide_embeddings, how="left", left_on="id", right_index=True
+        )
 
         self.slides = process_slides(self.slides, self.mode)
+
+    def download_artifacts(
+        self, tiling_uris: Iterable[str], slide_embeddings_uris: Iterable[str]
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        slide_dfs = []
+        for tiling_uri in tiling_uris:
+            slide_dfs.append(
+                pd.read_parquet(
+                    Path(mlflow.artifacts.download_artifacts(tiling_uri))
+                    / "slides.parquet"
+                )
+            )
+
+        slide_embeddings_dfs = []
+        for slide_embeddings_uri in slide_embeddings_uris:
+            slide_embeddings_dfs.append(
+                pd.read_parquet(
+                    Path(mlflow.artifacts.download_artifacts(slide_embeddings_uri))
+                    / "slide_embeddings.parquet"
+                ).set_index("slide_id")
+            )
+
+        return pd.concat(slide_dfs, ignore_index=True), pd.concat(slide_embeddings_dfs)
 
     def __len__(self) -> int:
         return len(self.slides)
 
     def __getitem__(self, idx: int) -> T:
         slide_metadata = self.slides.iloc[idx]
-        slide_embedding = torch.from_numpy(
-            self.slide_embeddings.loc[slide_metadata["id"]]["embedding"]
-        ).float()
+        slide_embedding = torch.from_numpy(slide_metadata["embedding"]).float()
 
         metadata = MetadataSlideEmbeddings(
             slide_id=slide_metadata["id"],
@@ -67,13 +88,13 @@ class _SlideEmbeddings(Dataset[T], Generic[T]):
 class SlideEmbeddings(_SlideEmbeddings[SlideEmbeddingsSample]):
     def __init__(
         self,
-        tiling_uri: str,
-        slide_embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        slide_embeddings_uris: Iterable[str],
         mode: LabelMode | str,
     ) -> None:
         super().__init__(
-            tiling_uri=tiling_uri,
-            slide_embeddings_uri=slide_embeddings_uri,
+            tiling_uris=tiling_uris,
+            slide_embeddings_uris=slide_embeddings_uris,
             mode=mode,
             include_labels=True,
         )
@@ -82,13 +103,13 @@ class SlideEmbeddings(_SlideEmbeddings[SlideEmbeddingsSample]):
 class SlideEmbeddingsPredict(_SlideEmbeddings[SlideEmbeddingsPredictSample]):
     def __init__(
         self,
-        tiling_uri: str,
-        slide_embeddings_uri: str,
+        tiling_uris: Iterable[str],
+        slide_embeddings_uris: Iterable[str],
         mode: LabelMode | str | None = None,
     ) -> None:
         super().__init__(
-            tiling_uri=tiling_uri,
-            slide_embeddings_uri=slide_embeddings_uri,
+            tiling_uris=tiling_uris,
+            slide_embeddings_uris=slide_embeddings_uris,
             mode=mode,
             include_labels=False,
         )

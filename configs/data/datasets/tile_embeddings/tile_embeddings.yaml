@@ -1,7 +1,7 @@
 _target_: ulcerative_colitis.data.datasets.TileEmbeddings
-tiling_uri: ???
-embeddings_uri: ???
+tiling_uris: ???
+embeddings_uris: ???
 mode: ???
-embeddings_folder: ???
+embeddings_folders: ???
 
 
