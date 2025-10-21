@@ -32,19 +32,21 @@ async def _post_request(
     semaphore: asyncio.Semaphore,
     config: DictConfig,
     length: int,
-) -> ClientResponse:
+) -> list[float] | None:
     async with semaphore:
         url = f"{config.url}/{length}"
-        try:
-            async with session.post(
-                url,
-                data=data,
-                headers={"Content-Type": "application/octet-stream"},
-            ) as response:
-                return response
-        except Exception as e:
-            print(f"Error during request to {url}: {e}")
-            raise
+        async with session.post(
+            url,
+            data=data,
+            headers={"Content-Type": "application/octet-stream"},
+        ) as response:
+            try:
+                response.raise_for_status()
+                result = await response.json()
+                return result["embeddings"][-1]
+            except ClientError as e:
+                print(f"Request failed: {e}")
+                return None
 
 
 async def post_request(
@@ -53,7 +55,7 @@ async def post_request(
     semaphore: asyncio.Semaphore,
     config: DictConfig,
     length: int,
-) -> ClientResponse:
+) -> list[float] | None:
     timeout = ClientTimeout(
         total=config.request_timeout, sock_read=config.request_timeout
     )
@@ -68,7 +70,13 @@ async def post_request(
             headers={"Content-Type": "application/octet-stream"},
         ) as response,
     ):
-        return response
+        try:
+            response.raise_for_status()
+            result = await response.json()
+            return result["embeddings"][-1]
+        except ClientError as e:
+            print(f"Request failed: {e}")
+            return None
 
 
 async def repeatable_post_request(
@@ -80,21 +88,12 @@ async def repeatable_post_request(
     slide_id: str,
 ) -> tuple[str, list[float] | None]:
     for _ in range(config.num_repeats):
-        try:
-            response = await _post_request(session, data, semaphore, config, length)
-
-            print(f"Response status for slide {slide_id}: {response.status}")
-            response.raise_for_status()
-            print("Response OK, parsing...")
-            result = await response.json()
-            print(f"Request succeeded for slide {slide_id}. ✅")
-
-            return slide_id, result["embeddings"][-1]
-
-        except ClientError as e:
-            print(f"Request failed for slide {slide_id}, retrying... Error: {e}")
+        embedding = await _post_request(session, data, semaphore, config, length)
+        if embedding is None:
+            print(f"Request failed for slide {slide_id}, retrying...")
             continue
 
+        return slide_id, embedding
     return slide_id, None
 
 
