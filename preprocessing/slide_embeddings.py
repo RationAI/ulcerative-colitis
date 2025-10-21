@@ -6,14 +6,11 @@ from pathlib import Path
 import hydra
 import mlflow.data.pandas_dataset
 import pandas as pd
-import requests
 import torch
 from aiohttp import (
     ClientError,
-    ClientResponse,
     ClientSession,
     ClientTimeout,
-    TCPConnector,
 )
 from lightning.pytorch.loggers import Logger
 from mlflow.tracking import MlflowClient
@@ -26,7 +23,7 @@ from tqdm import tqdm
 from ulcerative_colitis.data.datasets import TileEmbeddingsPredict
 
 
-async def _post_request(
+async def post_request(
     session: ClientSession,
     data: bytes,
     semaphore: asyncio.Semaphore,
@@ -53,36 +50,6 @@ async def _post_request(
             return None
 
 
-async def post_request(
-    session: ClientSession,
-    data: bytes,
-    semaphore: asyncio.Semaphore,
-    config: DictConfig,
-    length: int,
-) -> list[float] | None:
-    timeout = ClientTimeout(
-        total=config.request_timeout, sock_read=config.request_timeout
-    )
-
-    print(f"Sending request to {config.url}/{length}...")
-    async with (
-        semaphore,
-        session.post(
-            f"{config.url}/{length}",
-            data=data,
-            timeout=timeout,
-            headers={"Content-Type": "application/octet-stream"},
-        ) as response,
-    ):
-        try:
-            response.raise_for_status()
-            result = await response.json()
-            return result["embeddings"][-1]
-        except ClientError as e:
-            print(f"Request failed: {e}")
-            return None
-
-
 async def repeatable_post_request(
     session: ClientSession,
     data: bytes,
@@ -92,7 +59,7 @@ async def repeatable_post_request(
     slide_id: str,
 ) -> tuple[str, list[float] | None]:
     for _ in range(config.num_repeats):
-        embedding = await _post_request(session, data, semaphore, config, length)
+        embedding = await post_request(session, data, semaphore, config, length)
         if embedding is None:
             print(f"Request failed for slide {slide_id}, retrying...")
             continue
@@ -101,7 +68,7 @@ async def repeatable_post_request(
     return slide_id, None
 
 
-async def _slide_embeddings(
+async def slide_embeddings(
     dataset: TileEmbeddingsPredict,
     config: DictConfig,
 ) -> pd.DataFrame:
@@ -138,70 +105,6 @@ async def _slide_embeddings(
 
             results.extend(await asyncio.gather(*pending))
             pbar.update(len(pending))
-            # if pending:
-            #     done = await asyncio.gather(*pending)
-            #     for d in done:
-            #         results.append(d)
-            #         pbar.update(1)
-
-    return pd.DataFrame(results, columns=["slide_id", "embedding"])
-
-
-async def slide_embeddings(
-    dataset: TileEmbeddingsPredict,
-    semaphore: asyncio.Semaphore,
-    config: DictConfig,
-) -> pd.DataFrame:
-    print(f"Using embedding server at {config.connection_parameters.url}")
-    connector = TCPConnector(limit_per_host=config.request_limit)
-    async with ClientSession(connector=connector) as session:
-        pending = set()
-        results = []
-        for x, metadata in DataLoader(dataset, batch_size=None):
-            coords = torch.stack([metadata["x"], metadata["y"]], dim=-1)
-
-            result = requests.post(
-                f"{config.connection_parameters.url}/{len(x)}",
-                data=x.numpy().tobytes() + coords.numpy().tobytes(),
-                timeout=config.connection_parameters.request_timeout,
-                headers={"Content-Type": "application/octet-stream"},
-            )
-            results.append((str(metadata["slide_id"]), result.json()["embeddings"][-1]))
-            # result = await asyncio.create_task(
-            #     repeatable_post_request(
-            #         session=session,
-            #         semaphore=semaphore,
-            #         config=config.connection_parameters,
-            #         data=x.numpy().tobytes() + coords.numpy().tobytes(),
-            #         length=len(x),
-            #         slide_id=str(metadata["slide_id"]),
-            #     )
-            # )
-            # results.append(result)
-            # pending.add(
-            #     asyncio.create_task(
-            #         repeatable_post_request(
-            #             session=session,
-            #             semaphore=semaphore,
-            #             config=config.connection_parameters,
-            #             data=x.numpy().tobytes() + coords.numpy().tobytes(),
-            #             length=len(x),
-            #             slide_id=str(metadata["slide_id"]),
-            #         )
-            #     )
-            # )
-
-            # if len(pending) >= config.request_limit:
-            #     done, pending = await asyncio.wait(
-            #         pending, return_when=asyncio.FIRST_COMPLETED
-            #     )
-
-            #     for d in done:
-            #         results.append(d.result())
-
-        print(f"Sending {len(pending)} requests to the embedding server...")
-        results.extend(await asyncio.gather(*pending))
-        print("All requests completed.")
 
     return pd.DataFrame(results, columns=["slide_id", "embedding"])
 
@@ -231,8 +134,6 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
     assert logger.run_id is not None, "Need run_id"
 
-    # semaphore = asyncio.Semaphore(config.request_limit)
-
     splits = len(config.tiling_uris)
     embeddings_uris = [config.embeddings_uri] * splits
     embeddings_folders = [Path(config.embeddings_folder)] * splits
@@ -244,40 +145,10 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         padding=False,
     )
 
-    slide_embeddings_df = asyncio.run(_slide_embeddings(dataset, config))
+    slide_embeddings_df = asyncio.run(slide_embeddings(dataset, config))
     save_mlflow_dataset(
         slide_embeddings_df, f"slide_embeddings - {config.cohort}", logger
     )
-
-    # slide_embeddings_dfs = []
-    # embeddings_folder = Path(config.embeddings_folder)
-    # for split in ["train", "test preliminary", "test final"]:
-    #     print(f"Processing {split} set...")
-    #     tiling_uri = f"{config.tiling_uri}/{split} - {config.cohort}"
-
-    #     print(f"Loading dataset from {tiling_uri}...")
-    #     dataset = TileEmbeddingsPredict(
-    #         tiling_uri=tiling_uri,
-    #         embeddings_uri=config.embeddings_uri,
-    #         embeddings_folder=None if config.embeddings_download else embeddings_folder,
-    #         padding=False,
-    #     )
-
-    #     print(f"Computing slide embeddings for {len(dataset)} slides...")
-    #     slide_embeddings_dfs.append(
-    #         asyncio.run(
-    #             slide_embeddings(
-    #                 dataset=dataset,
-    #                 semaphore=semaphore,
-    #                 config=config,
-    #             )
-    #         )
-    #     )
-
-    # print("Saving slide embeddings...")
-    # save_mlflow_dataset(
-    #     pd.concat(slide_embeddings_dfs), f"slide_embeddings - {config.cohort}", logger
-    # )
 
 
 if __name__ == "__main__":
