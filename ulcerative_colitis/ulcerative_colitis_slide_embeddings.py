@@ -14,6 +14,7 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
+from ulcerative_colitis.modeling import MLP
 from ulcerative_colitis.typing import (
     Output,
     SlideEmbeddingsInput,
@@ -24,7 +25,7 @@ from ulcerative_colitis.typing import (
 class UlcerativeColitisModelSlideEmbeddings(LightningModule):
     def __init__(self, lr: float | None = None) -> None:
         super().__init__()
-        self.classifier = nn.Linear(768, 1)
+        self.classifier = MLP(768, 256, 128, 1)
         self.criterion = nn.BCELoss()
         self.lr = lr
 
