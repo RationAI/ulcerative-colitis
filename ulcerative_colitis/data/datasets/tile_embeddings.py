@@ -1,5 +1,5 @@
 import warnings
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from itertools import repeat
 from pathlib import Path
 from typing import Generic, TypeVar, cast

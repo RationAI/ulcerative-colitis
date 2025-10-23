@@ -18,8 +18,8 @@ uris:
       prov-gigapath: ???
 
   slide_embeddings:
-    ikem: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
-    ftn: "mlflow-artifacts:/86/95d8e3bd07da4755acaf435082fd538f/artifacts"
+    ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"
+    ftn: "mlflow-artifacts:/86/97cd2949f0054ecbac7c0a8dcc2e3c9f/artifacts/slide_embeddings"
     knl_patos: ???
     all:
       - ${uris.slide_embeddings.ikem}
