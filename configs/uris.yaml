@@ -53,14 +53,14 @@ uris:
         #   - ${..test_final}
       all:
         train:
-          - ${..ikem.train}
-          - ${..ftn.train}
+          - ${...ikem.train}
+          - ${...ftn.train}
         test preliminary:
-          - ${..ikem.test_preliminary}
-          - ${..ftn.test_preliminary}
+          - ${...ikem.test_preliminary}
+          - ${...ftn.test_preliminary}
         test final:
-          - ${..ikem.test_final}
-          - ${..ftn.test_final}
+          - ${...ikem.test_final}
+          - ${...ftn.test_final}
     "1.384752":
       ikem: 
         train: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/train - ikem
@@ -88,11 +88,11 @@ uris:
         #   - ${..test_final}
       all:
         train:
-          - ${..ikem.train}
-          - ${..ftn.train}
+          - ${...ikem.train}
+          - ${...ftn.train}
         test preliminary:
-          - ${..ikem.test_preliminary}
-          - ${..ftn.test_preliminary}
+          - ${...ikem.test_preliminary}
+          - ${...ftn.test_preliminary}
         test final:
-          - ${..ikem.test_final}
-          - ${..ftn.test_final}
+          - ${...ikem.test_final}
+          - ${...ftn.test_final}
