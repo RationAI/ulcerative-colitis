@@ -10,7 +10,7 @@ token: ???
 model: ???
 level: ???
 
-tiling_uri: ${uris.tiling.${level}.${cohort}.all}
+tiling_uris: ${uris.tiling.${level}.${cohort}.all}
 
 output_folder: ${paths.embeddings.${cohort}.${model}}
 
