@@ -26,7 +26,7 @@ uris:
       - ${..ftn}
 
   tiling:
-    "0.346188":
+    "1":  # level
       ikem: 
         train: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/train - ikem"
         test_preliminary: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/test preliminary - ikem"
@@ -61,7 +61,7 @@ uris:
         test final:
           - ${...ikem.test_final}
           - ${...ftn.test_final}
-    "1.384752":
+    "3":  # level
       ikem: 
         train: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/train - ikem
         test_preliminary: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/test preliminary - ikem

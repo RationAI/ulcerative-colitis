@@ -8,9 +8,9 @@ defaults:
 cohort: ???
 token: ???
 model: ???
-mpp: "???"
+level: ???
 
-tiling_uri: ${uris.tiling.${mpp}.${cohort}.all}
+tiling_uri: ${uris.tiling.${level}.${cohort}.all}
 
 output_folder: ${paths.embeddings.${cohort}.${model}}
 
