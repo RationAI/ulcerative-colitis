@@ -23,10 +23,10 @@ from ulcerative_colitis.data.datasets import TilesPredict
 
 class FoundationModel(Enum):
     PROV_GIGAPATH = "prov-gigapath"
-    UNI = "UNI"
-    UNI2 = "UNI2-h"
-    VIRCHOW = "Virchow"
-    VIRCHOW2 = "Virchow2"
+    UNI = "uni"
+    UNI2 = "uni2-h"
+    VIRCHOW = "virchow"
+    VIRCHOW2 = "virchow2"
 
 
 def load_dataset(uris: Iterable[str]) -> TilesPredict:
