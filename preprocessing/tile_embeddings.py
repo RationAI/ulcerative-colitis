@@ -1,5 +1,6 @@
 # TODO: Refactor to use Tile Encoder as service
 
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
 
@@ -28,19 +29,19 @@ class FoundationModel(Enum):
     VIRCHOW2 = "Virchow2"
 
 
-def load_dataset(uri: str) -> TilesPredict:
+def load_dataset(uris: Iterable[str]) -> TilesPredict:
     """Load the dataset for tile embeddings.
 
     Assumes that the dataset has 224x224 RGB tiles.
 
     Args:
-        uri (str): The URI of the dataset.
+        uris (Iterable[str]): The URIs of the tiles.
 
     Returns:
         TilesPredict: The dataset object for tile embeddings.
     """
     return TilesPredict(
-        (uri,),
+        uris,
         transforms=A.Compose(
             [
                 A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
@@ -185,55 +186,48 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     output_folder = Path(config.output_folder)
 
     with torch.no_grad():
-        for partition in ("train", "test preliminary", "test final"):
-            dataset = load_dataset(f"{config.tiling_uri}/{partition} - {config.cohort}")
+        dataset = load_dataset(config.tiling_uris)
 
-            for slide_dataset in tqdm(
-                dataset.generate_datasets(), desc=f"{partition}: "
-            ):
-                slide_name = str(slide_dataset.slide_metadata["name"])
-                embeddings_path = (output_folder / slide_name).with_suffix(".pt")
+        for slide_dataset in tqdm(dataset.generate_datasets()):
+            slide_name = str(slide_dataset.slide_metadata["name"])
+            embeddings_path = (output_folder / slide_name).with_suffix(".pt")
 
-                if config.skip_existing and embeddings_path.exists():
-                    continue
+            if config.skip_existing and embeddings_path.exists():
+                continue
 
-                slide_tiles_dataloader = DataLoader(
-                    slide_dataset,
-                    batch_size=config.dataloader.batch_size,
-                    num_workers=config.dataloader.num_workers,
-                    persistent_workers=config.dataloader.persistent_workers,
-                )
-                slide_tiles_embeddings = torch.zeros(
-                    (len(slide_dataset), embedding_dim), dtype=torch.float32
-                )
-                slide_tiles_x_coords = torch.zeros(
-                    (len(slide_dataset),), dtype=torch.int32
-                )
-                slide_tiles_y_coords = torch.zeros(
-                    (len(slide_dataset),), dtype=torch.int32
-                )
+            slide_tiles_dataloader = DataLoader(
+                slide_dataset,
+                batch_size=config.dataloader.batch_size,
+                num_workers=config.dataloader.num_workers,
+                persistent_workers=config.dataloader.persistent_workers,
+            )
+            slide_tiles_embeddings = torch.zeros(
+                (len(slide_dataset), embedding_dim), dtype=torch.float32
+            )
+            slide_tiles_x_coords = torch.zeros((len(slide_dataset),), dtype=torch.int32)
+            slide_tiles_y_coords = torch.zeros((len(slide_dataset),), dtype=torch.int32)
 
-                for i, (x, metadata) in enumerate(slide_tiles_dataloader):
-                    x = x.to(device)
-                    embeddings = process_output(tile_encoder(x), model)
-                    start = i * config.dataloader.batch_size
-                    end = start + embeddings.size(0)
-                    slide_tiles_embeddings[start:end] = embeddings.to("cpu")
-                    slide_tiles_x_coords[start:end] = metadata["x"].to("cpu")
-                    slide_tiles_y_coords[start:end] = metadata["y"].to("cpu")
+            for i, (x, metadata) in enumerate(slide_tiles_dataloader):
+                x = x.to(device)
+                embeddings = process_output(tile_encoder(x), model)
+                start = i * config.dataloader.batch_size
+                end = start + embeddings.size(0)
+                slide_tiles_embeddings[start:end] = embeddings.to("cpu")
+                slide_tiles_x_coords[start:end] = metadata["x"].to("cpu")
+                slide_tiles_y_coords[start:end] = metadata["y"].to("cpu")
 
-                save_embeddings(
-                    slide_tiles_embeddings,
-                    slide_tiles_x_coords,
-                    slide_tiles_y_coords,
-                    embeddings_path,
-                )
+            save_embeddings(
+                slide_tiles_embeddings,
+                slide_tiles_x_coords,
+                slide_tiles_y_coords,
+                embeddings_path,
+            )
 
-                logger.experiment.log_artifact(
-                    run_id=logger.run_id,
-                    local_path=str(embeddings_path),
-                    artifact_path="embeddings",
-                )
+            logger.experiment.log_artifact(
+                run_id=logger.run_id,
+                local_path=str(embeddings_path),
+                artifact_path="embeddings",
+            )
 
 
 if __name__ == "__main__":
