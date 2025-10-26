@@ -22,8 +22,8 @@ uris:
     ftn: "mlflow-artifacts:/86/97cd2949f0054ecbac7c0a8dcc2e3c9f/artifacts/slide_embeddings"
     knl_patos: ???
     all:
-      - ${uris.slide_embeddings.ikem}
-      - ${uris.slide_embeddings.ftn}
+      - ${ikem}
+      - ${ftn}
 
   tiling:
     "0.346188":
@@ -32,67 +32,67 @@ uris:
         test_preliminary: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/test preliminary - ikem"
         test_final: "mlflow-artifacts:/86/c21ea1955fd44365af32fa773fb25bcd/artifacts/test final - ikem"
         all:
-          - ${uris.tiling.ikem.train}
-          - ${uris.tiling.ikem.test_preliminary}
-          - ${uris.tiling.ikem.test_final}
+          - ${train}
+          - ${test_preliminary}
+          - ${test_final
       ftn: 
         train: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/train - ftn"
         test_preliminary: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test preliminary - ftn"
         test_final: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test final - ftn"
         all:
-          - ${uris.tiling.ftn.train}
-          - ${uris.tiling.ftn.test_preliminary}
-          - ${uris.tiling.ftn.test_final}
+          - ${train}
+          - ${test_preliminary}
+          - ${test_final}
       knl_patos: 
         train: ???
         test_preliminary: ???
         test_final: ???
         all:
-          - ${uris.tiling.knl_patos.train}
-          - ${uris.tiling.knl_patos.test_preliminary}
-          - ${uris.tiling.knl_patos.test_final}
+          - ${train}
+          - ${test_preliminary}
+          - ${test_final}
       all:
         train:
-          - ${uris.tiling.ikem.train}
-          - ${uris.tiling.ftn.train}
+          - ${ikem.train}
+          - ${ftn.train}
         test preliminary:
-          - ${uris.tiling.ikem.test_preliminary}
-          - ${uris.tiling.ftn.test_preliminary}
+          - ${ikem.test_preliminary}
+          - ${ftn.test_preliminary}
         test final:
-          - ${uris.tiling.ikem.test_final}
-          - ${uris.tiling.ftn.test_final}
+          - ${ikem.test_final}
+          - ${ftn.test_final}
     "1.384752":
       ikem: 
         train: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/train - ikem
         test_preliminary: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/test preliminary - ikem
         test_final: mlflow-artifacts:/86/36ccc89b303649898f83bd34d29125c7/artifacts/test final - ikem
         all:
-          - ${uris.tiling.ikem.train}
-          - ${uris.tiling.ikem.test_preliminary}
-          - ${uris.tiling.ikem.test_final}
+          - ${train}
+          - ${test_preliminary}
+          - ${test_final}
       ftn: 
         train: mlflow-artifacts:/86/4e595c227bd64fa6a42d91f86211fb5e/artifacts/train - ftn
         test_preliminary: mlflow-artifacts:/86/4e595c227bd64fa6a42d91f86211fb5e/artifacts/test preliminary - ftn
         test_final: mlflow-artifacts:/86/4e595c227bd64fa6a42d91f86211fb5e/artifacts/test final - ftn
         all:
-          - ${uris.tiling.ftn.train}
-          - ${uris.tiling.ftn.test_preliminary}
-          - ${uris.tiling.ftn.test_final}
+          - ${ftn.train}
+          - ${ftn.test_preliminary}
+          - ${ftn.test_final}
       knl_patos: 
         train: ???
         test_preliminary: ???
         test_final: ???
         all:
-          - ${uris.tiling.knl_patos.train}
-          - ${uris.tiling.knl_patos.test_preliminary}
-          - ${uris.tiling.knl_patos.test_final}
+          - ${train}
+          - ${test_preliminary}
+          - ${test_final}
       all:
         train:
-          - ${uris.tiling.ikem.train}
-          - ${uris.tiling.ftn.train}
+          - ${ikem.train}
+          - ${ftn.train}
         test preliminary:
-          - ${uris.tiling.ikem.test_preliminary}
-          - ${uris.tiling.ftn.test_preliminary}
+          - ${ikem.test_preliminary}
+          - ${ftn.test_preliminary}
         test final:
-          - ${uris.tiling.ikem.test_final}
-          - ${uris.tiling.ftn.test_final}
+          - ${ikem.test_final}
+          - ${ftn.test_final}
