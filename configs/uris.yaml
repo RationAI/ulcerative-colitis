@@ -47,10 +47,10 @@ uris:
         train: ???
         test_preliminary: ???
         test_final: ???
-        all:
-          - ${..train}
-          - ${..test_preliminary}
-          - ${..test_final}
+        # all:
+        #   - ${..train}
+        #   - ${..test_preliminary}
+        #   - ${..test_final}
       all:
         train:
           - ${..ikem.train}
@@ -82,10 +82,10 @@ uris:
         train: ???
         test_preliminary: ???
         test_final: ???
-        all:
-          - ${..train}
-          - ${..test_preliminary}
-          - ${..test_final}
+        # all:
+        #   - ${..train}
+        #   - ${..test_preliminary}
+        #   - ${..test_final}
       all:
         train:
           - ${..ikem.train}
