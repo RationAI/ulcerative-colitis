@@ -34,7 +34,7 @@ uris:
         all:
           - ${train}
           - ${test_preliminary}
-          - ${test_final
+          - ${test_final}
       ftn: 
         train: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/train - ftn"
         test_preliminary: "mlflow-artifacts:/86/28e6b60b4eb64e01b37e947869ac1f85/artifacts/test preliminary - ftn"
