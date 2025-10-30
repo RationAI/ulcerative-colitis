@@ -12,10 +12,20 @@ uris:
   embeddings:
     ikem:
       prov-gigapath: "mlflow-artifacts:/86/d6346f4504dd4f3da92fc6080df3db81/artifacts/embeddings"
+      virchow2: "mlflow-artifacts:/86/4732d3b8074646a0b9f8ebdfc9dc9254/artifacts/embeddings"
     ftn:
       prov-gigapath: "mlflow-artifacts:/86/5ad6eb380be14a259bb59b190a66e8bb/artifacts/embeddings"
+      virchow2: "mlflow-artifacts:/86/ecc4d7b2093d44fc9aa48e30ef0675c8/artifacts/embeddings"
     knl_patos:
       prov-gigapath: ???
+      virchow2: ???
+    all:
+      prov-gigapath:
+        - ${...ikem.prov-gigapath}
+        - ${...ftn.prov-gigapath}
+      virchow2:
+        - ${...ikem.virchow2}
+        - ${...ftn.virchow2}
 
   slide_embeddings:
     ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"

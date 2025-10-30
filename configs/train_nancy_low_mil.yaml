@@ -1,12 +1,16 @@
 defaults:
   - hydra: default
   - logger: mlflow
-  - /data/datasets@data.train: embeddings/train
+  - /data/datasets@data.train: tile_embeddings/tile_embeddings
+  - uris
+  - paths
   - _self_
 
 seed: ${random_seed:}
 mode: fit
 checkpoint: null
+cohort: ???
+data_mode: nancy_low
 
 trainer:
   enable_checkpointing: True
@@ -29,14 +33,17 @@ data:
   kfold_splits: 5
   k: 1
   train:
-    mode: nancy_low
+    tiling_uris: ${uris.tiling.3.${cohort}.train}
+    embeddings_uris: ${uris.embeddings.${cohort}.virchow2}
+    mode: ${data_mode}
+    embeddings_folders: ${paths.embeddings.${cohort}.virchow2}
 
 model:
   lr: 0.00001
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
-  run_name: '🏋️‍♂️ Training: Ulcerative Colitis - Nancy Low MIL (fold ${data.k}/${data.kfold_splits})'
+  run_name: '🏋️‍♂️ Training: ${data_mode} ${cohort} (fold ${data.k}/${data.kfold_splits}) MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}

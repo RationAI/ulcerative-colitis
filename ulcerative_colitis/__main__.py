@@ -12,12 +12,14 @@ from ulcerative_colitis.data import DataModule
 # from ulcerative_colitis.ulcerative_colitis_attention_mil_multiclass import (
 #     UlcerativeColitisModelAttentionMILMulticlass,
 # )
-# from ulcerative_colitis.ulcerative_colitis_attention_mil import (
-#     UlcerativeColitisModelAttentionMIL,
-# )
-from ulcerative_colitis.ulcerative_colitis_slide_embeddings import (
-    UlcerativeColitisModelSlideEmbeddings,
+from ulcerative_colitis.ulcerative_colitis_attention_mil import (
+    UlcerativeColitisModelAttentionMIL,
 )
+
+
+# from ulcerative_colitis.ulcerative_colitis_slide_embeddings import (
+#     UlcerativeColitisModelSlideEmbeddings,
+# )
 
 
 OmegaConf.register_new_resolver(
@@ -37,7 +39,7 @@ def main(config: DictConfig, logger: Logger | None) -> None:
     )
     model = hydra.utils.instantiate(
         config.model,
-        _target_=UlcerativeColitisModelSlideEmbeddings,
+        _target_=UlcerativeColitisModelAttentionMIL,
     )
 
     trainer = hydra.utils.instantiate(config.trainer, _target_=Trainer, logger=logger)

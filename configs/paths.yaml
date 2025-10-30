@@ -1,5 +1,5 @@
 paths:
-  base_folder: /mnt/data/Projects/inflammatory_bowel_dissease/ulcerative_colitis
+  base_folder: /mnt/projects/inflammatory_bowel_dissease/ulcerative_colitis
 
   slides:
     ikem: ${paths.base_folder}/data_tiff/ikem
@@ -31,6 +31,13 @@ paths:
     knl_patos:
       prov-gigapath: ${paths.base_folder}/embeddings/knl_patos
       virchow2: ${paths.base_folder}/embeddings/knl_patos
+    all:
+      prov-gigapath:
+        - ${...ikem.prov-gigapath}
+        - ${...ftn.prov-gigapath}
+      virchow2:
+        - ${...ikem.virchow2}
+        - ${...ftn.virchow2}
 
   tile_masks:
     ikem: ${paths.base_folder}/tile_masks/ikem
