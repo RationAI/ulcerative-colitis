@@ -40,6 +40,7 @@ data:
 
 model:
   lr: 0.00001
+  foundation: virchow2
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
