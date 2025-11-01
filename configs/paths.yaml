@@ -46,7 +46,17 @@ paths:
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
-    "4": ???
+    "4": # level
+      ikem:
+        virchow2: ${paths.base_folder}/embeddings/4/ikem/virchow2
+      ftn:
+        virchow2: ${paths.base_folder}/embeddings/4/ftn/virchow2
+      knl_patos:
+        virchow2: ${paths.base_folder}/embeddings/4/knl_patos/virchow2
+      all:
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
 
   tile_masks:
     ikem: ${paths.base_folder}/tile_masks/ikem
