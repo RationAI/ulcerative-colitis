@@ -22,22 +22,31 @@ paths:
     knl_patos: ${paths.base_folder}/tissue_masks/knl_patos
 
   embeddings:
-    ikem:
-      prov-gigapath: ${paths.base_folder}/embeddings/ikem/prov-gigapath
-      virchow2: ${paths.base_folder}/embeddings/ikem/virchow2
-    ftn:
-      prov-gigapath: ${paths.base_folder}/embeddings/ftn/prov-gigapath
-      virchow2: ${paths.base_folder}/embeddings/ftn/virchow2
-    knl_patos:
-      prov-gigapath: ${paths.base_folder}/embeddings/knl_patos
-      virchow2: ${paths.base_folder}/embeddings/knl_patos
-    all:
-      prov-gigapath:
-        - ${...ikem.prov-gigapath}
-        - ${...ftn.prov-gigapath}
-      virchow2:
-        - ${...ikem.virchow2}
-        - ${...ftn.virchow2}
+    "0": ???
+    "1": # level
+      ikem:
+        prov-gigapath: ${paths.base_folder}/embeddings/ikem/prov-gigapath
+      ftn:
+        prov-gigapath: ${paths.base_folder}/embeddings/ftn/prov-gigapath
+      knl_patos:
+        prov-gigapath: ${paths.base_folder}/embeddings/knl_patos
+      all:
+        prov-gigapath:
+          - ${...ikem.prov-gigapath}
+          - ${...ftn.prov-gigapath}
+    "2": ???
+    "3": # level
+      ikem:
+        virchow2: ${paths.base_folder}/embeddings/ikem/virchow2
+      ftn:
+        virchow2: ${paths.base_folder}/embeddings/ftn/virchow2
+      knl_patos:
+        virchow2: ${paths.base_folder}/embeddings/knl_patos
+      all:
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
+    "4": ???
 
   tile_masks:
     ikem: ${paths.base_folder}/tile_masks/ikem
