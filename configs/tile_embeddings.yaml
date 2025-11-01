@@ -12,7 +12,7 @@ level: ???
 
 tiling_uris: ${uris.tiling.${level}.${cohort}.all}
 
-output_folder: ${paths.embeddings.${cohort}.${model}}
+output_folder: ${paths.embeddings.${level}.${cohort}.${model}}
 
 skip_existing: False
 
