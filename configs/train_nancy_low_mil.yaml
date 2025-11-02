@@ -11,6 +11,7 @@ mode: fit
 checkpoint: null
 cohort: ???
 data_mode: nancy_low
+level: ???
 
 trainer:
   enable_checkpointing: True
@@ -33,10 +34,10 @@ data:
   kfold_splits: 5
   k: 1
   train:
-    tiling_uris: ${uris.tiling.3.${cohort}.train}
-    embeddings_uris: ${uris.embeddings.${cohort}.virchow2}
+    tiling_uris: ${uris.tiling.${level}.${cohort}.train}
+    embeddings_uris: ${uris.embeddings.${level}.${cohort}.virchow2}
     mode: ${data_mode}
-    embeddings_folders: ${paths.embeddings.${cohort}.virchow2}
+    embeddings_folders: ${paths.embeddings.${level}.${cohort}.virchow2}
 
 model:
   lr: 0.00001

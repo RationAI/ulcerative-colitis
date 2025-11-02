@@ -34,7 +34,17 @@ uris:
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
-    "4": ???
+    "4": # level
+      ikem:
+        virchow2: "mlflow-artifacts:/86/0068770bb6f5463e9b8ea70db1c74348/artifacts/embeddings"
+      ftn:
+        virchow2: "mlflow-artifacts:/86/af4ba513b07e46d1a61d92995022f000/artifacts/embeddings"
+      knl_patos:
+        virchow2: ???
+      all:
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
 
   slide_embeddings:
     ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"
