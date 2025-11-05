@@ -42,6 +42,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         self.slides, self.tiles = self.download_artifacts(
             tiling_uris, embeddings_uris, embeddings_folders
         )
+        self.slides = self.filter_empty_slides(self.slides, self.tiles)
         self.slides = process_slides(self.slides, self.mode)
 
         self.padding = padding
@@ -86,6 +87,15 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
             pd.concat(slide_dfs, ignore_index=True),
             pd.concat(tile_dfs, ignore_index=True),
         )
+
+    def filter_empty_slides(
+        self, slides: pd.DataFrame, tiles: pd.DataFrame
+    ) -> pd.DataFrame:
+        valid_slide_ids = tiles["slide_id"].unique()
+        filtered_slides = slides[slides["id"].isin(valid_slide_ids)].reset_index(
+            drop=True
+        )
+        return filtered_slides
 
     def __len__(self) -> int:
         return len(self.slides)
