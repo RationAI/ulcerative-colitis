@@ -32,9 +32,11 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
         include_labels: bool = True,
+        stride_eq_tile: bool = True,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
+        self.stride_eq_tile = stride_eq_tile
 
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
@@ -42,7 +44,8 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         self.slides, self.tiles = self.download_artifacts(
             tiling_uris, embeddings_uris, embeddings_folders
         )
-        self.slides = self.filter_empty_slides(self.slides, self.tiles)
+        self.tiles = self.filter_tiles_by_stride()
+        self.slides = self.filter_empty_slides()
         self.slides = process_slides(self.slides, self.mode)
 
         self.padding = padding
@@ -88,14 +91,21 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
             pd.concat(tile_dfs, ignore_index=True),
         )
 
-    def filter_empty_slides(
-        self, slides: pd.DataFrame, tiles: pd.DataFrame
-    ) -> pd.DataFrame:
-        valid_slide_ids = tiles["slide_id"].unique()
-        filtered_slides = slides[slides["id"].isin(valid_slide_ids)].reset_index(
-            drop=True
-        )
+    def filter_empty_slides(self) -> pd.DataFrame:
+        valid_slide_ids = self.tiles["slide_id"].unique()
+        filtered_slides = self.slides[
+            self.slides["id"].isin(valid_slide_ids)
+        ].reset_index(drop=True)
         return filtered_slides
+
+    def filter_tiles_by_stride(self) -> pd.DataFrame:
+        if not self.stride_eq_tile:
+            return self.tiles
+
+        filtered_tiles = self.tiles[
+            (self.tiles["x"] % 224 == 0) & (self.tiles["y"] % 224 == 0)
+        ].reset_index(drop=True)
+        return filtered_tiles
 
     def __len__(self) -> int:
         return len(self.slides)
@@ -112,7 +122,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
             ),
         )
 
-        embeddings = align_tile_embeddings(tiles, embeddings_dict)
+        embeddings = align_tile_embeddings(tiles, embeddings_dict, self.stride_eq_tile)
         pad_amount = self.max_embeddings - embeddings.shape[0]
         if self.padding:
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
@@ -177,8 +187,19 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
 
 
 def align_tile_embeddings(
-    tiles: pd.DataFrame, embeddings_dict: dict[str, torch.Tensor]
+    tiles: pd.DataFrame, embeddings_dict: dict[str, torch.Tensor], stride_eq_tile: bool
 ) -> torch.Tensor:
+    if stride_eq_tile:
+        x_indices = (embeddings_dict["x_coords"] % 224 == 0).nonzero(as_tuple=True)[0]
+        y_indices = (embeddings_dict["y_coords"] % 224 == 0).nonzero(as_tuple=True)[0]
+        valid_indices = np.intersect1d(x_indices, y_indices)
+
+        embeddings_dict = {
+            "x_coords": embeddings_dict["x_coords"][valid_indices],
+            "y_coords": embeddings_dict["y_coords"][valid_indices],
+            "embeddings": embeddings_dict["embeddings"][valid_indices],
+        }
+
     if (tiles["x"] == embeddings_dict["x_coords"].numpy()).all() and (
         tiles["y"] == embeddings_dict["y_coords"].numpy()
     ).all():

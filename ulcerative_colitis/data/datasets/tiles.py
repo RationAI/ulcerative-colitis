@@ -66,13 +66,13 @@ class _Tiles(Dataset[T], Generic[T]):
 class Tiles(MetaTiledSlides[TilesSample]):
     def __init__(
         self,
-        uris: Iterable[str],
+        uris: Iterable[str] | str,
         mode: LabelMode | str,
         transforms: TransformType | None = None,
     ) -> None:
         self.transforms = transforms
         self.mode = LabelMode(mode)
-        super().__init__(uris=uris)
+        super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesSample]]:
         self.slides = process_slides(self.slides, self.mode)
@@ -91,11 +91,11 @@ class Tiles(MetaTiledSlides[TilesSample]):
 class TilesPredict(MetaTiledSlides[TilesPredictSample]):
     def __init__(
         self,
-        uris: Iterable[str],
+        uris: Iterable[str] | str,
         transforms: TransformType | None = None,
     ) -> None:
         self.transforms = transforms
-        super().__init__(uris=uris)
+        super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesPredictSample]]:
         self.slides = process_slides(self.slides)
