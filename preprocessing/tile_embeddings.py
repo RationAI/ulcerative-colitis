@@ -6,6 +6,7 @@ from pathlib import Path
 
 import albumentations as A
 import hydra
+import pandas as pd
 import timm
 import torch
 from huggingface_hub import login
@@ -160,21 +161,22 @@ def save_embeddings(
         embeddings_path (Path): The path to save the embeddings to.
     """
     embeddings_path.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "embeddings": slide_tiles_embeddings,
-        "x_coords": slide_tiles_x_coords,
-        "y_coords": slide_tiles_y_coords,
-    }
-    torch.save(data, embeddings_path)
 
+    df = pd.DataFrame(
+        {
+            "x_coord": slide_tiles_x_coords.numpy(),
+            "y_coord": slide_tiles_y_coords.numpy(),
+            "embedding": [emb.tolist() for emb in slide_tiles_embeddings.numpy()],
+        }
+    )
+
+    df.to_parquet(embeddings_path, index=False, engine="pyarrow")
 
 @hydra.main(config_path="../configs", config_name="tile_embeddings", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
-    assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
-    assert logger.run_id is not None, "Need run_id"
 
     login(config.token)
     model = FoundationModel(config.model)
@@ -190,7 +192,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
 
         for slide_dataset in tqdm(dataset.generate_datasets()):
             slide_name = str(slide_dataset.slide_metadata["name"])
-            embeddings_path = (output_folder / slide_name).with_suffix(".pt")
+            embeddings_path = (output_folder / slide_name).with_suffix(".parquet")
 
             if config.skip_existing and embeddings_path.exists():
                 continue
@@ -223,8 +225,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                 embeddings_path,
             )
 
-            logger.experiment.log_artifact(
-                run_id=logger.run_id,
+            logger.log_artifact(
                 local_path=str(embeddings_path),
                 artifact_path="embeddings",
             )

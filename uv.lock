@@ -2060,8 +2060,8 @@ dependencies = [
 
 [[package]]
 name = "rationai-mlkit"
-version = "0.2.0"
-source = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git?branch=fix%2Fmetrics#71ae177d429c1475fc13dd39e167594b0df765c8" }
+version = "0.2.2"
+source = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git#3cb41e94e1baa4d2561d5e6115ecac9897a36762" }
 dependencies = [
     { name = "gitpython" },
     { name = "hydra-core" },
@@ -2743,7 +2743,7 @@ requires-dist = [
     { name = "openslide-bin", specifier = ">=4.0.0.8" },
     { name = "openslide-python", specifier = ">=1.4.2" },
     { name = "rationai-masks", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" },
-    { name = "rationai-mlkit", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git?branch=fix%2Fmetrics" },
+    { name = "rationai-mlkit", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" },
     { name = "rationai-tiling", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" },
     { name = "ratiopath", specifier = ">=1.0.3" },
     { name = "ray", specifier = "==2.48.0" },
