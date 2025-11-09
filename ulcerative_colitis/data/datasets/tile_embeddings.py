@@ -114,15 +114,11 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         slide_metadata = self.slides.iloc[idx]
         tiles = self.tiles[self.tiles["slide_id"] == slide_metadata["id"]]
         slide_name = str(slide_metadata["name"])
-        embeddings_dict = cast(
-            "dict[str, torch.Tensor]",
-            torch.load(
-                (slide_metadata["embeddings_folder"] / slide_name).with_suffix(".pt"),
-                map_location="cpu",
-            ),
+        embeddings_df = pd.read_parquet(
+            slide_metadata["embeddings_folder"] / f"{slide_name}.parquet"
         )
 
-        embeddings = align_tile_embeddings(tiles, embeddings_dict, self.stride_eq_tile)
+        embeddings = align_tile_embeddings(tiles, embeddings_df, self.stride_eq_tile)
         pad_amount = self.max_embeddings - embeddings.shape[0]
         if self.padding:
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
@@ -187,34 +183,21 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
 
 
 def align_tile_embeddings(
-    tiles: pd.DataFrame, embeddings_dict: dict[str, torch.Tensor], stride_eq_tile: bool
+    tiles: pd.DataFrame, embeddings_df: pd.DataFrame, stride_eq_tile: bool
 ) -> torch.Tensor:
     if stride_eq_tile:
-        x_indices = (embeddings_dict["x_coords"] % 224 == 0).nonzero(as_tuple=True)[0]
-        y_indices = (embeddings_dict["y_coords"] % 224 == 0).nonzero(as_tuple=True)[0]
-        valid_indices = np.intersect1d(x_indices, y_indices)
+        embeddings_df = embeddings_df[
+            (embeddings_df["x"] % 224 == 0) & (embeddings_df["y"] % 224 == 0)
+        ].reset_index(drop=True)
 
-        embeddings_dict = {
-            "x_coords": embeddings_dict["x_coords"][valid_indices],
-            "y_coords": embeddings_dict["y_coords"][valid_indices],
-            "embeddings": embeddings_dict["embeddings"][valid_indices],
-        }
 
-    if (tiles["x"] == embeddings_dict["x_coords"].numpy()).all() and (
-        tiles["y"] == embeddings_dict["y_coords"].numpy()
+    if (tiles["x"] == embeddings_df["x"]).all() and (
+        tiles["y"] == embeddings_df["y"]
     ).all():
-        return embeddings_dict["embeddings"]
+        return torch.from_numpy(np.stack(embeddings_df["embeddings"].tolist()))
 
     warnings.warn(
         "Tile coordinates are not aligned with embeddings coordinates.", stacklevel=2
-    )
-
-    embeddings_df = pd.DataFrame(
-        {
-            "x": embeddings_dict["x_coords"].numpy(),
-            "y": embeddings_dict["y_coords"].numpy(),
-            "embeddings": list(embeddings_dict["embeddings"].numpy()),
-        }
     )
 
     merged = tiles.merge(embeddings_df, on=["x", "y"], how="left")

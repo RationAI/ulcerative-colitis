@@ -148,25 +148,25 @@ def process_output(output: torch.Tensor, model: FoundationModel) -> torch.Tensor
 
 def save_embeddings(
     slide_tiles_embeddings: torch.Tensor,
-    slide_tiles_x_coords: torch.Tensor,
-    slide_tiles_y_coords: torch.Tensor,
+    slide_tiles_x: torch.Tensor,
+    slide_tiles_y: torch.Tensor,
     embeddings_path: Path,
 ) -> None:
     """Save the slide embeddings to the specified path.
 
     Args:
         slide_tiles_embeddings (torch.Tensor): The embeddings to save.
-        slide_tiles_x_coords (torch.Tensor): The x-coordinates of the tiles.
-        slide_tiles_y_coords (torch.Tensor): The y-coordinates of the tiles.
+        slide_tiles_x (torch.Tensor): The x-coordinates of the tiles.
+        slide_tiles_y (torch.Tensor): The y-coordinates of the tiles.
         embeddings_path (Path): The path to save the embeddings to.
     """
     embeddings_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.DataFrame(
         {
-            "x_coord": slide_tiles_x_coords.numpy(),
-            "y_coord": slide_tiles_y_coords.numpy(),
-            "embedding": [emb.tolist() for emb in slide_tiles_embeddings.numpy()],
+            "x": slide_tiles_x.numpy(),
+            "y": slide_tiles_y.numpy(),
+            "embedding": [emb.numpy() for emb in slide_tiles_embeddings],
         }
     )
 
@@ -206,8 +206,8 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             slide_tiles_embeddings = torch.zeros(
                 (len(slide_dataset), embedding_dim), dtype=torch.float32
             )
-            slide_tiles_x_coords = torch.zeros((len(slide_dataset),), dtype=torch.int32)
-            slide_tiles_y_coords = torch.zeros((len(slide_dataset),), dtype=torch.int32)
+            slide_tiles_x = torch.zeros((len(slide_dataset),), dtype=torch.int32)
+            slide_tiles_y = torch.zeros((len(slide_dataset),), dtype=torch.int32)
 
             for i, (x, metadata) in enumerate(slide_tiles_dataloader):
                 x = x.to(device)
@@ -215,13 +215,13 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                 start = i * config.dataloader.batch_size
                 end = start + embeddings.size(0)
                 slide_tiles_embeddings[start:end] = embeddings.to("cpu")
-                slide_tiles_x_coords[start:end] = metadata["x"].to("cpu")
-                slide_tiles_y_coords[start:end] = metadata["y"].to("cpu")
+                slide_tiles_x[start:end] = metadata["x"].to("cpu")
+                slide_tiles_y[start:end] = metadata["y"].to("cpu")
 
             save_embeddings(
                 slide_tiles_embeddings,
-                slide_tiles_x_coords,
-                slide_tiles_y_coords,
+                slide_tiles_x,
+                slide_tiles_y,
                 embeddings_path,
             )
 
