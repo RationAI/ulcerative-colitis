@@ -1,5 +1,3 @@
-# TODO: Refactor to use Tile Encoder as service
-
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
@@ -11,7 +9,6 @@ import timm
 import torch
 from huggingface_hub import login
 from lightning.pytorch.loggers import Logger
-from mlflow import MlflowClient
 from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
