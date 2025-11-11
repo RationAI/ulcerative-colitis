@@ -4,12 +4,12 @@ paths:
   slides:
     ikem: ${paths.base_folder}/data_tiff/ikem
     ftn: ${paths.base_folder}/data_tiff/ftn
-    knl_patos: ${paths.base_folder}/data_tiff/knl_patos
+    knl_patos: ${paths.base_folder}/data_czi/knl_patos
 
   tables:
     ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
     ftn: ${paths.base_folder}/data_czi/ftn/IBD_AI.csv
-    knl_patos: ???
+    knl_patos: ${paths.base_folder}/data_czi/knl_patos/IBD_AI.csv
 
   qc_masks:
     ikem: ${paths.base_folder}/qc_masks/ikem

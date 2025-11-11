@@ -5,7 +5,6 @@ import hydra
 import pyvips
 import ray
 from lightning.pytorch.loggers import Logger
-from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
 from openslide import OpenSlide
 from rationai.masks import (
@@ -48,10 +47,8 @@ def make_remote_process_slide(
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
-    assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
-    assert logger.run_id is not None, "Need run_id"
 
-    slides = Path(config.slides_folder).glob("*.tiff")
+    slides = Path(config.slides_folder).glob("*.czi")
     output_path = Path(config.output_path)
     output_path.mkdir(parents=True, exist_ok=True)
     process_items(
@@ -61,7 +58,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         ),
     )
 
-    logger.experiment.log_artifacts(logger.run_id, str(output_path), "tissue_masks")
+    logger.log_artifacts(str(output_path), "tissue_masks")
 
 
 if __name__ == "__main__":

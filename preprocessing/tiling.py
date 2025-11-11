@@ -195,32 +195,47 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
 @hydra.main(config_path="../configs", config_name="tiling", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None = None) -> None:
-    # 70 / 15 / 15 - train / test preliminary / test final
     df = pd.read_csv(config.table_path, index_col=0)
     if config.cohort == "ikem":
         df = df.query("Lokalita != 'ileum'")
 
-    train, test = train_test_split(
-        df, test_size=0.3, stratify=df["Nancy"], random_state=42
-    )
+    train: pd.DataFrame
+    test: pd.DataFrame
+    test_preliminary: pd.DataFrame
+    test_final: pd.DataFrame
 
+    if config.splits.train == 0.0:
+        train = pd.DataFrame(columns=df.columns)
+        test = df
+    else:
+        train, test = train_test_split(
+            df, train_size=config.splits.train, stratify=df["Nancy"], random_state=42
+        )
+
+    preliminary_size = (1.0 - config.splits.train) * config.splits.preliminary
     test_preliminary, test_final = train_test_split(
-        test, test_size=0.5, stratify=test["Nancy"], random_state=42
+        test, test_size=preliminary_size, stratify=test["Nancy"], random_state=42
     )
 
-    train_slides, train_tiles = tiling(train, config)
-    test_preliminary_slides, test_preliminary_tiles = tiling(test_preliminary, config)
-    test_final_slides, test_final_tiles = tiling(test_final, config)
+    if not train.empty:
+        train_slides, train_tiles = tiling(train, config)
+        save_mlflow_dataset(train_slides, train_tiles, f"train - {config.cohort}")
 
-    save_mlflow_dataset(train_slides, train_tiles, f"train - {config.cohort}")
-    save_mlflow_dataset(
-        test_preliminary_slides,
-        test_preliminary_tiles,
-        f"test preliminary - {config.cohort}",
-    )
-    save_mlflow_dataset(
-        test_final_slides, test_final_tiles, f"test final - {config.cohort}"
-    )
+    if not test_preliminary.empty:
+        test_preliminary_slides, test_preliminary_tiles = tiling(
+            test_preliminary, config
+        )
+        save_mlflow_dataset(
+            test_preliminary_slides,
+            test_preliminary_tiles,
+            f"test preliminary - {config.cohort}",
+        )
+
+    if not test_final.empty:
+        test_final_slides, test_final_tiles = tiling(test_final, config)
+        save_mlflow_dataset(
+            test_final_slides, test_final_tiles, f"test final - {config.cohort}"
+        )
 
 
 if __name__ == "__main__":

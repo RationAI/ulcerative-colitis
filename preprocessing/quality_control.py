@@ -6,7 +6,6 @@ from typing import Any
 import hydra
 from aiohttp import ClientConnectionError, ClientSession, ClientTimeout
 from lightning.pytorch.loggers import Logger
-from mlflow.tracking import MlflowClient
 from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
@@ -183,8 +182,6 @@ async def quality_control(
 def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
-    assert isinstance(logger.experiment, MlflowClient), "Need MlflowClient"
-    assert logger.run_id is not None, "Need run_id"
 
     semaphore = asyncio.Semaphore(config.request_limit)
 
@@ -196,7 +193,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         asyncio.run(
             quality_control(
                 report_path=report_path.absolute().as_posix(),
-                slides=list(Path(config.slides_folder).glob("*.tiff")),
+                slides=list(Path(config.slides_folder).glob("*.czi")),
                 semaphore=semaphore,
                 config=config,
                 logger=logger,

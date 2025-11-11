@@ -23,6 +23,10 @@ tissue_threshold: 0.5
 tile_extent: 224
 stride: 112
 mpp: 0.346188
+splits:
+  train: 0.7
+  preliminary_test: 0.15
+  final_test: 0.15
 
 metadata:
   experiment_name: Ulcerative Colitis
