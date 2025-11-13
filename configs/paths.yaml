@@ -25,14 +25,20 @@ paths:
     "1": # level
       ikem:
         prov-gigapath: ${paths.base_folder}/embeddings/1/ikem/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/1/ikem/virchow2
       ftn:
         prov-gigapath: ${paths.base_folder}/embeddings/1/ftn/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/1/ftn/virchow2
       knl_patos:
         prov-gigapath: ${paths.base_folder}/embeddings/1/knl_patos/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/1/knl_patos/virchow2
       all:
         prov-gigapath:
           - ${...ikem.prov-gigapath}
           - ${...ftn.prov-gigapath}
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
     "2": # level
       ikem:
         prov-gigapath: ${paths.base_folder}/embeddings/2/ikem/prov-gigapath
