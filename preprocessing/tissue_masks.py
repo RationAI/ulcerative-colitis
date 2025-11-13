@@ -48,7 +48,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
 
-    slides = Path(config.slides_folder).glob("*.czi")
+    slides = Path(config.slides_folder).glob("*.czi")  # TODO: take slides from table
     output_path = Path(config.output_path)
     output_path.mkdir(parents=True, exist_ok=True)
     process_items(

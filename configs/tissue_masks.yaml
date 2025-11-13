@@ -2,11 +2,12 @@ defaults:
   - hydra: default
   - logger: mlflow
   - uris
+  - paths
   - _self_
 
 cohort: ???
-output_path: ${paths.tissue_masks}/${cohort}
-slides_folder: ${paths.base_folder}/data_tiff/${cohort}
+output_path: paths.tissue_masks.${cohort}
+slides_folder: paths.slides.${cohort}
 level: 3
 
 metadata:
