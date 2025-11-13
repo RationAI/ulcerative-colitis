@@ -23,7 +23,7 @@ dataloader:
 
 metadata:
   experiment_name: Ulcerative Colitis
-  run_name: '📂 Tile Embeddings: ${cohort} ${model}'
+  run_name: '📂 Tile Embeddings: ${cohort} ${model} (level=${level})'
   description: 'Ulcerative Colitis' 
   user: AdamK
 
