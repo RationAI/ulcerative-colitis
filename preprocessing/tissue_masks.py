@@ -32,6 +32,7 @@ def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[Path]:
 
 
 def process_slide(slide_path: Path, level: int, output_path: Path) -> None:
+    print(f"Processing slide {slide_path}")
     with OpenSlide(slide_path) as slide:
         mpp_x, mpp_y = slide_resolution(slide, level=level)
 
