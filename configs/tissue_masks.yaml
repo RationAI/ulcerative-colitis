@@ -8,6 +8,7 @@ defaults:
 cohort: ???
 output_path: paths.tissue_masks.${cohort}
 slides_folder: paths.slides.${cohort}
+dataset: paths.datasets.${cohort}
 level: 3
 
 metadata:

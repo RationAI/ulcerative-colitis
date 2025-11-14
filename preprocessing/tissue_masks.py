@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import cast
 
 import hydra
+import pandas as pd
 import pyvips
 import ray
 from lightning.pytorch.loggers import Logger
@@ -19,6 +20,15 @@ from ray._private.worker import RemoteFunction0
 
 
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
+
+
+def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[Path]:
+    slide_paths = []
+    for slide_id in df.index:
+        slide_path = slides_folder / f"{slide_id}.czi"
+        assert slide_path.exists(), f"Slide {slide_path} does not exist"
+        slide_paths.append(slide_path)
+    return slide_paths
 
 
 def process_slide(slide_path: Path, level: int, output_path: Path) -> None:
@@ -48,11 +58,13 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert logger is not None, "Need logger"
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
 
-    slides = Path(config.slides_folder).glob("*.czi")  # TODO: take slides from table
+    slides = get_slides(
+        pd.read_csv(Path(config.dataset), index_col=0), Path(config.slides_folder)
+    )
     output_path = Path(config.output_path)
     output_path.mkdir(parents=True, exist_ok=True)
     process_items(
-        list(slides),
+        slides,
         process_item=make_remote_process_slide(
             level=config.level, output_path=output_path
         ),
