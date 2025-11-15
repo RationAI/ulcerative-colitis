@@ -4,11 +4,14 @@ from pathlib import Path
 from typing import Any
 
 import hydra
+import pandas as pd
 from aiohttp import ClientConnectionError, ClientSession, ClientTimeout
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
+
+from preprocessing.slides import get_slides
 
 
 async def put_request(
@@ -193,7 +196,10 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
         asyncio.run(
             quality_control(
                 report_path=report_path.absolute().as_posix(),
-                slides=list(Path(config.slides_folder).glob("*.czi")),
+                slides=get_slides(
+                    pd.read_csv(Path(config.dataset), index_col=0),
+                    Path(config.slides_folder),
+                ),
                 semaphore=semaphore,
                 config=config,
                 logger=logger,

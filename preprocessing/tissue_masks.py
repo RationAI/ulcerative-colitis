@@ -18,17 +18,10 @@ from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ray._private.worker import RemoteFunction0
 
+from preprocessing.slides import get_slides
+
 
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
-def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[Path]:
-    slide_paths = []
-    for slide_id in df.index:
-        slide_path = slides_folder / f"{slide_id}.czi"
-        assert slide_path.exists(), f"Slide {slide_path} does not exist"
-        slide_paths.append(slide_path)
-    return slide_paths
 
 
 def process_slide(slide_path: Path, level: int, output_path: Path) -> None:

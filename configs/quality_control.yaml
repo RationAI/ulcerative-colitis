@@ -7,6 +7,7 @@ defaults:
 cohort: ???
 output_path: ${paths.qc_masks.${cohort}}
 slides_folder: ${paths.slides.${cohort}}
+dataset: ${paths.datasets.${cohort}}
 
 request_limit: 4
 
