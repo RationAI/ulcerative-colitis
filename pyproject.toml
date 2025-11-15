@@ -17,7 +17,6 @@ dependencies = [
     "rationai-masks",
     "rationai-tiling",
     "openslide-python>=1.4.2",
-    "openslide-bin>=4.0.0.8",
     "h5py>=3.14.0",
     "ipywidgets>=8.1.7",
     "click>=8.1.8",
