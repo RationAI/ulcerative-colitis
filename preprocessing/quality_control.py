@@ -102,6 +102,8 @@ async def repeatable_put_request(
             continue
 
         print(status, text)
+        for file in Path(data["output_path"]).iterdir():
+            print(file)
         log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
         print(
             f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
