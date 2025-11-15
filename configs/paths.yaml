@@ -1,10 +1,12 @@
 paths:
   base_folder: /mnt/projects/inflammatory_bowel_dissease/ulcerative_colitis
+  data_folder: /mnt/data
 
   slides:
     ikem: ${paths.base_folder}/data_tiff/ikem
     ftn: ${paths.base_folder}/data_tiff/ftn
-    knl_patos: ${paths.base_folder}/data_czi/knl_patos
+    # knl_patos: ${paths.base_folder}/data_czi/knl_patos
+    knl_patos: ${paths.data_folder}/KNL_PATOS/colon/IBD_AI
 
   datasets:
     ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
