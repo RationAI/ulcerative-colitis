@@ -32,11 +32,10 @@ def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[Path]:
 
 
 def process_slide(slide_path: Path, level: int, output_path: Path) -> None:
-    print(f"Processing slide {slide_path}")
     with OpenSlide(slide_path) as slide:
         mpp_x, mpp_y = slide_resolution(slide, level=level)
 
-    slide = cast("pyvips.Image", pyvips.Image.new_from_file(slide_path, page=level))
+    slide = cast("pyvips.Image", pyvips.Image.new_from_file(slide_path, level=level))
     mask = tissue_mask(slide, mpp=(mpp_x + mpp_y) / 2)
     mask_path = output_path / slide_path.with_suffix(".tiff").name
 
