@@ -61,9 +61,7 @@ def log_artifacts(
     output_path: Path,
 ) -> None:
     for artifact in artifacts(wsi_stem):
-        logger.experiment.log_artifact(
-            logger.run_id, output_path / artifact, "qc_masks"
-        )
+        logger.log_artifact(str(output_path / artifact), "qc_masks")
 
 
 async def repeatable_put_request(
@@ -103,6 +101,7 @@ async def repeatable_put_request(
 
             continue
 
+        print(status, text)
         log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
         print(
             f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
