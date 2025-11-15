@@ -102,7 +102,7 @@ async def repeatable_put_request(
 
             continue
 
-        sleep(0.1)  # To wait for files to be written
+        sleep(1)  # To wait for files to be written
         log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
         print(
             f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
