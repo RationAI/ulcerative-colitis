@@ -1,6 +1,7 @@
 import asyncio
 import tempfile
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 import hydra
@@ -101,6 +102,7 @@ async def repeatable_put_request(
 
             continue
 
+        sleep(5)  # To wait for files to be written
         log_artifacts(logger, Path(data["wsi_path"]).stem, Path(data["output_path"]))
         print(
             f"Processed {data['wsi_path']}:\n\tStatus: {status} \n\tResponse: {text}\n"
