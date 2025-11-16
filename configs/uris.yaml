@@ -1,49 +1,46 @@
 uris:
   qc_masks:
-    ikem: "mlflow-artifacts:/86/203703bfa1c14f29874832e91b5cae32/artifacts/qc_masks"
-    ftn: "mlflow-artifacts:/86/580ef09912404470abbbbae72e4b1cef/artifacts/qc_masks"
-    knl_patos: ???
+    ikem: "mlflow-artifacts:/86/dd94e13383f64ca7b88697a11be97e78/artifacts/qc_masks"
+    ftn: "mlflow-artifacts:/86/6e5337910f544b39ae08ab346688ef18/artifacts/qc_masks"
+    knl_patos: "mlflow-artifacts:/86/5959fcfdfb8941e0a4eb07ff3c3f18c1/artifacts/qc_masks"
 
   tissue_masks:
-    ikem: "mlflow-artifacts:/86/195d0dd68ca84fc2ad64156d10df786d/artifacts/tissue_masks"
-    ftn: "mlflow-artifacts:/86/f94e472e469f4191be75e498046ab5dd/artifacts/tissue_masks"
-    knl_patos: ???
+    ikem: "mlflow-artifacts:/86/81d07e7f0f5e49bb8d8382860848e6f0/artifacts/tissue_masks"
+    ftn: "mlflow-artifacts:/86/6b89d95195db42609a389dd4fe40cd0a/artifacts/tissue_masks"
+    knl_patos: "mlflow-artifacts:/86/eec5c9f9c3cf45799ac458d28f7dc7c5/artifacts/tissue_masks"
 
   embeddings:
     "1": # level
       ikem:
-        prov-gigapath: "mlflow-artifacts:/86/d6346f4504dd4f3da92fc6080df3db81/artifacts/embeddings"
+        prov-gigapath: ???
+        virchow2: ???
       ftn:
-        prov-gigapath: "mlflow-artifacts:/86/5ad6eb380be14a259bb59b190a66e8bb/artifacts/embeddings"
+        prov-gigapath: ???
+        virchow2: ???
       knl_patos:
         prov-gigapath: ???
+        virchow2: ???
       all:
         prov-gigapath:
           - ${...ikem.prov-gigapath}
           - ${...ftn.prov-gigapath}
-    "2": ???
-    "3": # level
+          - ${...knl_patos.prov-gigapath}
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
+    "2":
       ikem:
-        virchow2: "mlflow-artifacts:/86/4732d3b8074646a0b9f8ebdfc9dc9254/artifacts/embeddings"
+        virchow2: ???
       ftn:
-        virchow2: "mlflow-artifacts:/86/ecc4d7b2093d44fc9aa48e30ef0675c8/artifacts/embeddings"
+        virchow2: ???
       knl_patos:
         virchow2: ???
       all:
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
-    "4": # level
-      ikem:
-        virchow2: "mlflow-artifacts:/86/0068770bb6f5463e9b8ea70db1c74348/artifacts/embeddings"
-      ftn:
-        virchow2: "mlflow-artifacts:/86/af4ba513b07e46d1a61d92995022f000/artifacts/embeddings"
-      knl_patos:
-        virchow2: ???
-      all:
-        virchow2:
-          - ${...ikem.virchow2}
-          - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
 
   slide_embeddings:
     ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"
@@ -72,26 +69,23 @@ uris:
           - ${..test_preliminary}
           - ${..test_final}
       knl_patos: 
-        train: ???
         test_preliminary: ???
         test_final: ???
-        # all:
-        #   - ${..train}
-        #   - ${..test_preliminary}
-        #   - ${..test_final}
+        all:
+          - ${..test_preliminary}
+          - ${..test_final}
       all:
         train:
           - ${...ikem.train}
           - ${...ftn.train}
-          # - ${...knl_patos.train}
         test preliminary:
           - ${...ikem.test_preliminary}
           - ${...ftn.test_preliminary}
-          # - ${...knl_patos.test_preliminary}
+          - ${...knl_patos.test_preliminary}
         test final:
           - ${...ikem.test_final}
           - ${...ftn.test_final}
-          # - ${...knl_patos.test_final}
+          - ${...knl_patos.test_final}
     "2": # level
       ikem: 
         train: mlflow-artifacts:/86/2d0c5349ec574265b9bce1d5530df25a/artifacts/train - ikem
@@ -110,51 +104,11 @@ uris:
           - ${..test_preliminary}
           - ${..test_final}
       knl_patos: 
-        train: ???
         test_preliminary: ???
         test_final: ???
-        # all:
-        #   - ${..train}
-        #   - ${..test_preliminary}
-        #   - ${..test_final}
-      all:
-        train:
-          - ${...ikem.train}
-          - ${...ftn.train}
-          # - ${...knl_patos.train}
-        test preliminary:
-          - ${...ikem.test_preliminary}
-          - ${...ftn.test_preliminary}
-          # - ${...knl_patos.test_preliminary}
-        test final:
-          - ${...ikem.test_final}
-          - ${...ftn.test_final}
-          # - ${...knl_patos.test_final}
-    "3": # level
-      ikem: 
-        train: mlflow-artifacts:/86/cb3cd150960a447ca73613062a5bca51/artifacts/train - ikem
-        test_preliminary: mlflow-artifacts:/86/cb3cd150960a447ca73613062a5bca51/artifacts/test preliminary - ikem
-        test_final: mlflow-artifacts:/86/cb3cd150960a447ca73613062a5bca51/artifacts/test final - ikem
         all:
-          - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
-      ftn: 
-        train: mlflow-artifacts:/86/286b110e6e7b4fa690083d96cfec045d/artifacts/train - ftn
-        test_preliminary: mlflow-artifacts:/86/286b110e6e7b4fa690083d96cfec045d/artifacts/test preliminary - ftn
-        test_final: mlflow-artifacts:/86/286b110e6e7b4fa690083d96cfec045d/artifacts/test final - ftn
-        all:
-          - ${..train}
-          - ${..test_preliminary}
-          - ${..test_final}
-      knl_patos: 
-        train: ???
-        test_preliminary: ???
-        test_final: ???
-        # all:
-        #   - ${..train}
-        #   - ${..test_preliminary}
-        #   - ${..test_final}
       all:
         train:
           - ${...ikem.train}
@@ -162,44 +116,8 @@ uris:
         test preliminary:
           - ${...ikem.test_preliminary}
           - ${...ftn.test_preliminary}
+          - ${...knl_patos.test_preliminary}
         test final:
           - ${...ikem.test_final}
           - ${...ftn.test_final}
-    "4": # level
-      ikem: 
-        train: mlflow-artifacts:/86/100f77c7ac884f58be16d475d90e835a/artifacts/train - ikem
-        test_preliminary: mlflow-artifacts:/86/100f77c7ac884f58be16d475d90e835a/artifacts/test preliminary - ikem
-        test_final: mlflow-artifacts:/86/100f77c7ac884f58be16d475d90e835a/artifacts/test final - ikem
-        all:
-          - ${..train}
-          - ${..test_preliminary}
-          - ${..test_final}
-      ftn: 
-        train: mlflow-artifacts:/86/776341f091364cb48e20d7fd0f894e8c/artifacts/train - ftn
-        test_preliminary: mlflow-artifacts:/86/776341f091364cb48e20d7fd0f894e8c/artifacts/test preliminary - ftn
-        test_final: mlflow-artifacts:/86/776341f091364cb48e20d7fd0f894e8c/artifacts/test final - ftn
-        all:
-          - ${..train}
-          - ${..test_preliminary}
-          - ${..test_final}
-      knl_patos: 
-        train: ???
-        test_preliminary: ???
-        test_final: ???
-        # all:
-        #   - ${..train}
-        #   - ${..test_preliminary}
-        #   - ${..test_final}
-      all:
-        train:
-          - ${...ikem.train}
-          - ${...ftn.train}
-          # - ${...knl_patos.train}
-        test preliminary:
-          - ${...ikem.test_preliminary}
-          - ${...ftn.test_preliminary}
-          # - ${...knl_patos.test_preliminary}
-        test final:
-          - ${...ikem.test_final}
-          - ${...ftn.test_final}
-          # - ${...knl_patos.test_final}
+          - ${...knl_patos.test_final}
