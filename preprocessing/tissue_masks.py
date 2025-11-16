@@ -52,7 +52,9 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
     assert isinstance(logger, MLFlowLogger), "Need MLFlowLogger"
 
     slides = get_slides(
-        pd.read_csv(Path(config.dataset), index_col=0), Path(config.slides_folder)
+        pd.read_csv(Path(config.dataset), index_col=0),
+        Path(config.slides_folder),
+        config.cohort,
     )
     output_path = Path(config.output_path)
     output_path.mkdir(parents=True, exist_ok=True)

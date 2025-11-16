@@ -199,6 +199,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
                 slides=get_slides(
                     pd.read_csv(Path(config.dataset), index_col=0),
                     Path(config.slides_folder),
+                    config.cohort,
                 ),
                 semaphore=semaphore,
                 config=config,
