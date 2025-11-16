@@ -1,3 +1,4 @@
+import re
 from functools import partial
 from pathlib import Path
 from typing import Any, cast
@@ -16,21 +17,30 @@ from ratiopath.tiling import grid_tiles
 from ratiopath.tiling.utils import row_hash
 from sklearn.model_selection import train_test_split
 
+from preprocessing.slides import get_slides
+
 
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
+IKEM_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_HE(?:_0[0-9])?$")
+FTN_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]$")
+KNL_PATOS_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_[A-F]_HE0[0-9]$")
+
+
 def stem_to_case_id(stem: str) -> str:
-    case_id, year, *_ = stem.split("_")
-    return f"{case_id}/{year}"
+    if IKEM_STEM.match(stem):
+        case_id, year, _ = stem.split("_", maxsplit=2)
+        return f"{case_id}/{year}"
 
+    if FTN_STEM.match(stem):
+        case_id, year = stem.split("_", maxsplit=1)
+        return f"{case_id}/{year}"
 
-def get_slides(df: pd.DataFrame, slides_folder: Path) -> list[str]:
-    return [
-        str(slide_path)
-        for slide_path in slides_folder.glob("*.tiff")
-        if stem_to_case_id(slide_path.stem) in df.index
-    ]
+    if KNL_PATOS_STEM.match(stem):
+        return stem
+
+    raise ValueError(f"Unknown stem format: {stem}")
 
 
 def get_qc_folder(config: DictConfig) -> Path:
@@ -163,7 +173,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     tissue_folder = get_tissue_folder(config)
 
     slides = read_slides(
-        list(map(str, get_slides(df, Path(config.slides_folder)))),
+        list(map(str, get_slides(df, Path(config.slides_folder), config.cohort))),
         tile_extent=config.tile_extent,
         stride=config.stride,
         mpp=config.mpp,
