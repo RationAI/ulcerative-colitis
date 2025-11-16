@@ -8,7 +8,7 @@ defaults:
 cohort: ???
 
 slides_folder: ${paths.slides.${cohort}}
-table_path: ${paths.tables.${cohort}}
+dataset_path: ${paths.datasets.${cohort}}
 qc_folder: ${paths.qc_masks.${cohort}}
 tissue_folder: ${paths.tissue_masks.${cohort}}
 

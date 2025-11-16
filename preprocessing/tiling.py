@@ -195,7 +195,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
 @hydra.main(config_path="../configs", config_name="tiling", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None = None) -> None:
-    df = pd.read_csv(config.table_path, index_col=0)
+    df = pd.read_csv(config.dataset_path, index_col=0)
     if config.cohort == "ikem":
         df = df.query("Lokalita != 'ileum'")
 
