@@ -3,15 +3,14 @@ paths:
   data_folder: /mnt/data
 
   slides:
-    ikem: ${paths.base_folder}/data_tiff/ikem
-    ftn: ${paths.base_folder}/data_tiff/ftn
-    # knl_patos: ${paths.base_folder}/data_czi/knl_patos
+    ikem: ${paths.data_folder}/IKEM/colon/IBD_AI/20x
+    ftn: ${paths.data_folder}/FTN/colon/IBD_AI
     knl_patos: ${paths.data_folder}/KNL_PATOS/colon/IBD_AI
 
   datasets:
-    ikem: ${paths.base_folder}/data_czi/ikem/IBD_AI.csv
-    ftn: ${paths.base_folder}/data_czi/ftn/IBD_AI.csv
-    knl_patos: ${paths.base_folder}/data_czi/knl_patos/IBD_AI.csv
+    ikem: ${paths.data_folder}/IKEM/colon/IBD_AI/20x/IBD_AI.csv
+    ftn: ${paths.data_folder}/FTN/colon/IBD_AI/IBD_AI.csv
+    knl_patos: ${paths.data_folder}/KNL_PATOS/colon/IBD_AI/IBD_AI.csv
 
   qc_masks:
     ikem: ${paths.base_folder}/qc_masks/ikem
@@ -58,30 +57,35 @@ paths:
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
-    "3": # level
-      ikem:
-        virchow2: ${paths.base_folder}/embeddings/3/ikem/virchow2
-      ftn:
-        virchow2: ${paths.base_folder}/embeddings/3/ftn/virchow2
-      knl_patos:
-        virchow2: ${paths.base_folder}/embeddings/3/knl_patos/virchow2
-      all:
-        virchow2:
-          - ${...ikem.virchow2}
-          - ${...ftn.virchow2}
-    "4": # level
-      ikem:
-        virchow2: ${paths.base_folder}/embeddings/4/ikem/virchow2
-      ftn:
-        virchow2: ${paths.base_folder}/embeddings/4/ftn/virchow2
-      knl_patos:
-        virchow2: ${paths.base_folder}/embeddings/4/knl_patos/virchow2
-      all:
-        virchow2:
-          - ${...ikem.virchow2}
-          - ${...ftn.virchow2}
+    # "3": # level
+    #   ikem:
+    #     virchow2: ${paths.base_folder}/embeddings/3/ikem/virchow2
+    #   ftn:
+    #     virchow2: ${paths.base_folder}/embeddings/3/ftn/virchow2
+    #   knl_patos:
+    #     virchow2: ${paths.base_folder}/embeddings/3/knl_patos/virchow2
+    #   all:
+    #     virchow2:
+    #       - ${...ikem.virchow2}
+    #       - ${...ftn.virchow2}
+    # "4": # level
+    #   ikem:
+    #     virchow2: ${paths.base_folder}/embeddings/4/ikem/virchow2
+    #   ftn:
+    #     virchow2: ${paths.base_folder}/embeddings/4/ftn/virchow2
+    #   knl_patos:
+    #     virchow2: ${paths.base_folder}/embeddings/4/knl_patos/virchow2
+    #   all:
+    #     virchow2:
+    #       - ${...ikem.virchow2}
+    #       - ${...ftn.virchow2}
 
   tile_masks:
-    ikem: ${paths.base_folder}/tile_masks/ikem
-    ftn: ${paths.base_folder}/tile_masks/ftn
-    knl_patos: ${paths.base_folder}/tile_masks/knl_patos
+    "1": # level
+      ikem: ${paths.base_folder}/tile_masks/1/ikem
+      ftn: ${paths.base_folder}/tile_masks/1/ftn
+      knl_patos: ${paths.base_folder}/tile_masks/1/knl_patos
+    "2": # level
+      ikem: ${paths.base_folder}/tile_masks/2/ikem
+      ftn: ${paths.base_folder}/tile_masks/2/ftn
+      knl_patos: ${paths.base_folder}/tile_masks/2/knl_patos
