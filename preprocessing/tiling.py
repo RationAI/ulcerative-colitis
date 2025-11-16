@@ -163,7 +163,7 @@ def tiling(df: pd.DataFrame, config: DictConfig) -> tuple[pd.DataFrame, pd.DataF
     tissue_folder = get_tissue_folder(config)
 
     slides = read_slides(
-        get_slides(df, Path(config.slides_folder)),
+        list(map(str, get_slides(df, Path(config.slides_folder)))),
         tile_extent=config.tile_extent,
         stride=config.stride,
         mpp=config.mpp,
