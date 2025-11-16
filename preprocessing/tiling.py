@@ -212,7 +212,7 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             df, train_size=config.splits.train, stratify=df["Nancy"], random_state=42
         )
 
-    preliminary_size = (1.0 - config.splits.train) * config.splits.preliminary
+    preliminary_size = (1.0 - config.splits.train) * config.splits.preliminary_test
     test_preliminary, test_final = train_test_split(
         test, test_size=preliminary_size, stratify=test["Nancy"], random_state=42
     )
