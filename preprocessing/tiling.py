@@ -23,7 +23,7 @@ from preprocessing.slides import get_slides
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
-IKEM_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_HE(?:[_-]0[0-9])?$")
+IKEM_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_HE(?:_0[0-9])?$")
 FTN_STEM = re.compile(r"^[0-9]{1,6}_2[0-9]$")
 KNL_PATOS_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_[A-F]_HE[0-9]{2}$")
 
