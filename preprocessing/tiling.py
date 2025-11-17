@@ -24,7 +24,7 @@ ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
 IKEM_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_HE(?:_0[0-9])?$")
-FTN_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]$")
+FTN_STEM = re.compile(r"^[0-9]{1,6}_2[0-9]$")
 KNL_PATOS_STEM = re.compile(r"^[0-9]{1,5}_2[0-9]_[A-F]_HE[0-9]{2}$")
 
 
@@ -222,9 +222,9 @@ def main(config: DictConfig, logger: Logger | None = None) -> None:
             df, train_size=config.splits.train, stratify=df["Nancy"], random_state=42
         )
 
-    preliminary_size = (1.0 - config.splits.train) * config.splits.preliminary_test
+    preliminary_size = config.splits.preliminary_test / (1.0 - config.splits.train)
     test_preliminary, test_final = train_test_split(
-        test, test_size=preliminary_size, stratify=test["Nancy"], random_state=42
+        test, train_size=preliminary_size, stratify=test["Nancy"], random_state=42
     )
 
     if not train.empty:
