@@ -15,7 +15,6 @@ dependencies = [
     "timm==1.0.20",
     "rationai-mlkit",
     "rationai-masks",
-    "rationai-tiling",
     "openslide-python>=1.4.2",
     "h5py>=3.14.0",
     "ipywidgets>=8.1.7",
@@ -23,7 +22,7 @@ dependencies = [
     "shapely>=2.1.1",
     "histopath>=0.1.0",
     "openpyxl>=3.1.5",
-    "ray==2.48.0",
+    "ray>=2.48.0",
     "ratiopath>=1.0.3",
     "seaborn>=0.13.2",
 ]
@@ -36,6 +35,4 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" }
-rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" }
-rationai-tiling = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" }
+rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git", branch = "feature/batch-sampler-new" }
