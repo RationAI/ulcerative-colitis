@@ -112,7 +112,9 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
 
     def __getitem__(self, idx: int) -> T:
         slide_metadata = self.slides.iloc[idx]
-        tiles = self.tiles[self.tiles["slide_id"] == slide_metadata["id"]]
+        tiles = self.tiles[self.tiles["slide_id"] == slide_metadata["id"]].reset_index(
+            drop=True
+        )
         slide_name = str(slide_metadata["name"])
         embeddings_df = pd.read_parquet(
             slide_metadata["embeddings_folder"] / f"{slide_name}.parquet"
