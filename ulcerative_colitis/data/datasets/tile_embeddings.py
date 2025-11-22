@@ -196,15 +196,10 @@ def align_tile_embeddings(
             (embeddings_df["x"] % 224 == 0) & (embeddings_df["y"] % 224 == 0)
         ].reset_index(drop=True)
 
-    print(tiles)
-    print(embeddings_df)
-
-    print(tiles["x"])
-    print(embeddings_df["x"])
     if (tiles["x"] == embeddings_df["x"]).all() and (
         tiles["y"] == embeddings_df["y"]
     ).all():
-        return torch.from_numpy(np.stack(embeddings_df["embeddings"].tolist()))
+        return torch.from_numpy(np.stack(embeddings_df["embedding"].tolist()))
 
     warnings.warn(
         "Tile coordinates are not aligned with embeddings coordinates.", stacklevel=2
@@ -212,7 +207,7 @@ def align_tile_embeddings(
 
     merged = tiles.merge(embeddings_df, on=["x", "y"], how="left")
 
-    if merged["embeddings"].isnull().any():
+    if merged["embedding"].isnull().any():
         raise ValueError("Some tiles do not have corresponding embeddings.")
 
-    return torch.from_numpy(np.stack(merged["embeddings"].tolist()))
+    return torch.from_numpy(np.stack(merged["embedding"].tolist()))
