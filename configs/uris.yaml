@@ -9,38 +9,38 @@ uris:
     ftn: "mlflow-artifacts:/86/6b89d95195db42609a389dd4fe40cd0a/artifacts/tissue_masks"
     knl_patos: "mlflow-artifacts:/86/eec5c9f9c3cf45799ac458d28f7dc7c5/artifacts/tissue_masks"
 
-  # embeddings:
-  #   "1": # level
-  #     ikem:
-  #       prov-gigapath: ???
-  #       virchow2: ???
-  #     ftn:
-  #       prov-gigapath: ???
-  #       virchow2: ???
-  #     knl_patos:
-  #       prov-gigapath: ???
-  #       virchow2: ???
-  #     all:
-  #       prov-gigapath:
-  #         - ${...ikem.prov-gigapath}
-  #         - ${...ftn.prov-gigapath}
-  #         - ${...knl_patos.prov-gigapath}
-  #       virchow2:
-  #         - ${...ikem.virchow2}
-  #         - ${...ftn.virchow2}
-  #         - ${...knl_patos.virchow2}
-  #   "2":
-  #     ikem:
-  #       virchow2: ???
-  #     ftn:
-  #       virchow2: ???
-  #     knl_patos:
-  #       virchow2: ???
-  #     all:
-  #       virchow2:
-  #         - ${...ikem.virchow2}
-  #         - ${...ftn.virchow2}
-  #         - ${...knl_patos.virchow2}
+  embeddings:
+    "1": # level
+      ikem:
+        prov-gigapath: ???
+        virchow2: ???
+      ftn:
+        prov-gigapath: mlflow-artifacts:/86/0deed4d98df547e7bbbf7abc12bf654f/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/090f2b60bb0047989620926bd448c22d/artifacts/embeddings
+      knl_patos:
+        prov-gigapath: mlflow-artifacts:/86/af1d21c483004767b6b19b216ccb0886/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/15e9b831fca440b882d293ec50fc501c/artifacts/embeddings
+      all:
+        prov-gigapath:
+          # - ${...ikem.prov-gigapath}
+          - ${...ftn.prov-gigapath}
+          - ${...knl_patos.prov-gigapath}
+        virchow2:
+          # - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
+    "2":
+      ikem:
+        virchow2: mlflow-artifacts:/86/364304229659466c9dab47f81207a9d2/artifacts/embeddings
+      ftn:
+        virchow2: mlflow-artifacts:/86/0b23d85096ef4122bc0702ff4b5cd5f5/artifacts/embeddings
+      knl_patos:
+        virchow2: mlflow-artifacts:/86/55ffef57bd284e04ba07b47b6e796209/artifacts/embeddings
+      all:
+        virchow2:
+          - ${...ikem.virchow2}
+          - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
 
   # slide_embeddings:
   #   ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"

@@ -2,7 +2,7 @@ import warnings
 from collections.abc import Iterable
 from itertools import repeat
 from pathlib import Path
-from typing import Generic, TypeVar, cast
+from typing import Generic, TypeVar
 
 import mlflow
 import mlflow.artifacts
@@ -189,7 +189,6 @@ def align_tile_embeddings(
         embeddings_df = embeddings_df[
             (embeddings_df["x"] % 224 == 0) & (embeddings_df["y"] % 224 == 0)
         ].reset_index(drop=True)
-
 
     if (tiles["x"] == embeddings_df["x"]).all() and (
         tiles["y"] == embeddings_df["y"]

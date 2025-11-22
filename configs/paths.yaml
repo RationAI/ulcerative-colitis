@@ -37,48 +37,23 @@ paths:
         prov-gigapath:
           - ${...ikem.prov-gigapath}
           - ${...ftn.prov-gigapath}
+          - ${...knl_patos.prov-gigapath}
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
     "2": # level
       ikem:
-        prov-gigapath: ${paths.base_folder}/embeddings/2/ikem/prov-gigapath
         virchow2: ${paths.base_folder}/embeddings/2/ikem/virchow2
       ftn:
-        prov-gigapath: ${paths.base_folder}/embeddings/2/ftn/prov-gigapath
         virchow2: ${paths.base_folder}/embeddings/2/ftn/virchow2
       knl_patos:
-        prov-gigapath: ${paths.base_folder}/embeddings/2/knl_patos/prov-gigapath
         virchow2: ${paths.base_folder}/embeddings/2/knl_patos/virchow2
       all:
-        prov-gigapath:
-          - ${...ikem.prov-gigapath}
-          - ${...ftn.prov-gigapath}
         virchow2:
           - ${...ikem.virchow2}
           - ${...ftn.virchow2}
-    # "3": # level
-    #   ikem:
-    #     virchow2: ${paths.base_folder}/embeddings/3/ikem/virchow2
-    #   ftn:
-    #     virchow2: ${paths.base_folder}/embeddings/3/ftn/virchow2
-    #   knl_patos:
-    #     virchow2: ${paths.base_folder}/embeddings/3/knl_patos/virchow2
-    #   all:
-    #     virchow2:
-    #       - ${...ikem.virchow2}
-    #       - ${...ftn.virchow2}
-    # "4": # level
-    #   ikem:
-    #     virchow2: ${paths.base_folder}/embeddings/4/ikem/virchow2
-    #   ftn:
-    #     virchow2: ${paths.base_folder}/embeddings/4/ftn/virchow2
-    #   knl_patos:
-    #     virchow2: ${paths.base_folder}/embeddings/4/knl_patos/virchow2
-    #   all:
-    #     virchow2:
-    #       - ${...ikem.virchow2}
-    #       - ${...ftn.virchow2}
+          - ${...knl_patos.virchow2}
 
   tile_masks:
     "1": # level
