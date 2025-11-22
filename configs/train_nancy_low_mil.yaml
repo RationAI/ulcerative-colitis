@@ -38,6 +38,7 @@ data:
     embeddings_uris: ${uris.embeddings.${level}.${cohort}.virchow2}
     mode: ${data_mode}
     embeddings_folders: ${paths.embeddings.${level}.${cohort}.virchow2}
+    stride_eq_tile: false
 
 model:
   lr: 0.00001

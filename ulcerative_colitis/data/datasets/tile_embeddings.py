@@ -31,8 +31,8 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         mode: LabelMode | str | None = None,
         embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
+        stride_eq_tile: bool = False,
         include_labels: bool = True,
-        stride_eq_tile: bool = True,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
@@ -152,6 +152,7 @@ class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
         mode: LabelMode | str,
         embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
+        stride_eq_tile: bool = False,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,
@@ -159,6 +160,7 @@ class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
             embeddings_folders=embeddings_folders,
             mode=mode,
             padding=padding,
+            stride_eq_tile=stride_eq_tile,
             include_labels=True,
         )
 
@@ -171,6 +173,7 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
         mode: LabelMode | str | None = None,
         embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
+        stride_eq_tile: bool = False,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,
@@ -178,6 +181,7 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
             embeddings_folders=embeddings_folders,
             mode=mode,
             padding=padding,
+            stride_eq_tile=stride_eq_tile,
             include_labels=False,
         )
 
@@ -190,6 +194,11 @@ def align_tile_embeddings(
             (embeddings_df["x"] % 224 == 0) & (embeddings_df["y"] % 224 == 0)
         ].reset_index(drop=True)
 
+    print(tiles)
+    print(embeddings_df)
+
+    print(tiles["x"])
+    print(embeddings_df["x"])
     if (tiles["x"] == embeddings_df["x"]).all() and (
         tiles["y"] == embeddings_df["y"]
     ).all():
