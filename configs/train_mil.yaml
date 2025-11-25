@@ -48,7 +48,7 @@ model:
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
-  run_name: '🏋️‍♂️ Training: ${data_mode} ${cohort} ${foundation} (fold ${data.k}/${data.kfold_splits}) MIL'
+  run_name: '🏋️‍♂️ Training: ${data_mode} ${cohort} ${foundation} (fold ${data.k}/${data.kfold_splits}, set=${data.stride_eq_tile}) MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
