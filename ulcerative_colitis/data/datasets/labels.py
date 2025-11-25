@@ -42,13 +42,10 @@ def get_label(slide_metadata: pd.Series, mode: LabelMode) -> torch.Tensor:
     match mode:
         case LabelMode.NEUTROPHILS:
             return torch.tensor(slide_metadata["neutrophils"].item()).float()
-        case (
-            LabelMode.NANCY_LOW
-            | LabelMode.NANCY_HIGH
-            | LabelMode.NANCY_HIGH_ALL
-            | LabelMode.NANCY_LOW_ALL
-        ):
+        case LabelMode.NANCY_LOW | LabelMode.NANCY_LOW_ALL:
             return torch.tensor(slide_metadata["nancy_index"].item()).float()
+        case LabelMode.NANCY_HIGH | LabelMode.NANCY_HIGH_ALL:
+            return torch.tensor(slide_metadata["nancy_index"].item()).int()
         case LabelMode.ULCERATION | LabelMode.ULCERATION_ALL:
             return torch.tensor(slide_metadata["ulceration"].item()).float()
 
