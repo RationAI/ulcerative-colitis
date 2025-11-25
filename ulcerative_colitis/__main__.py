@@ -25,9 +25,7 @@ def main(config: DictConfig, logger: Logger | None) -> None:
         _recursive_=False,  # to avoid instantiating all the datasets
         _target_=DataModule,
     )
-    model = hydra.utils.instantiate(
-        config.model,
-    )
+    model = hydra.utils.instantiate(config.model)
 
     trainer = hydra.utils.instantiate(config.trainer, _target_=Trainer, logger=logger)
     getattr(trainer, config.mode)(model, datamodule=data, ckpt_path=config.checkpoint)
