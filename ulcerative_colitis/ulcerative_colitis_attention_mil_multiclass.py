@@ -6,7 +6,7 @@ from lightning import LightningModule
 from torch import Tensor, nn
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
-from torchmetrics import Metric, MetricCollection
+from torchmetrics import MetricCollection
 from torchmetrics.classification import (
     MulticlassAccuracy,
     MulticlassAUROC,
@@ -24,19 +24,29 @@ from ulcerative_colitis.typing import (
 
 
 class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
-    def __init__(self, lr: float | None = None) -> None:
+    def __init__(self, foundation: str, lr: float | None = None) -> None:
         super().__init__()
+        match foundation:
+            case "prov-gigapath" | "uni2-h":
+                input_dim = 1536
+            case "uni":
+                input_dim = 1024
+            case "virchow" | "virchow2":
+                input_dim = 2560
+            case _:
+                raise ValueError(f"Unknown foundation model: {foundation}")
+
         self.encoder = nn.Identity()
         self.attention = nn.Sequential(
-            nn.Linear(1536, 512),
+            nn.Linear(input_dim, 512),
             nn.Tanh(),
             nn.Linear(512, 1),
         )
-        self.classifier = nn.Linear(1536, 3)
+        self.classifier = nn.Linear(input_dim, 3)
         self.criterion = nn.CrossEntropyLoss()
         self.lr = lr
 
-        metrics: dict[str, Metric] = {
+        metrics = {
             "AUC": MulticlassAUROC(3, average="none"),
             "accuracy": MulticlassAccuracy(3),
             "precision": MulticlassPrecision(3, average="none"),
@@ -48,106 +58,66 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         self.val_metrics = MetricCollection(deepcopy(metrics), prefix="validation/")
         self.test_metrics = MetricCollection(deepcopy(metrics), prefix="test/")
 
-    def forward(
-        self, x: Tensor, return_attention: bool = False
-    ) -> Output | tuple[Output, Tensor]:  # pylint: disable=arguments-differ
+    def forward(self, x: Tensor) -> Output:
+        # x has shape (batch_size, num_tiles_padded, embedding_dim)
         x = self.encoder(x)
         attention_weights = sigmoid_normalization(self.attention(x))
+        mask = (x.abs() > 1e-6).any(dim=-1, keepdim=True).float()
+        attention_weights = attention_weights * mask
+        attention_weights = attention_weights / attention_weights.sum(
+            dim=1, keepdim=True
+        )
         x = self.classifier(x)
-        x = torch.softmax(x, dim=0)
-        x = torch.sum(attention_weights * x, dim=0)
+        x = torch.sum(attention_weights * x, dim=1)
 
-        if return_attention:
-            return x.squeeze(), attention_weights.squeeze()
-
-        return x.squeeze()
-
-    def log_attention_coverage(self, attention_weights: Tensor, stage: str) -> None:
-        # Sort attention weights in descending order
-        sorted_weights, _ = torch.sort(attention_weights, descending=True)
-
-        tresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        for treshold in tresholds:
-            # Find the minimum number of weights that sum to treshold
-            cumulative_sum = 0.0
-            count = 0
-            for weight in sorted_weights:
-                cumulative_sum += weight.item()
-                count += 1
-                if cumulative_sum >= treshold:
-                    break
-
-            # Log the result
-            self.log(
-                f"{stage}/attention/coverage_fraction_{treshold}",
-                count / len(attention_weights),
-                on_epoch=True,
-                prog_bar=True,
-            )
+        return x.squeeze(-1)
 
     def training_step(self, batch: TileEmbeddingsInput) -> Tensor:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
-        loss = torch.tensor(0.0, device=self.device)
-        outputs = []
-        for bag, label in zip(bags, labels, strict=True):
-            output = self(bag, return_attention=False)
-            loss += self.criterion(output, label)
-            outputs.append(output)
-
-        loss /= len(bags)
-        self.log("train/loss", loss, on_step=True, prog_bar=True)
+        outputs = self(bags)
+        loss = self.criterion(outputs, labels)
+        self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
         self.train_metrics.update(
-            torch.stack(outputs), torch.tensor(labels, device=self.device)
+            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
         )
-        self.log_dict(self.train_metrics, on_epoch=True)
+        self.log_dict(
+            self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
 
         return loss
 
     def validation_step(self, batch: TileEmbeddingsInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
-        loss = torch.tensor(0.0, device=self.device)
-        outputs = []
-        for bag, label in zip(bags, labels, strict=True):
-            output, attention = self(bag, return_attention=True)
-            self.log_attention_coverage(attention, "validation")
-            loss += self.criterion(output, label)
-            outputs.append(output)
-
-        loss /= len(bags)
-        self.log("validation/loss", loss, prog_bar=True)
+        outputs = self(bags)
+        loss = self.criterion(outputs, labels)
+        self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
         self.val_metrics.update(
-            torch.stack(outputs), torch.tensor(labels, device=self.device)
+            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
         )
-        self.log_dict(self.val_metrics)
+        self.log_dict(
+            self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
 
     def test_step(self, batch: TileEmbeddingsInput) -> None:  # pylint: disable=arguments-differ
         bags, labels, _ = batch
 
-        outputs = []
-        for bag in bags:
-            output = self(bag)
-            outputs.append(output)
+        outputs = self(bags)
 
         self.test_metrics.update(
-            torch.stack(outputs), torch.tensor(labels, device=self.device)
+            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
         )
-        self.log_dict(self.test_metrics)
+        self.log_dict(
+            self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
+        )
 
     def predict_step(  # pylint: disable=arguments-differ
         self, batch: TileEmbeddingsPredictInput, batch_idx: int, dataloader_idx: int = 0
     ) -> Output:
-        bags, _ = batch
-
-        outputs = []
-        for bag in bags:
-            output = self(bag)
-            outputs.append(output)
-
-        return torch.stack(outputs)
+        return self(batch[0])
 
     def configure_optimizers(self) -> Optimizer:
         if self.lr is None:

@@ -69,8 +69,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             dim=1, keepdim=True
         )
         x = self.classifier(x)
-        x = x.sigmoid()
         x = torch.sum(attention_weights * x, dim=1)
+        x = x.sigmoid()
 
         return x.squeeze(-1)
 
