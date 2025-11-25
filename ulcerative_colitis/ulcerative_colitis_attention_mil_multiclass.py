@@ -10,6 +10,7 @@ from torchmetrics import MetricCollection
 from torchmetrics.classification import (
     MulticlassAccuracy,
     MulticlassAUROC,
+    MulticlassCohenKappa,
     MulticlassPrecision,
     MulticlassRecall,
     MulticlassSpecificity,
@@ -52,6 +53,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             "precision": MulticlassPrecision(3, average="none"),
             "recall": MulticlassRecall(3, average="none"),
             "specificity": MulticlassSpecificity(3, average="none"),
+            "kappa": MulticlassCohenKappa(3),
         }
 
         self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
