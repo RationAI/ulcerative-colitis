@@ -79,9 +79,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss = self.criterion(outputs, labels)
         self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
-        self.train_metrics.update(
-            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
-        )
+        self.train_metrics.update(torch.softmax(outputs, dim=-1), labels)
         self.log_dict(
             self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -95,9 +93,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
         loss = self.criterion(outputs, labels)
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
-        self.val_metrics.update(
-            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
-        )
+        self.val_metrics.update(torch.softmax(outputs, dim=-1), labels)
         self.log_dict(
             self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -107,9 +103,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
 
         outputs = self(bags)
 
-        self.test_metrics.update(
-            torch.stack(outputs).softmax(dim=-1), torch.tensor(labels)
-        )
+        self.test_metrics.update(torch.softmax(outputs, dim=-1), labels)
         self.log_dict(
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
@@ -117,7 +111,7 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
     def predict_step(  # pylint: disable=arguments-differ
         self, batch: TileEmbeddingsPredictInput, batch_idx: int, dataloader_idx: int = 0
     ) -> Output:
-        return self(batch[0])
+        return torch.softmax(self(batch[0]), dim=-1)
 
     def configure_optimizers(self) -> Optimizer:
         if self.lr is None:
