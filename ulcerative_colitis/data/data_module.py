@@ -9,6 +9,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from ulcerative_colitis.data.datasets import create_subset
+from ulcerative_colitis.data.datasets.labels import get_target_column
 from ulcerative_colitis.data.samplers import AutoWeightedRandomSampler
 from ulcerative_colitis.typing import (
     Metadata,
@@ -21,7 +22,6 @@ class DataModule(LightningDataModule):
     def __init__(
         self,
         batch_size: int,
-        target_column: str | None = None,
         num_workers: int = 0,
         kfold_splits: int | None = None,
         k: int | None = None,
@@ -29,7 +29,6 @@ class DataModule(LightningDataModule):
     ) -> None:
         super().__init__()
         self.batch_size = batch_size
-        self.target_column = target_column
         self.num_workers = num_workers
         self.kfold_splits = kfold_splits
         self.k = k
@@ -56,13 +55,15 @@ class DataModule(LightningDataModule):
                 self.predict = instantiate(self.datasets["predict"])
 
     def train_dataloader(self) -> Iterable[TileEmbeddingsInput]:
-        if self.target_column is None:
-            raise ValueError("target_column must be provided for training")
+        if self.train.mode is None:
+            raise ValueError("Dataset mode must be set for training")
 
         return DataLoader(
             self.train,
             batch_size=self.batch_size,
-            sampler=AutoWeightedRandomSampler(self.train, self.target_column),
+            sampler=AutoWeightedRandomSampler(
+                self.train, get_target_column(self.train.mode)
+            ),
             drop_last=True,
             num_workers=self.num_workers,
             collate_fn=collate_fn,

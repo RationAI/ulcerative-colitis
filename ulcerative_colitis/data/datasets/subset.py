@@ -21,6 +21,7 @@ class TilesSubset(Subset[TilesSample]):
         super().__init__(dataset, indices)
         self.slides = dataset.slides.iloc[list(indices)].reset_index()
         self.tiles = dataset.tiles.query(f"slide_id in {tuple(self.slides['id'])}")
+        self.mode = dataset.mode
 
 
 class TileEmbeddingsSubset(Subset[TileEmbeddingsSample]):
@@ -32,6 +33,7 @@ class TileEmbeddingsSubset(Subset[TileEmbeddingsSample]):
         super().__init__(dataset, indices)
         self.slides = dataset.slides.iloc[list(indices)].reset_index()
         self.tiles = dataset.tiles.query(f"slide_id in {tuple(self.slides['id'])}")
+        self.mode = dataset.mode
 
 
 class SlideEmbeddingsSubset(Subset[SlideEmbeddingsSample]):
@@ -42,6 +44,7 @@ class SlideEmbeddingsSubset(Subset[SlideEmbeddingsSample]):
     ) -> None:
         super().__init__(dataset, indices)
         self.slides = dataset.slides.iloc[list(indices)].reset_index()
+        self.mode = dataset.mode
 
 
 def create_subset(
