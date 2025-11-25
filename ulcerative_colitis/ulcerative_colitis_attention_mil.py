@@ -75,7 +75,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
         return x.squeeze(-1)
 
     def training_step(self, batch: TileEmbeddingsInput) -> Tensor:  # pylint: disable=arguments-differ
-        bags, labels, ms = batch
+        bags, labels, _ = batch
 
         outputs = self(bags)
         loss = self.criterion(outputs, labels)
