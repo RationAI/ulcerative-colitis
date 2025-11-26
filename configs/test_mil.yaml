@@ -11,6 +11,9 @@ mode: test
 cohort: ???
 checkpoint: ???
 data_mode: ???
+foundation: ???
+level: ???
+K: ???
 
 trainer: {}
 
@@ -19,15 +22,18 @@ data:
   num_workers: 4
   test:
     mode: ${data_mode}
-    tiling_uri: '${uris.tiling.${cohort}}/test preliminary - ${cohort}'
-    embeddings_uri: ${uris.embeddings.${cohort}.prov-gigapath}
-    embeddings_folder: ${paths.embeddings.${cohort}.prov-gigapath}
+    tiling_uri: ${uris.tiling.${level}.${cohort}.test}
+    embeddings_uri: ${uris.embeddings.${level}.${cohort}.${foundation}}
+    embeddings_folder: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    stride_eq_tile: false
 
-model: {}
+model:
+  _target_: ulcerative_colitis.ulcerative_colitis_attention_mil.UlcerativeColitisModelAttentionMIL
+  foundation: ${foundation}
 
 metadata:
   experiment_name: 'Ulcerative Colitis' 
-  run_name: '📏 Testing: - ${data_mode} ${cohort} MIL'
+  run_name: '📏 Testing: ${data_mode} ${cohort} ${foundation} (fold ${K}/5, set=${data.test.stride_eq_tile}) MIL'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
