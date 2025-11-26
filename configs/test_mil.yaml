@@ -22,9 +22,9 @@ data:
   num_workers: 4
   test:
     mode: ${data_mode}
-    tiling_uri: ${uris.tiling.${level}.${cohort}.test_preliminary}
-    embeddings_uri: ${uris.embeddings.${level}.${cohort}.${foundation}}
-    embeddings_folder: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    tiling_uris: ${uris.tiling.${level}.${cohort}.test_preliminary}
+    embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
+    embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
     stride_eq_tile: false
 
 model:
