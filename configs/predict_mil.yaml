@@ -29,7 +29,9 @@ data:
     embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
     stride_eq_tile: false
 
-model: {}
+model:
+  _target_: ulcerative_colitis.ulcerative_colitis_attention_mil.UlcerativeColitisModelAttentionMIL
+  foundation: ${foundation}
 
 metadata:
   experiment_name: 'Ulcerative Colitis'
