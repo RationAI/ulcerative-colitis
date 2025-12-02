@@ -103,6 +103,9 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
     def filter_slides_by_name(self, slide_names: Iterable[str] | None) -> pd.DataFrame:
         if slide_names is None:
             return self.slides
+        print(f"Filtering to {len(slide_names)} slides.")
+        print(slide_names)
+        print(len(self.slides))
         filtered_slides = self.slides[
             self.slides["name"].isin(slide_names)
         ].reset_index(drop=True)
