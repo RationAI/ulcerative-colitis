@@ -111,7 +111,7 @@ class MaskBuilderCallback(Callback):
             attention_cumulative_log5 = log2_1p_rec(attention_cumulative, 5)
 
             mask_builders["attention"].update(
-                attention_weights, metadata["x"], metadata["y"]
+                attention_weights.to("cpu"), metadata["x"], metadata["y"]
             )
             # mask_builders["attention_rescaled"].update(
             #     attention_weights / weights_max, metadata["x"], metadata["y"]
@@ -123,7 +123,7 @@ class MaskBuilderCallback(Callback):
             #     attention_cumulative, metadata["x"], metadata["y"]
             # )
             mask_builders["attention_cumulative_log5"].update(
-                attention_cumulative_log5, metadata["x"], metadata["y"]
+                attention_cumulative_log5.to("cpu"), metadata["x"], metadata["y"]
             )
             # mask_builders["classification"].update(
             #     classification, metadata["x"], metadata["y"]
