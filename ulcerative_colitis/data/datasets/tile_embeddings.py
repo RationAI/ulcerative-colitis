@@ -33,6 +33,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         padding: bool = True,
         stride_eq_tile: bool = False,
         include_labels: bool = True,
+        slide_names: Iterable[str] | None = None,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
@@ -47,6 +48,7 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         self.tiles = self.filter_tiles_by_stride()
         self.slides = self.filter_empty_slides()
         self.slides = process_slides(self.slides, self.mode)
+        self.slides = self.filter_slides_by_name(slide_names)
 
         self.padding = padding
         self.max_embeddings = self.tiles["slide_id"].value_counts().max()
@@ -95,6 +97,14 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         valid_slide_ids = self.tiles["slide_id"].unique()
         filtered_slides = self.slides[
             self.slides["id"].isin(valid_slide_ids)
+        ].reset_index(drop=True)
+        return filtered_slides
+
+    def filter_slides_by_name(self, slide_names: Iterable[str] | None) -> pd.DataFrame:
+        if slide_names is None:
+            return self.slides
+        filtered_slides = self.slides[
+            self.slides["name"].isin(slide_names)
         ].reset_index(drop=True)
         return filtered_slides
 
@@ -176,6 +186,7 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
         embeddings_folders: Iterable[Path | str | None] | None = None,
         padding: bool = True,
         stride_eq_tile: bool = False,
+        slide_names: Iterable[str] | None = None,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,

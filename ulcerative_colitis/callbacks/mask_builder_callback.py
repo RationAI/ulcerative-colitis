@@ -8,6 +8,7 @@ from lightning import Callback, Trainer
 from rationai.masks.mask_builders import ScalarMaskBuilder
 
 from ulcerative_colitis.data import DataModule
+from ulcerative_colitis.modeling.normalization import sigmoid_normalization
 from ulcerative_colitis.typing import Output, TileEmbeddingsPredictInput
 from ulcerative_colitis.ulcerative_colitis_attention_mil import (
     UlcerativeColitisModelAttentionMIL,
@@ -16,15 +17,16 @@ from ulcerative_colitis.ulcerative_colitis_attention_mil import (
 
 class MaskBuilders(TypedDict):
     attention: ScalarMaskBuilder
-    attention_rescaled: ScalarMaskBuilder
-    attention_percentile: ScalarMaskBuilder
-    attention_cumulative: ScalarMaskBuilder
+    # attention_rescaled: ScalarMaskBuilder
+    # attention_percentile: ScalarMaskBuilder
+    # attention_cumulative: ScalarMaskBuilder
     attention_cumulative_log5: ScalarMaskBuilder
-    classification: ScalarMaskBuilder
-    classification_attention: ScalarMaskBuilder
-    classification_attention_rescaled: ScalarMaskBuilder
-    classification_attention_percentile: ScalarMaskBuilder
-    classification_attention_cumulative: ScalarMaskBuilder
+    # classification: ScalarMaskBuilder
+    # classification_attention_cumulative_log5: ScalarMaskBuilder
+    # classification_attention: ScalarMaskBuilder
+    # classification_attention_rescaled: ScalarMaskBuilder
+    # classification_attention_percentile: ScalarMaskBuilder
+    # classification_attention_cumulative: ScalarMaskBuilder
 
 
 class MaskBuilderCallback(Callback):
@@ -49,33 +51,33 @@ class MaskBuilderCallback(Callback):
 
         return {
             "attention": ScalarMaskBuilder(save_dir=Path("masks/attention"), **kwargs),
-            "attention_rescaled": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_rescaled"), **kwargs
-            ),
-            "attention_percentile": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_percentile"), **kwargs
-            ),
-            "attention_cumulative": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative"), **kwargs
-            ),
+            # "attention_rescaled": ScalarMaskBuilder(
+            #     save_dir=Path("masks/attention_rescaled"), **kwargs
+            # ),
+            # "attention_percentile": ScalarMaskBuilder(
+            #     save_dir=Path("masks/attention_percentile"), **kwargs
+            # ),
+            # "attention_cumulative": ScalarMaskBuilder(
+            #     save_dir=Path("masks/attention_cumulative"), **kwargs
+            # ),
             "attention_cumulative_log5": ScalarMaskBuilder(
                 save_dir=Path("masks/attention_cumulative_log5"), **kwargs
             ),
-            "classification": ScalarMaskBuilder(
-                save_dir=Path("masks/classifications"), **kwargs
-            ),
-            "classification_attention": ScalarMaskBuilder(
-                save_dir=Path("masks/classifications_attention"), **kwargs
-            ),
-            "classification_attention_rescaled": ScalarMaskBuilder(
-                save_dir=Path("masks/classifications_attention_rescaled"), **kwargs
-            ),
-            "classification_attention_percentile": ScalarMaskBuilder(
-                save_dir=Path("masks/classifications_attention_percentile"), **kwargs
-            ),
-            "classification_attention_cumulative": ScalarMaskBuilder(
-                save_dir=Path("masks/classifications_attention_cumulative"), **kwargs
-            ),
+            # "classification": ScalarMaskBuilder(
+            #     save_dir=Path("masks/classifications"), **kwargs
+            # ),
+            # "classification_attention": ScalarMaskBuilder(
+            #     save_dir=Path("masks/classifications_attention"), **kwargs
+            # ),
+            # "classification_attention_rescaled": ScalarMaskBuilder(
+            #     save_dir=Path("masks/classifications_attention_rescaled"), **kwargs
+            # ),
+            # "classification_attention_percentile": ScalarMaskBuilder(
+            #     save_dir=Path("masks/classifications_attention_percentile"), **kwargs
+            # ),
+            # "classification_attention_cumulative_log5": ScalarMaskBuilder(
+            #     save_dir=Path("masks/classifications_attention_cumulative"), **kwargs
+            # ),
         }
 
     def save_mask_builders(self, mask_builders: MaskBuilders) -> None:
@@ -100,48 +102,48 @@ class MaskBuilderCallback(Callback):
             bag = bag[: len(metadata["x"])]
 
             bag = pl_module.encoder(bag)
-            attention_weights = torch.softmax(pl_module.attention(bag), dim=0).cpu()
-            classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
+            # attention_weights = torch.softmax(pl_modattention(bag), dim=0).cpu()
+            attention_weights = sigmoid_normalization(pl_module.attention(bag))
+            # classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
 
-            weights_max = attention_weights.max()
-            attention_percentiles, attention_cumulative = values_to_percentiles(
-                attention_weights
-            )
+            # weights_max = attention_weights.max()
+            _, attention_cumulative = values_to_percentiles(attention_weights)
+            attention_cumulative_log5 = log2_1p_rec(attention_cumulative, 5)
 
             mask_builders["attention"].update(
                 attention_weights, metadata["x"], metadata["y"]
             )
-            mask_builders["attention_rescaled"].update(
-                attention_weights / weights_max, metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_percentile"].update(
-                attention_percentiles, metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_cumulative"].update(
-                attention_cumulative, metadata["x"], metadata["y"]
-            )
+            # mask_builders["attention_rescaled"].update(
+            #     attention_weights / weights_max, metadata["x"], metadata["y"]
+            # )
+            # mask_builders["attention_percentile"].update(
+            #     attention_percentiles, metadata["x"], metadata["y"]
+            # )
+            # mask_builders["attention_cumulative"].update(
+            #     attention_cumulative, metadata["x"], metadata["y"]
+            # )
             mask_builders["attention_cumulative_log5"].update(
-                log2_1p_rec(attention_cumulative, 5), metadata["x"], metadata["y"]
+                attention_cumulative_log5, metadata["x"], metadata["y"]
             )
-            mask_builders["classification"].update(
-                classification, metadata["x"], metadata["y"]
-            )
-            mask_builders["classification_attention"].update(
-                attention_weights * classification, metadata["x"], metadata["y"]
-            )
-            mask_builders["classification_attention_rescaled"].update(
-                attention_weights * classification / weights_max,
-                metadata["x"],
-                metadata["y"],
-            )
-            mask_builders["classification_attention_percentile"].update(
-                attention_percentiles * classification,
-                metadata["x"],
-                metadata["y"],
-            )
-            mask_builders["classification_attention_cumulative"].update(
-                attention_cumulative * classification, metadata["x"], metadata["y"]
-            )
+            # mask_builders["classification"].update(
+            #     classification, metadata["x"], metadata["y"]
+            # )
+            # mask_builders["classification_attention"].update(
+            #     attention_weights * classification, metadata["x"], metadata["y"]
+            # )
+            # mask_builders["classification_attention_rescaled"].update(
+            #     attention_weights * classification / weights_max,
+            #     metadata["x"],
+            #     metadata["y"],
+            # )
+            # mask_builders["classification_attention_percentile"].update(
+            #     attention_percentiles * classification,
+            #     metadata["x"],
+            #     metadata["y"],
+            # )
+            # mask_builders["classification_attention_cumulative_log5"].update(
+            #     attention_cumulative_log5 * classification, metadata["x"], metadata["y"]
+            # )
 
             self.save_mask_builders(mask_builders)
 
