@@ -196,6 +196,7 @@ class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
             padding=padding,
             stride_eq_tile=stride_eq_tile,
             include_labels=False,
+            slide_names=slide_names,
         )
 
 
