@@ -17,7 +17,7 @@ from ulcerative_colitis.ulcerative_colitis_attention_mil import (
 
 class MaskBuilders(TypedDict):
     attention: ScalarMaskBuilder
-    # attention_rescaled: ScalarMaskBuilder
+    attention_rescaled: ScalarMaskBuilder
     # attention_percentile: ScalarMaskBuilder
     attention_cumulative: ScalarMaskBuilder
     attention_cumulative_log5: ScalarMaskBuilder
@@ -51,9 +51,9 @@ class MaskBuilderCallback(Callback):
 
         return {
             "attention": ScalarMaskBuilder(save_dir=Path("masks/attention"), **kwargs),
-            # "attention_rescaled": ScalarMaskBuilder(
-            #     save_dir=Path("masks/attention_rescaled"), **kwargs
-            # ),
+            "attention_rescaled": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_rescaled"), **kwargs
+            ),
             # "attention_percentile": ScalarMaskBuilder(
             #     save_dir=Path("masks/attention_percentile"), **kwargs
             # ),
