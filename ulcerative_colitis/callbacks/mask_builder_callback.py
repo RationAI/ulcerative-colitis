@@ -120,7 +120,7 @@ class MaskBuilderCallback(Callback):
             #     attention_percentiles, metadata["x"], metadata["y"]
             # )
             mask_builders["attention_cumulative"].update(
-                attention_cumulative, metadata["x"], metadata["y"]
+                attention_cumulative.to("cpu"), metadata["x"], metadata["y"]
             )
             mask_builders["attention_cumulative_log5"].update(
                 attention_cumulative_log5.to("cpu"), metadata["x"], metadata["y"]
