@@ -19,7 +19,7 @@ class MaskBuilders(TypedDict):
     attention: ScalarMaskBuilder
     # attention_rescaled: ScalarMaskBuilder
     # attention_percentile: ScalarMaskBuilder
-    # attention_cumulative: ScalarMaskBuilder
+    attention_cumulative: ScalarMaskBuilder
     attention_cumulative_log5: ScalarMaskBuilder
     # classification: ScalarMaskBuilder
     # classification_attention_cumulative_log5: ScalarMaskBuilder
@@ -57,9 +57,9 @@ class MaskBuilderCallback(Callback):
             # "attention_percentile": ScalarMaskBuilder(
             #     save_dir=Path("masks/attention_percentile"), **kwargs
             # ),
-            # "attention_cumulative": ScalarMaskBuilder(
-            #     save_dir=Path("masks/attention_cumulative"), **kwargs
-            # ),
+            "attention_cumulative": ScalarMaskBuilder(
+                save_dir=Path("masks/attention_cumulative"), **kwargs
+            ),
             "attention_cumulative_log5": ScalarMaskBuilder(
                 save_dir=Path("masks/attention_cumulative_log5"), **kwargs
             ),
@@ -119,9 +119,9 @@ class MaskBuilderCallback(Callback):
             # mask_builders["attention_percentile"].update(
             #     attention_percentiles, metadata["x"], metadata["y"]
             # )
-            # mask_builders["attention_cumulative"].update(
-            #     attention_cumulative, metadata["x"], metadata["y"]
-            # )
+            mask_builders["attention_cumulative"].update(
+                attention_cumulative, metadata["x"], metadata["y"]
+            )
             mask_builders["attention_cumulative_log5"].update(
                 attention_cumulative_log5.to("cpu"), metadata["x"], metadata["y"]
             )
