@@ -110,16 +110,18 @@ class MaskBuilderCallback(Callback):
             )
             # classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
 
-            # weights_max = attention_weights.max()
+            weights_max = attention_weights.max()
             _, attention_cumulative = values_to_percentiles(attention_weights)
             attention_cumulative_log5 = log2_1p_rec(attention_cumulative, 5)
 
             mask_builders["attention"].update(
                 attention_weights.to("cpu"), metadata["x"], metadata["y"]
             )
-            # mask_builders["attention_rescaled"].update(
-            #     attention_weights / weights_max, metadata["x"], metadata["y"]
-            # )
+            mask_builders["attention_rescaled"].update(
+                (attention_weights / weights_max).to("cpu"),
+                metadata["x"],
+                metadata["y"],
+            )
             # mask_builders["attention_percentile"].update(
             #     attention_percentiles, metadata["x"], metadata["y"]
             # )
