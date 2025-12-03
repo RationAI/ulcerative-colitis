@@ -104,6 +104,10 @@ class MaskBuilderCallback(Callback):
             bag = pl_module.encoder(bag)
             # attention_weights = torch.softmax(pl_modattention(bag), dim=0).cpu()
             attention_weights = sigmoid_normalization(pl_module.attention(bag))
+            mlflow.log_dict(
+                {"attention_weights": attention_weights.tolist()},
+                f"attention_{metadata['slide_name']}.json",
+            )
             # classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
 
             # weights_max = attention_weights.max()
