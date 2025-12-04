@@ -16,17 +16,11 @@ from ulcerative_colitis.ulcerative_colitis_attention_mil import (
 
 
 class MaskBuilders(TypedDict):
-    attention: ScalarMaskBuilder
     attention_rescaled: ScalarMaskBuilder
-    # attention_percentile: ScalarMaskBuilder
-    attention_cumulative: ScalarMaskBuilder
-    attention_cumulative_log5: ScalarMaskBuilder
-    # classification: ScalarMaskBuilder
-    # classification_attention_cumulative_log5: ScalarMaskBuilder
-    # classification_attention: ScalarMaskBuilder
-    # classification_attention_rescaled: ScalarMaskBuilder
-    # classification_attention_percentile: ScalarMaskBuilder
-    # classification_attention_cumulative: ScalarMaskBuilder
+    classification_binary: ScalarMaskBuilder
+    classification_2: ScalarMaskBuilder
+    classification_3: ScalarMaskBuilder
+    classification_4: ScalarMaskBuilder
 
 
 class MaskBuilderCallback(Callback):
@@ -50,34 +44,21 @@ class MaskBuilderCallback(Callback):
         }
 
         return {
-            "attention": ScalarMaskBuilder(save_dir=Path("masks/attention"), **kwargs),
             "attention_rescaled": ScalarMaskBuilder(
                 save_dir=Path("masks/attention_rescaled"), **kwargs
             ),
-            # "attention_percentile": ScalarMaskBuilder(
-            #     save_dir=Path("masks/attention_percentile"), **kwargs
-            # ),
-            "attention_cumulative": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative"), **kwargs
+            "classification_binary": ScalarMaskBuilder(
+                save_dir=Path("masks/classification_binary"), **kwargs
             ),
-            "attention_cumulative_log5": ScalarMaskBuilder(
-                save_dir=Path("masks/attention_cumulative_log5"), **kwargs
+            "classification_2": ScalarMaskBuilder(
+                save_dir=Path("masks/classification_2"), **kwargs
             ),
-            # "classification": ScalarMaskBuilder(
-            #     save_dir=Path("masks/classifications"), **kwargs
-            # ),
-            # "classification_attention": ScalarMaskBuilder(
-            #     save_dir=Path("masks/classifications_attention"), **kwargs
-            # ),
-            # "classification_attention_rescaled": ScalarMaskBuilder(
-            #     save_dir=Path("masks/classifications_attention_rescaled"), **kwargs
-            # ),
-            # "classification_attention_percentile": ScalarMaskBuilder(
-            #     save_dir=Path("masks/classifications_attention_percentile"), **kwargs
-            # ),
-            # "classification_attention_cumulative_log5": ScalarMaskBuilder(
-            #     save_dir=Path("masks/classifications_attention_cumulative"), **kwargs
-            # ),
+            "classification_3": ScalarMaskBuilder(
+                save_dir=Path("masks/classification_3"), **kwargs
+            ),
+            "classification_4": ScalarMaskBuilder(
+                save_dir=Path("masks/classification_4"), **kwargs
+            ),
         }
 
     def save_mask_builders(self, mask_builders: MaskBuilders) -> None:
@@ -102,79 +83,45 @@ class MaskBuilderCallback(Callback):
             bag = bag[: len(metadata["x"])]
 
             bag = pl_module.encoder(bag)
-            # attention_weights = torch.softmax(pl_modattention(bag), dim=0).cpu()
-            attention_weights = sigmoid_normalization(pl_module.attention(bag))
-            mlflow.log_dict(
-                {"attention_weights": attention_weights.tolist()},
-                f"attention_{metadata['slide_name']}.json",
-            )
-            # classification = torch.sigmoid(pl_module.classifier(bag)).cpu()
+            attention_weights = sigmoid_normalization(pl_module.attention(bag)).cpu()
 
-            weights_max = attention_weights.max()
-            weights_min = attention_weights.min()
-            _, attention_cumulative = values_to_percentiles(attention_weights)
-            attention_cumulative_log5 = log2_1p_rec(attention_cumulative, 5)
-
-            mask_builders["attention"].update(
-                attention_weights.to("cpu"), metadata["x"], metadata["y"]
-            )
             mask_builders["attention_rescaled"].update(
-                ((attention_weights - weights_min) / (weights_max - weights_min)).to(
-                    "cpu"
-                ),
+                min_max_normalization(attention_weights),
                 metadata["x"],
                 metadata["y"],
             )
-            # mask_builders["attention_percentile"].update(
-            #     attention_percentiles, metadata["x"], metadata["y"]
-            # )
-            mask_builders["attention_cumulative"].update(
-                attention_cumulative.to("cpu"), metadata["x"], metadata["y"]
-            )
-            mask_builders["attention_cumulative_log5"].update(
-                attention_cumulative_log5.to("cpu"), metadata["x"], metadata["y"]
-            )
-            # mask_builders["classification"].update(
-            #     classification, metadata["x"], metadata["y"]
-            # )
-            # mask_builders["classification_attention"].update(
-            #     attention_weights * classification, metadata["x"], metadata["y"]
-            # )
-            # mask_builders["classification_attention_rescaled"].update(
-            #     attention_weights * classification / weights_max,
-            #     metadata["x"],
-            #     metadata["y"],
-            # )
-            # mask_builders["classification_attention_percentile"].update(
-            #     attention_percentiles * classification,
-            #     metadata["x"],
-            #     metadata["y"],
-            # )
-            # mask_builders["classification_attention_cumulative_log5"].update(
-            #     attention_cumulative_log5 * classification, metadata["x"], metadata["y"]
-            # )
+
+            classification = pl_module.classifier(bag).cpu()
+
+            if outputs.shape[-1] == 1:
+                classification = classification.sigmoid()
+                mask_builders["classification_binary"].update(
+                    classification,
+                    metadata["x"],
+                    metadata["y"],
+                )
+            else:
+                classification = torch.softmax(classification, dim=-1)
+                mask_builders["classification_2"].update(
+                    classification[:, 0],
+                    metadata["x"],
+                    metadata["y"],
+                )
+                mask_builders["classification_3"].update(
+                    classification[:, 1],
+                    metadata["x"],
+                    metadata["y"],
+                )
+                mask_builders["classification_4"].update(
+                    classification[:, 2],
+                    metadata["x"],
+                    metadata["y"],
+                )
 
             self.save_mask_builders(mask_builders)
 
 
-def values_to_percentiles(values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    values = values.flatten()
-    sorted_indices = values.argsort()
-    ranks = torch.empty_like(sorted_indices, dtype=torch.float)
-    ranks[sorted_indices] = torch.linspace(0, 1, len(values), device=values.device)
-
-    cumulative_values = torch.cumsum(values[sorted_indices], dim=0)
-    original_order_cumulative = torch.empty_like(cumulative_values)
-    original_order_cumulative[sorted_indices] = cumulative_values
-
-    return ranks.unsqueeze(1), original_order_cumulative.unsqueeze(1)
-
-
-def log2_1p(x: torch.Tensor) -> torch.Tensor:
-    return torch.log1p(x) / torch.log(torch.tensor(2.0, device=x.device))
-
-
-def log2_1p_rec(x: torch.Tensor, depth: int = 1) -> torch.Tensor:
-    if depth == 0:
-        return x
-    return log2_1p_rec(log2_1p(x), depth - 1)
+def min_max_normalization(tensor: torch.Tensor) -> torch.Tensor:
+    weights_max = tensor.max()
+    weights_min = tensor.min()
+    return (tensor - weights_min) / (weights_max - weights_min)
