@@ -93,14 +93,7 @@ class MaskBuilderCallback(Callback):
 
             classification = pl_module.classifier(bag).cpu()
 
-            if outputs.shape[-1] == 1:
-                classification = classification.sigmoid()
-                mask_builders["classification_binary"].update(
-                    classification,
-                    metadata["x"],
-                    metadata["y"],
-                )
-            else:
+            if outputs.shape[-1] == 3:
                 classification = torch.softmax(classification, dim=-1)
                 mask_builders["classification_2"].update(
                     classification[:, 0],
@@ -114,6 +107,13 @@ class MaskBuilderCallback(Callback):
                 )
                 mask_builders["classification_4"].update(
                     classification[:, 2],
+                    metadata["x"],
+                    metadata["y"],
+                )
+            else:
+                classification = classification.sigmoid()
+                mask_builders["classification_binary"].update(
+                    classification,
                     metadata["x"],
                     metadata["y"],
                 )
