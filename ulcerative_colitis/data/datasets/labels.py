@@ -28,9 +28,11 @@ def process_slides(slides: pd.DataFrame, mode: LabelMode | None = None) -> pd.Da
             slides = slides[slides["nancy_index"] >= 2].copy()
             slides["ulceration"] = slides["nancy_index"] == 4
         case LabelMode.NANCY_HIGH_ALL:
-            slides["nancy_index"] = slides["nancy_index"].apply(lambda x: max(0, x - 2))
+            # new labels: 0,1 -> 0; 2,3,4 -> 1,2,3
+            slides["nancy_index"] = slides["nancy_index"].apply(lambda x: max(0, x - 1))
         case LabelMode.NANCY_LOW_ALL:
-            slides["nancy_index"] = slides["nancy_index"].apply(lambda x: min(x, 1))
+            # new labels: 0,1 -> 0,1; 2,3,4 -> 2
+            slides["nancy_index"] = slides["nancy_index"].apply(lambda x: min(x, 2))
         case LabelMode.ULCERATION_ALL:
             slides["ulceration"] = slides["nancy_index"] == 4
 
