@@ -25,7 +25,9 @@ from ulcerative_colitis.typing import (
 
 
 class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
-    def __init__(self, foundation: str, lr: float | None = None) -> None:
+    def __init__(
+        self, foundation: str, num_classes: int, lr: float | None = None
+    ) -> None:
         super().__init__()
         match foundation:
             case "prov-gigapath" | "uni2-h":
@@ -43,17 +45,17 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             nn.Tanh(),
             nn.Linear(512, 1),
         )
-        self.classifier = nn.Linear(input_dim, 3)
+        self.classifier = nn.Linear(input_dim, num_classes)
         self.criterion = nn.CrossEntropyLoss()
         self.lr = lr
 
         metrics = {
-            "AUC": MulticlassAUROC(3, average="none"),
-            "accuracy": MulticlassAccuracy(3),
-            "precision": MulticlassPrecision(3, average="none"),
-            "recall": MulticlassRecall(3, average="none"),
-            "specificity": MulticlassSpecificity(3, average="none"),
-            "kappa": MulticlassCohenKappa(3),
+            "AUC": MulticlassAUROC(num_classes, average="none"),
+            "accuracy": MulticlassAccuracy(num_classes),
+            "precision": MulticlassPrecision(num_classes, average="none"),
+            "recall": MulticlassRecall(num_classes, average="none"),
+            "specificity": MulticlassSpecificity(num_classes, average="none"),
+            "kappa": MulticlassCohenKappa(num_classes),
         }
 
         self.train_metrics = MetricCollection(deepcopy(metrics), prefix="train/")
