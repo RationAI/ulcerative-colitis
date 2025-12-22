@@ -127,6 +127,6 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):
-                    self.log(f"{name}/{i + 2}", value, *args, **kwargs)
+                    self.log(f"{name}/{i}", value, *args, **kwargs)
             else:
                 self.log(name, result, *args, **kwargs)
