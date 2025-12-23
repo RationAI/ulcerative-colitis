@@ -29,17 +29,17 @@ data:
     embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
     embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
     stride_eq_tile: false
-    slide_names:
-      - '11324_22_HE' # nancy 0, correct
-      - '15785_23' # nancy 1, correct
-      - '10290_22_HE' # nancy 2, correct
-      - '40042_20' # nancy 3, correct
-      - '7158_22_HE_02' # nancy 4, correct
-      - '6021_22_HE' # nancy 0, incorrect
-      - '858_25_A_HE02' # nancy 1, incorrect
-      - '4140_24_HE' # nancy 2, incorrect
-      - '3387_21_HE_02' # nancy 3, incorrect
-      - '4773_23' # nancy 4, incorrect
+    # slide_names:
+    #   - '11324_22_HE' # nancy 0, correct
+    #   - '15785_23' # nancy 1, correct
+    #   - '10290_22_HE' # nancy 2, correct
+    #   - '40042_20' # nancy 3, correct
+    #   - '7158_22_HE_02' # nancy 4, correct
+    #   - '6021_22_HE' # nancy 0, incorrect
+    #   - '858_25_A_HE02' # nancy 1, incorrect
+    #   - '4140_24_HE' # nancy 2, incorrect
+    #   - '3387_21_HE_02' # nancy 3, incorrect
+    #   - '4773_23' # nancy 4, incorrect
 
 model:
   _target_: ulcerative_colitis.ulcerative_colitis_attention_mil.UlcerativeColitisModelAttentionMIL
