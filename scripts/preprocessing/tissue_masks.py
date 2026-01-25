@@ -7,8 +7,8 @@ submit_job(
     job_name=f"ulcerative-colitis-tissue-masks-{COHORT.replace('_', '-')}",
     username=...,
     public=False,
-    cpu=32,
-    memory="128Gi",
+    cpu=64,
+    memory="32Gi",
     script=[
         "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
         "cd workdir",
