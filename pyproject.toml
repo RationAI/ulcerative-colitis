@@ -1,34 +1,28 @@
 [project]
-name = "project-name"
+name = "ulcerative-colitis"
 version = "0.1.0"
-authors = []
-requires-python = ">=3.11"
+authors = [{name = "Adam Kukučka", email = "adam.kukucka@mail.muni.cz"}]
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
 dependencies = [
-    "torch>=2.4.0",
-    "lightning>=2.4.0",
-    "torchmetrics>=1.4.1",
-    "rationai-mlkit @ git+https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git",
+    "aiohttp>=3.13.2",
+    "lightning>=2.5.6",
+    "mlflow<3.0.0",
+    "omegaconf>=2.3.0",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
+    "pyvips<3.1",
+    "rationai-mlkit",
+    "ray>=2.52.1",
+    "torch>=2.9.0",
+    "torchmetrics>=1.8.2",
 ]
 
-[tool.pdm.dev-dependencies]
-dev = ["mypy", "pre-commit", "ruff"]
+[dependency-groups]
+dev = ["mypy", "ruff", "ipykernel"]
+run = ["rationai-kube-jobs"]
 
-[tool.pdm.scripts]
-train = "python -m project_name mode=fit"
-validate = "python -m project_name mode=validate"
-test = "python -m project_name mode=test"
-predict = "python -m project_name mode=predict"
-l = { composite = ["lint", "format", "mypy"] }
-lint = "ruff check --fix"
-format = "ruff format"
-mypy = "mypy ."
-post_install = { composite = [
-    "pre-commit autoupdate",
-    "pre-commit install",
-    "pre-commit install --hook-type commit-msg",
-] }
-
-[tool.pdm]
-distribution = false
+[tool.uv.sources]
+rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" }
+rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
