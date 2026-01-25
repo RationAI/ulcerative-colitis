@@ -19,7 +19,7 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
-ray.init(runtime_env={"exclude": [".git", ".venv"]})
+ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
 @ray.remote(memory=4 * 1024**3)
