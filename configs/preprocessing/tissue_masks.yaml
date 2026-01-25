@@ -1,7 +1,7 @@
 # @package _global_
 
 level: 3
-max_concurrent: 32
+max_concurrent: 64
 artifact_path: tissue_masks
 
 metadata:
