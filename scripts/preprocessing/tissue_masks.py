@@ -12,7 +12,6 @@ submit_job(
     script=[
         "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
         "cd workdir",
-        "git checkout feature/dataset",
         "uv sync --frozen",
         f"uv run -m preprocessing.tissue_masks +data=processed/{COHORT}",
     ],
