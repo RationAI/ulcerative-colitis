@@ -1,0 +1,11 @@
+
+# @package _global_
+level: 3
+max_concurrent: 32
+artifact_path: tissue_masks
+
+metadata:
+  run_name: "🎭 Tissue Masks: ${dataset.institution}"
+  description: Tissue masks for ${dataset.institution} at level ${level}
+  hyperparams:
+    level: ${level}
