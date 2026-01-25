@@ -84,6 +84,7 @@ def create_dataset(
     # IKEM has only case-level labels (FTN has one slide per case)
     on = "case_id" if institution == "ikem" else "slide_id"
     dataset_df = slides_df.join(labels_df, on=on, how="outer")
+    dataset_df.index.name = "slide_id"
 
     if institution == "ikem":
         # IKEM has 'Lokalita' and 'Diagnóza' columns
@@ -96,6 +97,7 @@ def create_dataset(
 
     dataset_df = dataset_df[["case_id", "path", "nancy"]]
     dataset_df = dataset_df.dropna()
+    dataset_df["nancy"] = dataset_df["nancy"].astype(int)
 
     return dataset_df, missing_slides, missing_labels
 
