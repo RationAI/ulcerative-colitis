@@ -1,0 +1,9 @@
+# @package _global_
+
+dataset:
+  institution: ikem
+  folder: /mnt/data/IKEM/colon/IBD_AI/20x
+  labels:
+    - Fab_IBD_AI_12_2024.csv
+    - IBD_AI_2.xlsx
+    - missing.xlsx
