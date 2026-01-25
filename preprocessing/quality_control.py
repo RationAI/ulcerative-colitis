@@ -102,9 +102,12 @@ def download_dataframe(uri: str) -> pd.DataFrame:
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     df = download_dataframe(config.dataset.uri)
 
+    output_path = Path(config.output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
     asyncio.run(
         qc_main(
-            output_path=Path(config.output_dir).absolute().as_posix(),
+            output_path=output_path.absolute().as_posix(),
             slides=df["path"].to_list(),
             logger=logger,
             request_timeout=config.request_timeout,
