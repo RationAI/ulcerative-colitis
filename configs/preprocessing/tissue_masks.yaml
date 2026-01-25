@@ -1,5 +1,5 @@
-
 # @package _global_
+
 level: 3
 max_concurrent: 32
 artifact_path: tissue_masks

@@ -19,6 +19,9 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
+ray.init(runtime_env={"exclude": [".git"]})
+
+
 @ray.remote(memory=4 * 1024**3)
 def process_slide(slide_path: str, level: int, output_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
