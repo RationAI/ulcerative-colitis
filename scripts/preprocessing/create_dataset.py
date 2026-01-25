@@ -4,7 +4,7 @@ from kube_jobs import storage, submit_job
 COHORT = "ikem"  # "ikem", "ftn", or "knl_patos"
 
 submit_job(
-    job_name=f"ulcerative-colitis-dataset-creation-{COHORT}",
+    job_name=f"ulcerative-colitis-dataset-creation-{COHORT.replace('_', '-')}",
     username=...,
     public=False,
     cpu=2,
