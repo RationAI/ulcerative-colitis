@@ -15,6 +15,7 @@ dependencies = [
     "pyvips<3.1",
     "rationai-sdk",
     "rationai-mlkit",
+    "rationai-masks",
     "ray>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
@@ -26,5 +27,6 @@ run = ["rationai-kube-jobs"]
 
 [tool.uv.sources]
 rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" }
+rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" }
 rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
 rationai-sdk = { git = "https://gitlab.ics.muni.cz/rationai/infrastructure/rationai-sdk-python.git" }
