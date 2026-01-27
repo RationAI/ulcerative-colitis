@@ -172,7 +172,7 @@ def tiling(
     qc_folder = Path(mlflow.artifacts.download_artifacts(qc_mask_uri))
     qc_df = pd.read_csv(qc_folder / "qc_metrics.csv", index_col="slide_name")
     tissue_folder = Path(mlflow.artifacts.download_artifacts(tissue_mask_uri))
-    paths = df["slide_path"].tolist()
+    paths = df["path"].tolist()
 
     slides = (
         read_slides(paths, tile_extent=tile_extent, stride=stride, mpp=mpp)
