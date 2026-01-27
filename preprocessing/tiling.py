@@ -211,8 +211,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
         df_slides, df_tiles = tiling(
             df,
-            qc_mask_uri=config.qc_mask.uri,
-            tissue_mask_uri=config.tissue_mask.uri,
+            qc_mask_uri=config.qc_mask_uri,
+            tissue_mask_uri=config.tissue_mask_uri,
             tile_extent=config.tile_extent,
             stride=config.stride,
             mpp=config.mpp,
