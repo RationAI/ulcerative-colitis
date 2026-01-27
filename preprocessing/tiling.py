@@ -47,7 +47,7 @@ def split_dataset(
     dataset: pd.DataFrame, splits: dict[str, float], random_state: int = 42
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     assert isclose(
-        splits["train"] + splits["preliminary_test"] + splits["final_test"], 1.0
+        splits["train"] + splits["test_preliminary"] + splits["test_final"], 1.0
     ), "Splits must sum to 1.0"
 
     train: pd.DataFrame
@@ -66,11 +66,11 @@ def split_dataset(
             random_state=random_state,
         )
 
-    if splits["preliminary_test"] == 0.0:
+    if splits["test_preliminary"] == 0.0:
         test_preliminary = pd.DataFrame(columns=test.columns)
         test_final = test
     else:
-        preliminary_size = splits["preliminary_test"] / (1.0 - splits["train"])
+        preliminary_size = splits["test_preliminary"] / (1.0 - splits["train"])
         test_preliminary, test_final = train_test_split(
             test,
             train_size=preliminary_size,
