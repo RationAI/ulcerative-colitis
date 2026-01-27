@@ -90,7 +90,7 @@ async def qc_main(
         logger.log_artifacts(local_dir=output_path)
 
 
-def download_dataframe(uri: str) -> pd.DataFrame:
+def download_dataset(uri: str) -> pd.DataFrame:
     path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
     df = pd.read_csv(path)
     return df
@@ -100,7 +100,7 @@ def download_dataframe(uri: str) -> pd.DataFrame:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = download_dataframe(config.dataset.uri)
+    dataset = download_dataset(config.dataset.uri)
 
     output_path = Path(config.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -108,7 +108,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     asyncio.run(
         qc_main(
             output_path=output_path.absolute().as_posix(),
-            slides=df["path"].to_list(),
+            slides=dataset["path"].to_list(),
             logger=logger,
             request_timeout=config.request_timeout,
             max_concurrent=config.max_concurrent,
