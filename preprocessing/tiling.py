@@ -39,7 +39,7 @@ HI_MEM: _RayMemResources = {"memory": 1024**3}
 
 def download_dataset(uri: str) -> pd.DataFrame:
     path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, index_col="slide_id")
     return df
 
 
