@@ -20,7 +20,7 @@ dependencies = [
     "ray>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
-    "ratiopath>=1.0.3",
+    "ratiopath>=1.0.4",
 ]
 
 [dependency-groups]

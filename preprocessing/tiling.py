@@ -12,8 +12,10 @@ from rationai.mlkit.autolog import autolog
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.tiling.writers import save_mlflow_dataset
 from ratiopath.ray import read_slides
-from ratiopath.tiling import grid_tiles, relative_tile_overlay, tile_overlay
+from ratiopath.tiling import grid_tiles, tile_overlay_overlap
 from ratiopath.tiling.utils import row_hash
+from shapely import Polygon
+from shapely.geometry import box
 from sklearn.model_selection import train_test_split
 
 
@@ -95,6 +97,16 @@ def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     return row
 
 
+def create_tissue_roi(tile_extent: int) -> Polygon:
+    offset = tile_extent // 4
+    size = tile_extent // 2
+    return box(offset, offset, offset + size, offset + size)
+
+
+def create_qc_roi(tile_extent: int) -> Polygon:
+    return box(0, 0, tile_extent, tile_extent)
+
+
 def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {
@@ -116,17 +128,13 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def tissue(row: dict[str, Any], tissue_folder: Path) -> dict[str, Any]:
+def tissue(row: dict[str, Any], tissue_folder: Path, roi: Polygon) -> dict[str, Any]:
     tissue_file = tissue_folder / Path(row["path"]).with_suffix(".tiff").name
-    overlay = relative_tile_overlay(
-        tissue_file,
-        (row["mpp_x"], row["mpp_y"]),
-        (row["tile_x"], row["tile_y"]),
-        (row["tile_extent_x"] // 4, row["tile_extent_y"] // 4),
-        (row["tile_extent_x"] // 2, row["tile_extent_y"] // 2),
-    )
+    overlap = tile_overlay_overlap(
+        roi, tissue_file, row["tile_x"], row["tile_y"], row["mpp_x"], row["mpp_y"]
+    )  # type: ignore[reportCallIssue]
 
-    row["tissue"] = (overlay == 255).sum() / overlay.size
+    row["tissue"] = 1.0 - overlap.get("0", 0)
     return row
 
 
@@ -134,17 +142,13 @@ def filter_tissue(row: dict[str, Any], threshold: float) -> bool:
     return row["tissue"] >= threshold
 
 
-def qc(row: dict[str, Any], qc_folder: Path) -> dict[str, Any]:
+def qc(row: dict[str, Any], qc_folder: Path, roi: Polygon) -> dict[str, Any]:
     for qc_key, subfolder in QC_SUBFOLDERS.items():
         qc_file = qc_folder / subfolder / Path(row["path"]).with_suffix(".tiff").name
-        overlay = tile_overlay(
-            qc_file,
-            (row["mpp_x"], row["mpp_y"]),
-            (row["tile_x"], row["tile_y"]),
-            (row["tile_extent_x"], row["tile_extent_y"]),
-        )
-
-        row[qc_key] = overlay.mean() / 255.0
+        overlap = tile_overlay_overlap(
+            roi, qc_file, row["tile_x"], row["tile_y"], row["mpp_x"], row["mpp_y"]
+        )  # type: ignore[reportCallIssue]
+        row[qc_key] = 1.0 - overlap.get("0", 0)
 
     return row
 
@@ -181,12 +185,15 @@ def tiling(
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
+    tissue_roi = create_tissue_roi(tile_extent)
+    qc_roi = create_qc_roi(tile_extent)
+
     tiles = (
         slides.flat_map(tile, **HI_CPU, **LO_MEM)
-        .repartition(target_num_rows_per_block=4096)
-        .map(tissue, fn_args=(tissue_folder,), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
+        .repartition(target_num_rows_per_block=128)
+        .map(tissue, fn_args=(tissue_folder, tissue_roi), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
         .filter(filter_tissue, fn_args=(tissue_threshold,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .map(qc, fn_args=(qc_folder,), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
+        .map(qc, fn_args=(qc_folder, qc_roi), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
         .map(select, **LO_CPU, **LO_MEM)
     )
 
