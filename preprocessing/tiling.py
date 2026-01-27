@@ -14,6 +14,7 @@ from rationai.tiling.writers import save_mlflow_dataset
 from ratiopath.ray import read_slides
 from ratiopath.tiling import grid_tiles, tile_overlay_overlap
 from ratiopath.tiling.utils import row_hash
+from ray.data.expressions import col
 from shapely import Polygon
 from shapely.geometry import box
 from sklearn.model_selection import train_test_split
@@ -97,6 +98,16 @@ def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     return row
 
 
+def add_mask_paths(
+    row: dict[str, Any], qc_folder: Path, tissue_folder: Path
+) -> dict[str, Any]:
+    stem = Path(row["path"]).stem
+    row["tissue_mask_path"] = str(tissue_folder / f"{stem}.tiff")
+    for key, subfolder in QC_SUBFOLDERS.items():
+        row[f"{key}_mask_path"] = str(qc_folder / subfolder / f"{stem}.tiff")
+    return row
+
+
 def create_tissue_roi(tile_extent: int) -> Polygon:
     offset = tile_extent // 4
     size = tile_extent // 2
@@ -119,6 +130,9 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
             "tile_extent_y": row["tile_extent_y"],
             "mpp_x": row["mpp_x"],
             "mpp_y": row["mpp_y"],
+            "tissue_mask_path": row["tissue_mask_path"],
+            "blur_mask_path": row["blur_mask_path"],
+            "artifacts_mask_path": row["artifacts_mask_path"],
         }
         for x, y in grid_tiles(
             slide_extent=(row["extent_x"], row["extent_y"]),
@@ -128,29 +142,15 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def tissue(row: dict[str, Any], tissue_folder: Path, roi: Polygon) -> dict[str, Any]:
-    tissue_file = tissue_folder / Path(row["path"]).with_suffix(".tiff").name
-    overlap = tile_overlay_overlap(
-        roi, tissue_file, row["tile_x"], row["tile_y"], row["mpp_x"], row["mpp_y"]
-    )  # type: ignore[reportCallIssue]
-
-    row["tissue"] = 1.0 - overlap.get("0", 0)
+def extract_coverages(row: dict[str, Any], *cols) -> dict[str, Any]:
+    for c in cols:
+        overlap = row[f"{c}_overlap"]
+        row[c] = 1.0 - overlap.get("0", 0)
     return row
 
 
 def filter_tissue(row: dict[str, Any], threshold: float) -> bool:
     return row["tissue"] >= threshold
-
-
-def qc(row: dict[str, Any], qc_folder: Path, roi: Polygon) -> dict[str, Any]:
-    for qc_key, subfolder in QC_SUBFOLDERS.items():
-        qc_file = qc_folder / subfolder / Path(row["path"]).with_suffix(".tiff").name
-        overlap = tile_overlay_overlap(
-            roi, qc_file, row["tile_x"], row["tile_y"], row["mpp_x"], row["mpp_y"]
-        )  # type: ignore[reportCallIssue]
-        row[qc_key] = 1.0 - overlap.get("0", 0)
-
-    return row
 
 
 def select(row: dict[str, Any]) -> dict[str, Any]:
@@ -174,8 +174,8 @@ def tiling(
     tissue_threshold: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     qc_folder = Path(mlflow.artifacts.download_artifacts(qc_mask_uri))
-    qc_df = pd.read_csv(qc_folder / "qc_metrics.csv", index_col="slide_name")
     tissue_folder = Path(mlflow.artifacts.download_artifacts(tissue_mask_uri))
+    qc_df = pd.read_csv(qc_folder / "qc_metrics.csv", index_col="slide_name")
     paths = df["path"].tolist()
 
     slides = (
@@ -183,6 +183,7 @@ def tiling(
         .map(row_hash, **LO_CPU, **LO_MEM)
         .map(nancy, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(add_mask_paths, fn_args=(qc_folder, tissue_folder), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
     tissue_roi = create_tissue_roi(tile_extent)
@@ -191,9 +192,48 @@ def tiling(
     tiles = (
         slides.flat_map(tile, **HI_CPU, **LO_MEM)
         .repartition(target_num_rows_per_block=128)
-        .map(tissue, fn_args=(tissue_folder, tissue_roi), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
+        .with_column(
+            "tissue_overlap",
+            tile_overlay_overlap(
+                tissue_roi,
+                col("tissue_mask_path"),
+                col("tile_x"),
+                col("tile_y"),
+                col("mpp_x"),
+                col("mpp_y"),
+            ),  # type: ignore[reportCallIssue]
+            **HI_CPU,
+            **HI_MEM,
+        )
+        .map(extract_coverages, fn_args=("tissue",), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .filter(filter_tissue, fn_args=(tissue_threshold,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .map(qc, fn_args=(qc_folder, qc_roi), **HI_CPU, **HI_MEM)  # type: ignore[reportArgumentType]
+        .with_column(
+            "blur_overlap",
+            tile_overlay_overlap(
+                qc_roi,
+                col("blur_mask_path"),
+                col("tile_x"),
+                col("tile_y"),
+                col("mpp_x"),
+                col("mpp_y"),
+            ),  # type: ignore[reportCallIssue]
+            **HI_CPU,
+            **HI_MEM,
+        )
+        .with_column(
+            "artifacts_overlap",
+            tile_overlay_overlap(
+                qc_roi,
+                col("artifacts_mask_path"),
+                col("tile_x"),
+                col("tile_y"),
+                col("mpp_x"),
+                col("mpp_y"),
+            ),  # type: ignore[reportCallIssue]
+            **HI_CPU,
+            **HI_MEM,
+        )
+        .map(extract_coverages, fn_args=("blur", "artifacts"), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(select, **LO_CPU, **LO_MEM)
     )
 
