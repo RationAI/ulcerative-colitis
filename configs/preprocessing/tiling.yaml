@@ -1,0 +1,24 @@
+# @package _global_
+
+mpp: ???
+tile_extent: ???
+stride: ???
+
+tissue_mask_uri: ???
+qc_mask_uri: ???
+
+tissue_threshold: 0.5
+
+splits:
+  train: ???
+  test_preliminary: ???
+  test_final: ???
+
+metadata:
+  run_name: "🧱 Tiling: ${dataset.institution} ${tile_extent}"
+  description: Tile extraction for ${dataset.institution} institution with tile extent ${tile_extent}
+  hyperparams:
+    mpp: ${mpp}
+    tile_extent: ${tile_extent}
+    stride: ${stride}
+    tissue_threshold: ${tissue_threshold}

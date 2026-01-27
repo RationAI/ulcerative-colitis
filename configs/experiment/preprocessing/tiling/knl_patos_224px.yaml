@@ -1,0 +1,17 @@
+# @package _global_
+
+defaults:
+  - dataset: /data/processed/knl_patos
+  - _self_
+
+mpp: 1.55 # level 2
+tile_extent: 224
+stride: 112
+
+tissue_mask_uri: mlflow-artifacts:/86/8ef6d6f0c9af4f35a087596960f675aa/artifacts/tissue_masks
+qc_mask_uri: mlflow-artifacts:/86/75fc3e53112f4634ae5238777d87e88c/artifacts
+
+splits:
+  train: 0.0
+  test_preliminary: 0.5
+  test_final: 0.5
