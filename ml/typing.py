@@ -1,8 +1,38 @@
-from typing import TypeAlias
+from pathlib import Path
+from typing import TypeAlias, TypedDict
+
+import pandas as pd
+from torch import Tensor
 
 
-Sample: TypeAlias = ...  # TODO define the type returned by Dataset
+class Metadata(TypedDict):
+    slide_id: str
 
-Input: TypeAlias = ...  # TODO define the model input type
 
-Outputs: TypeAlias = ...  # TODO define the model output type
+class MetadataTiles(Metadata):
+    x: int
+    y: int
+
+
+TilesSample: TypeAlias = tuple[Tensor, Tensor, MetadataTiles]
+TilesPredictSample: TypeAlias = tuple[Tensor, MetadataTiles]
+
+
+class MetadataTileEmbeddings(Metadata):
+    slide_name: str
+    slide_path: Path
+    level: int
+    tile_extent_x: int
+    tile_extent_y: int
+    tiles: pd.DataFrame
+    x: Tensor  # Tensor[int]
+    y: Tensor  # Tensor[int]
+
+
+TileEmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataTileEmbeddings]
+TileEmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataTileEmbeddings]
+
+TileEmbeddingsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataTileEmbeddings]]
+TileEmbeddingsPredictInput: TypeAlias = tuple[Tensor, list[MetadataTileEmbeddings]]
+
+Output: TypeAlias = Tensor
