@@ -2074,7 +2074,7 @@ dependencies = [
 [[package]]
 name = "ratiopath"
 version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/RationAI/ratiopath.git?branch=fix%2Fpyarrow-arange#11f4506e482f3fc9a9969f0cd39fb748118cdd0b" }
 dependencies = [
     { name = "albumentations" },
     { name = "geopandas" },
@@ -2091,10 +2091,6 @@ dependencies = [
     { name = "tifffile" },
     { name = "torch" },
     { name = "zarr" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/f0/43e2dbec23419c7ced4cc26fcfa1b2f34140833ac493ab99c5eecdd62611/ratiopath-1.0.4.tar.gz", hash = "sha256:8a7ab4118d1a23aba23e856bdc463a95d27546acf4a6b509c65d3ff437933dbc", size = 24303, upload-time = "2026-01-27T21:10:45.644Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/33/5db8e9cd0a16774017317b4e1a53c0bce7f76c7b6f94f81ea05e19ed6431/ratiopath-1.0.4-py3-none-any.whl", hash = "sha256:cc0d971531af2999b4325e426434d2becf1d30334d3bdcb8af032826f7c29ad3", size = 30860, upload-time = "2026-01-27T21:10:44.233Z" },
 ]
 
 [[package]]
@@ -2661,7 +2657,7 @@ requires-dist = [
     { name = "rationai-mlkit", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" },
     { name = "rationai-sdk", git = "https://gitlab.ics.muni.cz/rationai/infrastructure/rationai-sdk-python.git" },
     { name = "rationai-tiling", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" },
-    { name = "ratiopath", specifier = ">=1.0.4" },
+    { name = "ratiopath", git = "https://github.com/RationAI/ratiopath.git?branch=fix%2Fpyarrow-arange" },
     { name = "ray", specifier = ">=2.52.1" },
     { name = "torch", specifier = ">=2.9.0" },
     { name = "torchmetrics", specifier = ">=1.8.2" },
