@@ -1,0 +1,7 @@
+# @package _global_
+
+dataset:
+  institution: knl_patos
+  uri: mlflow-artifacts:/86/afbcfd43cb3c4fd0b1e9b5dbe7327d91/artifacts/dataset.csv # TODO update URI
+  tissue_mask_uri: mlflow-artifacts:/86/8ef6d6f0c9af4f35a087596960f675aa/artifacts/tissue_masks # TODO update URI
+  qc_mask_uri: mlflow-artifacts:/86/75fc3e53112f4634ae5238777d87e88c/artifacts # TODO update URI
