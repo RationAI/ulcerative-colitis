@@ -145,11 +145,11 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
 def extract_coverages(row: dict[str, Any], *cols) -> dict[str, Any]:
     for c in cols:
         overlap = row[f"{c}_overlap"]
-        try:
-            row[c] = 1.0 - overlap.get("0", 0)
-        except TypeError as e:
-            # Raise same error but with overlap info for easier debugging
-            raise TypeError(f"Invalid overlap data: {overlap}") from e
+        zero_overlap = overlap.get("0", 0)
+        if zero_overlap is None:
+            row[c] = 1.0
+        else:
+            row[c] = 1.0 - zero_overlap
     return row
 
 
