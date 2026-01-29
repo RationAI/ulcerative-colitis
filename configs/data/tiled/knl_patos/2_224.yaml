@@ -1,0 +1,9 @@
+# @package _global_
+
+dataset:
+  institution: knl_patos
+  mpp: 1.55
+  tile_extent: 224
+  uris:
+    - test_preliminary: ???
+    - test_final: ???
