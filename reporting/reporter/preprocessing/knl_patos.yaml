@@ -1,0 +1,76 @@
+defaults:
+  - background: drive
+  - save: mlflow_standalone_run
+
+title: Ulcerative Colitis Preprocessing - KNL Patos
+
+background:
+  dir_name: /mnt/data/KNL_PATOS/colon/IBD_AI
+  layer_name: Ulcerative Colitis
+
+mask_retrievers:
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: tissue_masks
+    layer_name: Tissue mask
+    shader_conf:
+      type: heatmap
+      opacity: 0.5
+      color: "#ffff00"
+      visible: False
+
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: blur_per_pixel
+    layer_name: Blur
+    shader_conf:
+      type: heatmap
+      opacity: 0.5
+      color: "#00ffff"
+      visible: False
+
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: artifacts_per_pixel 
+    layer_name: Residual artifacts
+    shader_conf:
+      type: heatmap
+      opacity: 0.5
+      color: "#00ffff"
+      visible: False
+
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: clean_tiles
+    layer_name: Used Tiles
+    shader_conf:
+      type: heatmap
+      opacity: 1.0
+      color: "#00ff00"
+      visible: False
+
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: blur_tiles
+    layer_name: Blur Tiles
+    shader_conf:
+      type: heatmap
+      opacity: 1.0
+      color: "#ff0000"
+      visible: False
+
+  - _target_: report.masks.RunIDMlflowMaskRetriever
+    run_id: TODO
+    dir_name: artifacts_tiles
+    layer_name: Artifacts Tiles
+    shader_conf:
+      type: heatmap
+      opacity: 1.0
+      color: "#ff0000"
+      visible: False
+
+save:
+  metadata:
+    experiment_name : 'Ulcerative Colitis'
+    run_name : '📊 Report: Preprocessing - knl patos'
+    description: Report
