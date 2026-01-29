@@ -181,3 +181,4 @@ lightning_logs/
 # Project
 /data
 playground.ipynb
+/outputs
