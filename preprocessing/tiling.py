@@ -37,7 +37,7 @@ class _RayMemResources(TypedDict):
 LO_CPU: _RayCpuResources = {"num_cpus": 0.1}
 HI_CPU: _RayCpuResources = {"num_cpus": 0.2}
 LO_MEM: _RayMemResources = {"memory": 128 * 1024**2}
-HI_MEM: _RayMemResources = {"memory": 1024**3}
+HI_MEM: _RayMemResources = {"memory": 256 * 1024**2}
 
 
 def download_dataset(uri: str) -> pd.DataFrame:
@@ -195,7 +195,7 @@ def tiling(
 
     tiles = (
         slides.flat_map(tile, **HI_CPU, **LO_MEM)
-        .repartition(target_num_rows_per_block=128)
+        .repartition(target_num_rows_per_block=4096)
         .with_column(
             "tissue_overlap",
             tile_overlay_overlap(
