@@ -1,0 +1,12 @@
+# @package _global_
+
+output_dir: ${project_dir}/embeddings/${dataset.institution}
+
+dataloader:
+  batch_size: 2048
+  num_workers: 8
+  persistent_workers: True
+
+metadata:
+  run_name: '📂 Embeddings: ${dataset.institution} - ${tile_encoder.name}'
+  description: Embeddings preprocessing for ${dataset.institution} institution with ${tile_encoder.name} tile encoder.
