@@ -9,6 +9,6 @@ tile_extent: 320
 stride: 320
 
 splits:
-  train: 0.0
-  test_preliminary: 0.5
-  test_final: 0.5
+  train: 0.7
+  test_preliminary: 0.15
+  test_final: 0.15
