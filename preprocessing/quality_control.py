@@ -58,21 +58,21 @@ async def qc_main(
     qc_parameters: QCParameters,
 ) -> None:
     async with rationai.AsyncClient() as client:  # type: ignore[attr-defined]
-        async for result in tqdm(
-            client.qc.check_slides(
-                slides,
-                output_path,
-                config=SlideCheckConfig(**qc_parameters),
-                timeout=request_timeout,
-                max_concurrent=max_concurrent,
-            ),
-            total=len(slides),
-        ):
-            if not result.success:
-                with open(Path(output_path) / "qc_errors.log", "a") as log_file:
-                    log_file.write(
-                        f"Failed to process {result.wsi_path}: {result.error}\n"
-                    )
+        # async for result in tqdm(
+        #     client.qc.check_slides(
+        #         slides,
+        #         output_path,
+        #         config=SlideCheckConfig(**qc_parameters),
+        #         timeout=request_timeout,
+        #         max_concurrent=max_concurrent,
+        #     ),
+        #     total=len(slides),
+        # ):
+        #     if not result.success:
+        #         with open(Path(output_path) / "qc_errors.log", "a") as log_file:
+        #             log_file.write(
+        #                 f"Failed to process {result.wsi_path}: {result.error}\n"
+        #             )
 
         # Organize generated masks into subdirectories
         for prefix, artifact_name in get_qc_masks(qc_parameters):
