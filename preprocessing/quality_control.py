@@ -26,11 +26,11 @@ class QCParameters(TypedDict):
 
 
 def get_qc_masks(qc_parameters: QCParameters) -> Generator[tuple[str, str], None, None]:
-    if qc_parameters["check_residual"]:
+    if qc_parameters["check_focus"]:
         yield ("Piqe_focus_score_piqe_median", "blur_per_tile")
         yield ("Piqe_piqe_median_activity_mask", "blur_per_pixel")
 
-    if qc_parameters["check_focus"]:
+    if qc_parameters["check_residual"]:
         yield ("ResidualArtifactsAndCoverage_cov_percent_heatmap", "artifacts_per_tile")
         yield ("ResidualArtifactsAndCoverage_coverage_mask", "artifacts_per_pixel")
 
