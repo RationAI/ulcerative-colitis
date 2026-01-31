@@ -42,7 +42,8 @@ def organize_masks(output_path: Path, subdir: str, mask_prefix: str) -> None:
     prefix_dir = output_path / subdir
     prefix_dir.mkdir(parents=True, exist_ok=True)
 
-    for file in output_path.glob(f"{mask_prefix}_*.tiff"):
+    # Glob has to be wrapped in list, because we're modifying the directory!!!
+    for file in list(output_path.glob(f"{mask_prefix}_*.tiff")):
         slide_name = file.name.replace(f"{mask_prefix}_", "")
         destination = prefix_dir / slide_name
         file.rename(destination)
