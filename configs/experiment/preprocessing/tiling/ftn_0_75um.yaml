@@ -6,7 +6,7 @@ defaults:
 
 mpp: 0.17 # level 0
 tile_extent: 430 # 75 / 0.17 ≈ 430
-stride: 215
+stride: 430
 
 splits:
   train: 0.0
