@@ -1,0 +1,17 @@
+# @package _global_
+
+output_dir: ${project_dir}/neutrophils/${dataset.institution}
+
+model:
+  weights_url: https://github.com/junfrankohara/neutrophils_detection/releases/download/model/detection_model.pt
+  confidence: 0.1
+
+dataloader:
+  batch_size: 2048
+  num_workers: 8
+  persistent_workers: True
+
+metadata:
+  run_name: '📂 Neutrophils: ${dataset.institution}'
+  description: Neutrophils detection preprocessing for ${dataset.institution} institution
+
