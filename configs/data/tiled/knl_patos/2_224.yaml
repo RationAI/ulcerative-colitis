@@ -6,5 +6,5 @@ dataset:
   tile_extent: 224
   level: 2
   uris:
-    test_preliminary: "mlflow-artifacts:/86/4643080588b147b1a1b3cde12392209b/artifacts/test preliminary - knl_patos" # TODO update URI
-    test_final: "mlflow-artifacts:/86/4643080588b147b1a1b3cde12392209b/artifacts/test final - knl_patos" # TODO update URI
+    test_preliminary: "mlflow-artifacts:/86/d7486bb6b667433989c3ce1c8ce31d60/artifacts/test preliminary - knl_patos" # TODO update URI
+    test_final: "mlflow-artifacts:/86/d7486bb6b667433989c3ce1c8ce31d60/artifacts/test final - knl_patos" # TODO update URI
