@@ -4,6 +4,7 @@ dataset:
   institution: ftn
   mpp: 1.55
   tile_extent: 224
+  level: 2
   uris:
     - train: "mlflow-artifacts:/86/5101b69d86ff4034bd36cfeb4a6ed448/artifacts/train - ftn" # TODO update URI
     - test_preliminary: "mlflow-artifacts:/86/5101b69d86ff4034bd36cfeb4a6ed448/artifacts/test preliminary - ftn" # TODO update URI

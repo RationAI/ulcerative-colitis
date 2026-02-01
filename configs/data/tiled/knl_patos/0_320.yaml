@@ -4,6 +4,7 @@ dataset:
   institution: knl_patos
   mpp: 0.17
   tile_extent: 320
+  level: 0
   uris:
     - test_preliminary: "mlflow-artifacts:/86/9dd07f04cd2a4414be39f67f448c120e/artifacts/test preliminary - knl_patos" # TODO update URI
     - test_final: "mlflow-artifacts:/86/9dd07f04cd2a4414be39f67f448c120e/artifacts/test final - knl_patos" # TODO update URI

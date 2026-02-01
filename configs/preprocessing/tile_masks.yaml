@@ -5,4 +5,4 @@ artifact_path: tile_masks
 
 metadata:
   run_name: "🎭 Tile Masks: ${dataset.institution}"
-  description: Tile masks for ${dataset.institution} at level ${level}
+  description: Tile masks for ${dataset.institution} at level ${dataset.level}

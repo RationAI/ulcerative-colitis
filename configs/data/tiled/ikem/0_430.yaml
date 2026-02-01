@@ -4,6 +4,7 @@ dataset:
   institution: ikem
   mpp: 0.17
   tile_extent: 430
+  level: 0
   uris:
     - train: "mlflow-artifacts:/86/95c33c64f0704450809d9cd9e61d1e3e/artifacts/train - ikem" # TODO update URI
     - test_preliminary: "mlflow-artifacts:/86/95c33c64f0704450809d9cd9e61d1e3e/artifacts/test preliminary - ikem" # TODO update URI
