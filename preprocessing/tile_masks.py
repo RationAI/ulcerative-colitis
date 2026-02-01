@@ -33,10 +33,9 @@ def download_slide_tiles(uris: Iterable[str]) -> tuple[pd.DataFrame, pd.DataFram
 @ray.remote(memory=4 * 1024**3)
 def process_slide(
     slide: pd.Series,
-    tiles_ref: ray.ObjectRef,
+    tiles: pd.DataFrame,  # tiles are automatically serialized by Ray
     output_folder: Path,
 ) -> None:
-    tiles = cast("pd.DataFrame", ray.get(tiles_ref))
     slide_tiles = tiles[tiles["slide_id"] == slide.id]
 
     blur_slide_tiles = slide_tiles[slide_tiles["blur"] > 0.25]
@@ -57,11 +56,12 @@ def process_slide(
             tile_extent=(slide["tile_extent_x"], slide["tile_extent_y"]),
             size=(slide["extent_x"], slide["extent_y"]),
         )
+        mask = cast("pyvips.Image", pyvips.Image.new_from_array(np.array(mask)))
 
         mask_path = output_folder / folder / f"{Path(slide['path']).stem}.tiff"
         mask_path.parent.mkdir(parents=True, exist_ok=True)
         write_big_tiff(
-            pyvips.Image.new_from_array(np.array(mask)),
+            mask,
             mask_path,
             mpp_x=slide["mpp_x"],
             mpp_y=slide["mpp_y"],
@@ -80,7 +80,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             (slide for _, slide in slides.iterrows()),
             process_item=process_slide,
             fn_kwargs={
-                "tiles_ref": tiles_ref,
+                "tiles": tiles_ref,
                 "output_folder": Path(output_dir),
             },
             max_concurrent=config.max_concurrent,
