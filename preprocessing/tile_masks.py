@@ -10,10 +10,10 @@ import pandas as pd
 import pyvips
 import ray
 from omegaconf import DictConfig
+from openslide import OpenSlide
 from rationai.masks import process_items, tile_mask, write_big_tiff
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from ratiopath.openslide import OpenSlide
 
 
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
