@@ -2,4 +2,4 @@
 
 tile_encoder:
   _target_: preprocessing.embeddings.UNI2
-  name: UNI2
+  name: uni2

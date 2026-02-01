@@ -2,4 +2,4 @@
 
 tile_encoder:
   _target_: preprocessing.embeddings.ProvGigaPath
-  name: Prov-GigaPath
+  name: prov_gigapath
