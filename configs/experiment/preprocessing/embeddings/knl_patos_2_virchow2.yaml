@@ -1,0 +1,6 @@
+# @package _global_
+
+defaults:
+  - /data/tiled/knl_patos/2_224
+  - /preprocessing/tile_encoder/virchow2
+  - _self_
