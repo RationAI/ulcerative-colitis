@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from rationai.masks import process_items, tile_mask, write_big_tiff
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
+from ratiopath.openslide import OpenSlide
 
 
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
@@ -34,8 +35,12 @@ def download_slide_tiles(uris: Iterable[str]) -> tuple[pd.DataFrame, pd.DataFram
 def process_slide(
     slide: pd.Series,
     tiles: pd.DataFrame,  # tiles are automatically serialized by Ray
+    level: int,
     output_folder: Path,
 ) -> None:
+    with OpenSlide(slide["path"]) as slide_wsi:
+        mask_extent_x, mask_extent_y = slide_wsi.level_dimensions[level]
+
     slide_tiles = tiles[tiles["slide_id"] == slide.id]
 
     blur_slide_tiles = slide_tiles[slide_tiles["blur"] > 0.25]
@@ -58,6 +63,10 @@ def process_slide(
             size=(slide["extent_x"], slide["extent_y"]),
         )
         mask = cast("pyvips.Image", pyvips.Image.new_from_array(np.array(mask)))
+        mask = cast(
+            "pyvips.Image",
+            mask.resize(mask_extent_x / mask.width, vscale=mask_extent_y / mask.height),  # type: ignore[reportCallIssue]
+        )
 
         mask_path = output_folder / folder / f"{Path(slide['path']).stem}.tiff"
         mask_path.parent.mkdir(parents=True, exist_ok=True)

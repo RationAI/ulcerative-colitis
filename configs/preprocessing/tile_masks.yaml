@@ -2,6 +2,7 @@
 
 max_concurrent: 64
 artifact_path: tile_masks
+level: 3
 
 metadata:
   run_name: "🎭 Tile Masks: ${dataset.institution}"
