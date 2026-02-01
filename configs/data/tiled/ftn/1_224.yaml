@@ -1,0 +1,10 @@
+# @package _global_
+
+dataset:
+  institution: ftn
+  mpp: 0.52
+  tile_extent: 224
+  uris:
+    - train: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/train - ftn" # TODO update URI
+    - test_preliminary: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test preliminary - ftn" # TODO update URI
+    - test_final: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test final - ftn" # TODO update URI
