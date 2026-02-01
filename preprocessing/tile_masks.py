@@ -91,6 +91,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             process_item=process_slide,
             fn_kwargs={
                 "tiles": tiles_ref,
+                "level": config.level,
                 "output_folder": Path(output_dir),
             },
             max_concurrent=config.max_concurrent,
