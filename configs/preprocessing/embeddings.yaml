@@ -1,6 +1,6 @@
 # @package _global_
 
-output_dir: ${project_dir}/embeddings/${dataset.institution}
+output_dir: ${project_dir}/embeddings/${dataset.institution}/${dataset.level}
 
 dataloader:
   batch_size: 512  # 2048 for H100, 1024 for A40, 512 for mig-2g.20gb
