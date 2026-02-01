@@ -6,6 +6,6 @@ dataset:
   tile_extent: 224
   level: 1
   uris:
-    - train: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/train - ftn" # TODO update URI
-    - test_preliminary: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test preliminary - ftn" # TODO update URI
-    - test_final: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test final - ftn" # TODO update URI
+    train: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/train - ftn" # TODO update URI
+    test_preliminary: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test preliminary - ftn" # TODO update URI
+    test_final: "mlflow-artifacts:/86/caf93595030443cc8a968751b8462208/artifacts/test final - ftn" # TODO update URI
