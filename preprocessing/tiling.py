@@ -194,7 +194,13 @@ def tiling(
     qc_roi = create_qc_roi(tile_extent)
 
     tiles = (
-        slides.flat_map(tile, **HI_CPU, **LO_MEM)
+        slides.map(
+            add_mask_paths,  # type: ignore[reportArgumentType]
+            fn_args=(qc_folder, tissue_folder),
+            **LO_CPU,
+            **LO_MEM,
+        )
+        .flat_map(tile, **HI_CPU, **LO_MEM)
         .repartition(target_num_rows_per_block=4096)
         .with_column(
             "tissue_overlap",
