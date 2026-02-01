@@ -40,8 +40,9 @@ def process_slide(
 
     blur_slide_tiles = slide_tiles[slide_tiles["blur"] > 0.25]
     artifacts_slide_tiles = slide_tiles[slide_tiles["artifacts"] > 0.25]
-    slide_tiles = slide_tiles.drop(blur_slide_tiles.index)
-    slide_tiles = slide_tiles.drop(artifacts_slide_tiles.index)
+
+    drop_indices = blur_slide_tiles.index.union(artifacts_slide_tiles.index)
+    slide_tiles = slide_tiles.drop(drop_indices)
 
     for folder, tiles_subset in [
         ("blur_tiles", blur_slide_tiles),
