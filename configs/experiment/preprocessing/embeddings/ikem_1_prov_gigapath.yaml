@@ -1,0 +1,6 @@
+# @package _global_
+
+defaults:
+  - /data/tiled/ikem/1_224
+  - /preprocessing/tile_encoder/prov_gigapath
+  - _self_
