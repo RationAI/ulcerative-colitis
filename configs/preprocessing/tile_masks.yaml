@@ -6,6 +6,7 @@ level: 3
 
 metadata:
   run_name: "🎭 Tile Masks: ${dataset.institution}"
-  description: Tile masks for ${dataset.institution} at level ${dataset.level}
+  description: Tile masks for ${dataset.institution} at tiling level ${dataset.level}
   hyperparams:
     mask_level: ${level}
+    tiling_level: ${dataset.level}

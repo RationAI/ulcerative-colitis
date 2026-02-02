@@ -1,4 +1,4 @@
-from kube_jobs import submit_job
+from kube_jobs import storage, submit_job
 
 
 submit_job(
@@ -13,4 +13,5 @@ submit_job(
         "uv sync --frozen",
         "uv run --active -m preprocessing.tile_masks +data=tiled/.../...",
     ],
+    storage=[storage.secure.Data],
 )
