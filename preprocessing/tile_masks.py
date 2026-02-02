@@ -38,9 +38,12 @@ def process_slide(
     level: int,
     output_folder: Path,
 ) -> None:
-    print(slide["path"])
-    with OpenSlide(slide["path"]) as slide_wsi:
-        mask_extent_x, mask_extent_y = slide_wsi.level_dimensions[level]
+    try:
+        with OpenSlide(slide["path"]) as slide_wsi:
+            mask_extent_x, mask_extent_y = slide_wsi.level_dimensions[level]
+    except Exception as e:
+        print(f"Failed to open slide {slide['path']}: {e}")
+        return
 
     slide_tiles = tiles[tiles["slide_id"] == slide.id]
 
