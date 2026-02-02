@@ -11,7 +11,7 @@ import pyvips
 import ray
 from omegaconf import DictConfig
 from openslide import OpenSlide
-from rationai.masks import process_items, tile_mask, write_big_tiff
+from rationai.masks import process_items, slide_resolution, tile_mask, write_big_tiff
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
@@ -41,6 +41,7 @@ def process_slide(
     try:
         with OpenSlide(slide["path"]) as slide_wsi:
             mask_extent_x, mask_extent_y = slide_wsi.level_dimensions[level]
+            mpp_x, mpp_y = slide_resolution(slide_wsi, level)
     except Exception as e:
         print(f"Failed to open slide {slide['path']}: {e}")
         return
@@ -74,12 +75,7 @@ def process_slide(
 
         mask_path = output_folder / folder / f"{Path(slide['path']).stem}.tiff"
         mask_path.parent.mkdir(parents=True, exist_ok=True)
-        write_big_tiff(
-            mask,
-            mask_path,
-            mpp_x=slide["mpp_x"],
-            mpp_y=slide["mpp_y"],
-        )
+        write_big_tiff(mask, mask_path, mpp_x=mpp_x, mpp_y=mpp_y)
 
 
 @with_cli_args(["+preprocessing=tile_masks"])
