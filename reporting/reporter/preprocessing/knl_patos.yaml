@@ -1,16 +1,18 @@
 defaults:
-  - background: drive
   - save: mlflow_standalone_run
 
 title: Ulcerative Colitis Preprocessing - KNL Patos
 
 background:
-  dir_name: /mnt/data/KNL_PATOS/colon/IBD_AI
+  _target_: report.masks.BasicImageRetriever
+  source_dir: /mnt/data/KNL_PATOS/colon/IBD_AI
+  globs:
+    - "*.czi"
   layer_name: Ulcerative Colitis
 
 mask_retrievers:
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
+    run_id: 8ef6d6f0c9af4f35a087596960f675aa
     dir_name: tissue_masks
     layer_name: Tissue mask
     shader_conf:
@@ -20,7 +22,7 @@ mask_retrievers:
       visible: False
 
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
+    run_id: 75fc3e53112f4634ae5238777d87e88c
     dir_name: blur_per_pixel
     layer_name: Blur
     shader_conf:
@@ -30,7 +32,7 @@ mask_retrievers:
       visible: False
 
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
+    run_id: 75fc3e53112f4634ae5238777d87e88c
     dir_name: artifacts_per_pixel 
     layer_name: Residual artifacts
     shader_conf:
@@ -40,8 +42,8 @@ mask_retrievers:
       visible: False
 
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
-    dir_name: clean_tiles
+    run_id: 4775c5688189427e803a154a213acb0e
+    dir_name: tile_masks/clean_tiles
     layer_name: Used Tiles
     shader_conf:
       type: heatmap
@@ -50,8 +52,8 @@ mask_retrievers:
       visible: False
 
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
-    dir_name: blur_tiles
+    run_id: 4775c5688189427e803a154a213acb0e
+    dir_name: tile_masks/blur_tiles
     layer_name: Blur Tiles
     shader_conf:
       type: heatmap
@@ -60,8 +62,8 @@ mask_retrievers:
       visible: False
 
   - _target_: report.masks.RunIDMlflowMaskRetriever
-    run_id: TODO
-    dir_name: artifacts_tiles
+    run_id: 4775c5688189427e803a154a213acb0e
+    dir_name: tile_masks/artifacts_tiles
     layer_name: Artifacts Tiles
     shader_conf:
       type: heatmap
