@@ -15,17 +15,13 @@ from ml.data.datasets import TilesPredict
 
 
 class NeutrophilDetector(torch.nn.Module):
-    def __init__(
-        self, confidence: float, weights_url: str, device: torch.device
-    ) -> None:
+    def __init__(self, confidence: float, weights_url: str) -> None:
         super().__init__()
         with tempfile.NamedTemporaryFile(suffix=".pt") as temp_file:
             torch.hub.download_url_to_file(weights_url, temp_file.name)
             self.model = cast(
                 "torch.nn.Module",
-                torch.hub.load(
-                    "ultralytics/yolov5", "custom", path=temp_file.name, device=device
-                ),
+                torch.hub.load("ultralytics/yolov5", "custom", path=temp_file.name),
             )
         self.model.conf = confidence
 
@@ -62,7 +58,8 @@ def save_neutrophils(
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     dest = Path(config.output_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    neutrophil_detector = NeutrophilDetector(**config.model, device=device)
+    neutrophil_detector = NeutrophilDetector(**config.model)
+    neutrophil_detector = neutrophil_detector.to(device)
 
     with torch.no_grad():
         dataset = TilesPredict(config.dataset.uris.values())
