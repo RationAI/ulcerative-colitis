@@ -2627,6 +2627,7 @@ dependencies = [
     { name = "rationai-masks" },
     { name = "rationai-mlkit" },
     { name = "rationai-sdk" },
+    { name = "rationai-tiling" },
     { name = "ratiopath" },
     { name = "ray" },
     { name = "torch" },
