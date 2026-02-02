@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import cast
@@ -22,6 +23,18 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 ray.init(runtime_env={"excludes": [".git", ".venv"]})
 
 
+def download_slide_tiles(uris: Iterable[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    slidess, tiless = [], []
+    for uri in uris:
+        path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
+        slidess.append(pd.read_parquet(Path(path) / "slides.parquet"))
+        tiless.append(pd.read_parquet(Path(path) / "tiles.parquet"))
+
+    slides = pd.concat(slidess).reset_index(drop=True)
+    tiles = pd.concat(tiless).reset_index(drop=True)
+    return slides, tiles
+
+
 @ray.remote(memory=4 * 1024**3)
 def process_slide(slide_path: str, level: int, output_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
@@ -44,11 +57,12 @@ def download_dataset(uri: str) -> pd.DataFrame:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    dataset = download_dataset(config.dataset.uri)
+    slides, tiles = download_slide_tiles(config.dataset.uris.values())
+    # dataset = download_dataset(config.dataset.uri)
 
     with TemporaryDirectory() as output_dir:
         process_items(
-            dataset["path"].to_list(),
+            slides["path"].to_list(),
             process_item=process_slide,
             fn_kwargs={
                 "level": config.level,
