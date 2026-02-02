@@ -7,7 +7,7 @@ model:
   confidence: 0.1
 
 dataloader:
-  batch_size: 2048
+  batch_size: 64
   num_workers: 8
   persistent_workers: True
 
