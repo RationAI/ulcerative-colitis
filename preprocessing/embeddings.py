@@ -154,6 +154,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             slide_name = str(slide_dataset.slide_metadata["name"])
             embeddings_path = (dest / slide_name).with_suffix(".parquet")
 
+            if embeddings_path.exists():
+                print(f"Embeddings for slide {slide_name} already exist, skipping...")
+                logger.log_artifact(
+                    local_path=str(embeddings_path), artifact_path="embeddings"
+                )
+                continue
+
             try:
                 slide_tiles_dataloader = DataLoader(
                     slide_dataset,
