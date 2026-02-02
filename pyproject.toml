@@ -23,6 +23,7 @@ dependencies = [
     "ratiopath>=1.0.4",
     "timm>=1.0.24",
     "ultralytics>=8.4.10",
+    "seaborn>=0.13.2",
 ]
 
 [dependency-groups]
