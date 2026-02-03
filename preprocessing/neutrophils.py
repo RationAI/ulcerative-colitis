@@ -74,21 +74,34 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
                     batch_size=config.dataloader.batch_size,
                     num_workers=config.dataloader.num_workers,
                     persistent_workers=config.dataloader.persistent_workers,
+                    collate_fn=lambda batch: (
+                        [x for x, _ in batch],
+                        [m for _, m in batch],
+                    ),
                 )
 
                 x0, y0, x1, y1, probability = [], [], [], [], []
 
                 for x, metadata in slide_tiles_dataloader:
-                    x = x.to(device)
                     result = neutrophil_detector(x)
 
+                    result.xyxy = cast("list[torch.Tensor]", result.xyxy)
                     for m, xyxy in zip(metadata, result.xyxy, strict=True):
+                        if xyxy.numel() == 0:
+                            continue
                         xyxy = xyxy.cpu()
                         x0.append(xyxy[:, 0] + m["x"])
                         y0.append(xyxy[:, 1] + m["y"])
                         x1.append(xyxy[:, 2] + m["x"])
                         y1.append(xyxy[:, 3] + m["y"])
                         probability.append(xyxy[:, 4])
+
+                if len(x0) == 0:
+                    empty = torch.empty((0,), dtype=torch.float32)
+                    save_neutrophils(
+                        empty, empty, empty, empty, empty, neutrophils_path
+                    )
+                    continue
 
                 save_neutrophils(
                     torch.concat(x0),

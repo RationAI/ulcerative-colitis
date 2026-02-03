@@ -22,6 +22,7 @@ class _Tiles(Dataset[T], Generic[T]):
         mode: LabelMode | str | None,
         include_labels: bool = True,
         transforms: TransformType | None = None,
+        to_tensor: bool = True,
     ) -> None:
         super().__init__()
         self.slide_tiles = OpenSlideTilesDataset(
@@ -35,7 +36,7 @@ class _Tiles(Dataset[T], Generic[T]):
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
         self.transforms = transforms
-        self.to_tensor = ToTensorV2()
+        self.to_tensor = ToTensorV2() if to_tensor else None
 
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified if labels are included.")
@@ -54,7 +55,9 @@ class _Tiles(Dataset[T], Generic[T]):
         if self.transforms is not None:
             image = self.transforms(image=image)["image"]
 
-        image = self.to_tensor(image=image)["image"]
+        if self.to_tensor is not None:
+            image = self.to_tensor(image=image)["image"]
+
         if not self.include_labels:
             return image, metadata
 
@@ -69,9 +72,11 @@ class Tiles(MetaTiledSlides[TilesSample]):
         uris: Iterable[str] | str,
         mode: LabelMode | str,
         transforms: TransformType | None = None,
+        to_tensor: bool = True,
     ) -> None:
         self.transforms = transforms
         self.mode = LabelMode(mode)
+        self.to_tensor = to_tensor
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesSample]]:
@@ -83,6 +88,7 @@ class Tiles(MetaTiledSlides[TilesSample]):
                 mode=self.mode,
                 include_labels=True,
                 transforms=self.transforms,
+                to_tensor=self.to_tensor,
             )
             for _, slide in self.slides.iterrows()
         )
@@ -93,8 +99,10 @@ class TilesPredict(MetaTiledSlides[TilesPredictSample]):
         self,
         uris: Iterable[str] | str,
         transforms: TransformType | None = None,
+        to_tensor: bool = True,
     ) -> None:
         self.transforms = transforms
+        self.to_tensor = to_tensor
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesPredictSample]]:
@@ -106,6 +114,7 @@ class TilesPredict(MetaTiledSlides[TilesPredictSample]):
                 mode=None,
                 include_labels=False,
                 transforms=self.transforms,
+                to_tensor=self.to_tensor,
             )
             for _, slide in self.slides.iterrows()
         )
