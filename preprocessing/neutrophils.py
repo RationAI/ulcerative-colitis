@@ -62,7 +62,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     neutrophil_detector = neutrophil_detector.to(device)
 
     with torch.no_grad():
-        dataset = TilesPredict(config.dataset.uris.values())
+        dataset = TilesPredict(config.dataset.uris.values(), to_tensor=False)
 
         for slide_dataset in tqdm(dataset.generate_datasets()):
             slide_name = str(slide_dataset.slide_metadata["name"])
