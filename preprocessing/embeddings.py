@@ -156,9 +156,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
             if embeddings_path.exists():
                 print(f"Embeddings for slide {slide_name} already exist, skipping...")
-                logger.log_artifact(
-                    local_path=str(embeddings_path), artifact_path="embeddings"
-                )
+                # logger.log_artifact(
+                #     local_path=str(embeddings_path), artifact_path="embeddings"
+                # )
                 continue
 
             try:
@@ -192,11 +192,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
                     embeddings_path,
                 )
 
-                logger.log_artifact(
-                    local_path=str(embeddings_path), artifact_path="embeddings"
-                )
+                # logger.log_artifact(
+                #     local_path=str(embeddings_path), artifact_path="embeddings"
+                # )
             except Exception as e:
                 print(f"Error processing slide {slide_name}: {e}")
+
+        logger.log_artifacts(str(dest), artifact_path="embeddings")
 
 
 if __name__ == "__main__":
