@@ -2227,7 +2227,7 @@ dev = [
     { name = "mypy" },
     { name = "ruff" },
 ]
-run = [
+job = [
     { name = "rationai-kube-jobs" },
 ]
 
@@ -2252,7 +2252,7 @@ dev = [
     { name = "mypy" },
     { name = "ruff" },
 ]
-run = [{ name = "rationai-kube-jobs", git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }]
+job = [{ name = "rationai-kube-jobs", git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }]
 
 [[package]]
 name = "urllib3"
