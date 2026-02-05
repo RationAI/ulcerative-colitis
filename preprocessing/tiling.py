@@ -187,7 +187,6 @@ def tiling(
         .map(row_hash, **LO_CPU, **LO_MEM)
         .map(nancy, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .map(add_mask_paths, fn_args=(qc_folder, tissue_folder), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
     tissue_roi = create_tissue_roi(tile_extent)
