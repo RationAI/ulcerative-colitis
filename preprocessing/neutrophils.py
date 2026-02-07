@@ -68,6 +68,12 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             slide_name = str(slide_dataset.slide_metadata["name"])
             neutrophils_path = (dest / slide_name).with_suffix(".parquet")
 
+            if neutrophils_path.exists():
+                print(
+                    f"Neutrophil detections for slide {slide_name} already exist, skipping..."
+                )
+                continue
+
             try:
                 slide_tiles_dataloader = DataLoader(
                     slide_dataset,
@@ -112,11 +118,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
                     neutrophils_path,
                 )
 
-                logger.log_artifact(
-                    local_path=str(neutrophils_path), artifact_path="neutrophils"
-                )
+                # logger.log_artifact(
+                #     local_path=str(neutrophils_path), artifact_path="neutrophils"
+                # )
             except Exception as e:
                 print(f"Error processing slide {slide_name}: {e}")
+
+        logger.log_artifacts(local_dir=str(dest), artifact_path="neutrophils")
 
 
 if __name__ == "__main__":
