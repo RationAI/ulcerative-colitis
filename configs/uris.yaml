@@ -14,12 +14,21 @@ uris:
       ikem:
         prov-gigapath: ???
         virchow2: ???
+        uni2: ???
+        virchow: ???
+        uni: ???
       ftn:
         prov-gigapath: mlflow-artifacts:/86/0deed4d98df547e7bbbf7abc12bf654f/artifacts/embeddings
         virchow2: mlflow-artifacts:/86/090f2b60bb0047989620926bd448c22d/artifacts/embeddings
+        uni2: ???
+        virchow: ???
+        uni: ???
       knl_patos:
         prov-gigapath: mlflow-artifacts:/86/af1d21c483004767b6b19b216ccb0886/artifacts/embeddings
         virchow2: mlflow-artifacts:/86/15e9b831fca440b882d293ec50fc501c/artifacts/embeddings
+        uni2: ???
+        virchow: ???
+        uni: ???
       all:
         prov-gigapath:
           # - ${...ikem.prov-gigapath}
@@ -29,6 +38,18 @@ uris:
           # - ${...ikem.virchow2}
           - ${...ftn.virchow2}
           - ${...knl_patos.virchow2}
+        # uni2:
+        #   - ${...ikem.uni2}
+        #   - ${...ftn.uni2}
+        #   - ${...knl_patos.uni2}
+        # virchow:
+        #   - ${...ikem.virchow}
+        #   - ${...ftn.virchow}
+        #   - ${...knl_patos.virchow}
+        # uni:
+        #   - ${...ikem.uni}
+        #   - ${...ftn.uni}
+        #   - ${...knl_patos.uni}
     "2":
       ikem:
         virchow2: mlflow-artifacts:/86/364304229659466c9dab47f81207a9d2/artifacts/embeddings
@@ -42,35 +63,27 @@ uris:
           - ${...ftn.virchow2}
           - ${...knl_patos.virchow2}
 
-  # slide_embeddings:
-  #   ikem: "mlflow-artifacts:/86/372f293bccd442dcb0a72bfcccac7f07/artifacts/slide_embeddings"
-  #   ftn: "mlflow-artifacts:/86/97cd2949f0054ecbac7c0a8dcc2e3c9f/artifacts/slide_embeddings"
-  #   knl_patos: ???
-  #   all:
-  #     - ${..ikem}
-  #     - ${..ftn}
-
   tiling:
     "1": # level
       ikem: 
-        train: mlflow-artifacts:/86/bd1530a4cb01496da055f2a66261ae7a/artifacts/train - ikem
-        test_preliminary: mlflow-artifacts:/86/bd1530a4cb01496da055f2a66261ae7a/artifacts/test preliminary - ikem
-        test_final: mlflow-artifacts:/86/bd1530a4cb01496da055f2a66261ae7a/artifacts/test final - ikem
+        train: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/train - ikem
+        test_preliminary: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/test preliminary - ikem
+        test_final: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/test final - ikem
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       ftn: 
-        train: mlflow-artifacts:/86/eff5dd37dbc843698308088ea361eaf0/artifacts/train - ftn
-        test_preliminary: mlflow-artifacts:/86/eff5dd37dbc843698308088ea361eaf0/artifacts/test preliminary - ftn
-        test_final: mlflow-artifacts:/86/eff5dd37dbc843698308088ea361eaf0/artifacts/test final - ftn
+        train: mlflow-artifacts:/86/42bab4ee199640ee8810e51f4dcbfac9/artifacts/train - ftn
+        test_preliminary: mlflow-artifacts:/86/42bab4ee199640ee8810e51f4dcbfac9/artifacts/test preliminary - ftn
+        test_final: mlflow-artifacts:/86/42bab4ee199640ee8810e51f4dcbfac9/artifacts/test final - ftn
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       knl_patos: 
-        test_preliminary: mlflow-artifacts:/86/98455bf2ecb046ad994bc70e4b080187/artifacts/test preliminary - knl_patos
-        test_final: mlflow-artifacts:/86/98455bf2ecb046ad994bc70e4b080187/artifacts/test final - knl_patos
+        test_preliminary: mlflow-artifacts:/86/a04e4e253299459987a04d6f1751969f/artifacts/test preliminary - knl_patos
+        test_final: mlflow-artifacts:/86/a04e4e253299459987a04d6f1751969f/artifacts/test final - knl_patos
         all:
           - ${..test_preliminary}
           - ${..test_final}
@@ -88,24 +101,24 @@ uris:
           - ${...knl_patos.test_final}
     "2": # level
       ikem: 
-        train: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/train - ikem
-        test_preliminary: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/test preliminary - ikem
-        test_final: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/test final - ikem
+        train: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/train - ikem
+        test_preliminary: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/test preliminary - ikem
+        test_final: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/test final - ikem
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       ftn: 
-        train: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/train - ftn
-        test_preliminary: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/test preliminary - ftn
-        test_final: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/test final - ftn
+        train: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/train - ftn
+        test_preliminary: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/test preliminary - ftn
+        test_final: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/test final - ftn
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       knl_patos: 
-        test_preliminary: mlflow-artifacts:/86/81c63863a2b04ae383632d93c3b25b8c/artifacts/test preliminary - knl_patos
-        test_final: mlflow-artifacts:/86/81c63863a2b04ae383632d93c3b25b8c/artifacts/test final - knl_patos
+        test_preliminary: mlflow-artifacts:/86/c15d17315af64952a849b21984f728ed/artifacts/test preliminary - knl_patos
+        test_final: mlflow-artifacts:/86/c15d17315af64952a849b21984f728ed/artifacts/test final - knl_patos
         all:
           - ${..test_preliminary}
           - ${..test_final}
