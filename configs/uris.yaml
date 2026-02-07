@@ -17,31 +17,37 @@ uris:
         uni2: ???
         virchow: ???
         uni: ???
+      ikem_old: # old
+        prov-gigapath: mlflow-artifacts:/86/4c19977258e4464b82d2aa5b555abf9f/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/c3efe1fc08864a97ab3ca2fe0796405a/artifacts/embeddings
+        uni2: mlflow-artifacts:/86/1152d6b74fae4d6d8f34438c4630e893/artifacts/embeddings
+        virchow: mlflow-artifacts:/86/c4b7bcf86c174383b13cc519f580a8ad/artifacts/embeddings
+        uni: mlflow-artifacts:/86/7e52fc2663754cfe91d3b37842569631/artifacts/embeddings
       ftn:
-        prov-gigapath: mlflow-artifacts:/86/0deed4d98df547e7bbbf7abc12bf654f/artifacts/embeddings
-        virchow2: mlflow-artifacts:/86/090f2b60bb0047989620926bd448c22d/artifacts/embeddings
+        prov-gigapath: ???
+        virchow2: ???
         uni2: ???
         virchow: ???
         uni: ???
       knl_patos:
-        prov-gigapath: mlflow-artifacts:/86/af1d21c483004767b6b19b216ccb0886/artifacts/embeddings
-        virchow2: mlflow-artifacts:/86/15e9b831fca440b882d293ec50fc501c/artifacts/embeddings
-        uni2: ???
+        prov-gigapath: ???
+        virchow2: mlflow-artifacts:/86/3c97b1e073ba47dba90cb1fa68276001/artifacts/embeddings
+        uni2: mlflow-artifacts:/86/27ca95a2c7664012bad373a972b20600/artifacts/embeddings
         virchow: ???
         uni: ???
       all:
-        prov-gigapath:
-          # - ${...ikem.prov-gigapath}
-          - ${...ftn.prov-gigapath}
-          - ${...knl_patos.prov-gigapath}
+        # prov-gigapath:
+        #   - ${...ikem.prov-gigapath}
+        #   - ${...ftn.prov-gigapath}
+        #   - ${...knl_patos.prov-gigapath}
         virchow2:
           # - ${...ikem.virchow2}
-          - ${...ftn.virchow2}
+          # - ${...ftn.virchow2}
           - ${...knl_patos.virchow2}
-        # uni2:
-        #   - ${...ikem.uni2}
-        #   - ${...ftn.uni2}
-        #   - ${...knl_patos.uni2}
+        uni2:
+          # - ${...ikem.uni2}
+          # - ${...ftn.uni2}
+          - ${...knl_patos.uni2}
         # virchow:
         #   - ${...ikem.virchow}
         #   - ${...ftn.virchow}
@@ -52,11 +58,11 @@ uris:
         #   - ${...knl_patos.uni}
     "2":
       ikem:
-        virchow2: mlflow-artifacts:/86/364304229659466c9dab47f81207a9d2/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/6f723bf5adb346e0a414830cc5316663/artifacts/embeddings
       ftn:
-        virchow2: mlflow-artifacts:/86/0b23d85096ef4122bc0702ff4b5cd5f5/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/6e73dcc1841e4b8894351adbcf90c1e5/artifacts/embeddings
       knl_patos:
-        virchow2: mlflow-artifacts:/86/55ffef57bd284e04ba07b47b6e796209/artifacts/embeddings
+        virchow2: mlflow-artifacts:/86/dc430f8aa25442b0a749f4b8b54dec4b/artifacts/embeddings
       all:
         virchow2:
           - ${...ikem.virchow2}
@@ -69,6 +75,14 @@ uris:
         train: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/train - ikem
         test_preliminary: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/test preliminary - ikem
         test_final: mlflow-artifacts:/86/0890e5b6e1254ee78458a1cc973f5c6c/artifacts/test final - ikem
+        all:
+          - ${..train}
+          - ${..test_preliminary}
+          - ${..test_final}
+      ikem_old: # old
+        train: mlflow-artifacts:/86/113e701f7a2a428687401ed4cb0917a6/artifacts/train - ikem
+        test_preliminary: mlflow-artifacts:/86/113e701f7a2a428687401ed4cb0917a6/artifacts/test preliminary - ikem
+        test_final: mlflow-artifacts:/86/113e701f7a2a428687401ed4cb0917a6/artifacts/test final - ikem
         all:
           - ${..train}
           - ${..test_preliminary}
