@@ -26,10 +26,10 @@ T = TypeVar("T", bound=TileEmbeddingsSample | TileEmbeddingsPredictSample)
 class _TileEmbeddings(Dataset[T], Generic[T]):
     def __init__(
         self,
-        tiling_uris: Iterable[str],
-        embeddings_uris: Iterable[str],
+        tiling_uris: Iterable[str] | str,
+        embeddings_uris: Iterable[str] | str,
         mode: LabelMode | str | None = None,
-        embeddings_folders: Iterable[Path | str | None] | None = None,
+        embeddings_folders: Iterable[Path | str | None] | Path | str | None = None,
         padding: bool = True,
         stride_eq_tile: bool = False,
         include_labels: bool = True,
@@ -55,10 +55,17 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
 
     def download_artifacts(
         self,
-        tiling_uris: Iterable[str],
-        embeddings_uris: Iterable[str],
-        embeddings_folders: Iterable[Path | str | None] | None,
+        tiling_uris: Iterable[str] | str,
+        embeddings_uris: Iterable[str] | str,
+        embeddings_folders: Iterable[Path | str | None] | Path | str | None,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if isinstance(tiling_uris, str):
+            tiling_uris = [tiling_uris]
+        if isinstance(embeddings_uris, str):
+            embeddings_uris = [embeddings_uris]
+        if isinstance(embeddings_folders, (str, Path)):
+            embeddings_folders = [embeddings_folders]
+
         if embeddings_folders is None:
             embeddings_folders = repeat(None)
 
@@ -67,18 +74,9 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
         for tiling_uri, embeddings_uri, embeddings_folder in zip(
             tiling_uris, embeddings_uris, embeddings_folders, strict=False
         ):
-            slide_dfs.append(
-                pd.read_parquet(
-                    Path(mlflow.artifacts.download_artifacts(tiling_uri))
-                    / "slides.parquet"
-                )
-            )
-            tile_dfs.append(
-                pd.read_parquet(
-                    Path(mlflow.artifacts.download_artifacts(tiling_uri))
-                    / "tiles.parquet"
-                )
-            )
+            tiling_folder = Path(mlflow.artifacts.download_artifacts(tiling_uri))
+            slide_dfs.append(pd.read_parquet(tiling_folder / "slides.parquet"))
+            tile_dfs.append(pd.read_parquet(tiling_folder / "tiles.parquet"))
 
             if embeddings_folder is None:
                 embeddings_folder = Path(
@@ -159,10 +157,10 @@ class _TileEmbeddings(Dataset[T], Generic[T]):
 class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
     def __init__(
         self,
-        tiling_uris: Iterable[str],
-        embeddings_uris: Iterable[str],
+        tiling_uris: Iterable[str] | str,
+        embeddings_uris: Iterable[str] | str,
         mode: LabelMode | str,
-        embeddings_folders: Iterable[Path | str | None] | None = None,
+        embeddings_folders: Iterable[Path | str | None] | Path | str | None = None,
         padding: bool = True,
         stride_eq_tile: bool = False,
     ) -> None:
@@ -180,10 +178,10 @@ class TileEmbeddings(_TileEmbeddings[TileEmbeddingsSample]):
 class TileEmbeddingsPredict(_TileEmbeddings[TileEmbeddingsPredictSample]):
     def __init__(
         self,
-        tiling_uris: Iterable[str],
-        embeddings_uris: Iterable[str],
+        tiling_uris: Iterable[str] | str,
+        embeddings_uris: Iterable[str] | str,
         mode: LabelMode | str | None = None,
-        embeddings_folders: Iterable[Path | str | None] | None = None,
+        embeddings_folders: Iterable[Path | str | None] | Path | str | None = None,
         padding: bool = True,
         stride_eq_tile: bool = False,
         slide_names: Iterable[str] | None = None,
