@@ -30,16 +30,16 @@ uris:
         virchow: ???
         uni: ???
       knl_patos:
-        prov-gigapath: ???
+        prov-gigapath: mlflow-artifacts:/86/c8affc9b9dde4c4fa1db458631e3ac70/artifacts/embeddings
         virchow2: mlflow-artifacts:/86/3c97b1e073ba47dba90cb1fa68276001/artifacts/embeddings
         uni2: mlflow-artifacts:/86/27ca95a2c7664012bad373a972b20600/artifacts/embeddings
         virchow: ???
         uni: ???
       all:
-        # prov-gigapath:
-        #   - ${...ikem.prov-gigapath}
-        #   - ${...ftn.prov-gigapath}
-        #   - ${...knl_patos.prov-gigapath}
+        prov-gigapath:
+          # - ${...ikem.prov-gigapath}
+          # - ${...ftn.prov-gigapath}
+          - ${...knl_patos.prov-gigapath}
         virchow2:
           # - ${...ikem.virchow2}
           # - ${...ftn.virchow2}
