@@ -25,23 +25,23 @@ paths:
   embeddings:
     "1": # level
       ikem:
-        prov-gigapath: ${paths.base_folder}/embeddings/1/ikem/prov-gigapath
-        virchow2: ${paths.base_folder}/embeddings/1/ikem/virchow2
-        uni2: ${paths.base_folder}/embeddings/1/ikem/uni2
+        prov-gigapath: ${paths.base_folder}/embeddings/ikem/1/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/ikem/1/virchow2
+        uni2: ${paths.base_folder}/embeddings/ikem/1/uni2
       ikem_old:
-        prov-gigapath: ${paths.base_folder}/embeddings/1/ikem_old/prov-gigapath
-        virchow2: ${paths.base_folder}/embeddings/1/ikem_old/virchow2
-        uni2: ${paths.base_folder}/embeddings/1/ikem_old/uni2
-        virchow: ${paths.base_folder}/embeddings/1/ikem_old/virchow
-        uni: ${paths.base_folder}/embeddings/1/ikem_old/uni
+        prov-gigapath: ${paths.base_folder}/embeddings/ikem_old/1/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/ikem_old/1/virchow2
+        uni2: ${paths.base_folder}/embeddings/ikem_old/1/uni2
+        virchow: ${paths.base_folder}/embeddings/ikem_old/1/virchow
+        uni: ${paths.base_folder}/embeddings/ikem_old/1/uni
       ftn:
-        prov-gigapath: ${paths.base_folder}/embeddings/1/ftn/prov-gigapath
-        virchow2: ${paths.base_folder}/embeddings/1/ftn/virchow2
-        uni2: ${paths.base_folder}/embeddings/1/ftn/uni2
+        prov-gigapath: ${paths.base_folder}/embeddings/ftn/1/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/ftn/1/virchow2
+        uni2: ${paths.base_folder}/embeddings/ftn/1/uni2
       knl_patos:
-        prov-gigapath: ${paths.base_folder}/embeddings/1/knl_patos/prov-gigapath
-        virchow2: ${paths.base_folder}/embeddings/1/knl_patos/virchow2
-        uni2: ${paths.base_folder}/embeddings/1/knl_patos/uni2
+        prov-gigapath: ${paths.base_folder}/embeddings/knl_patos/1/prov-gigapath
+        virchow2: ${paths.base_folder}/embeddings/knl_patos/1/virchow2
+        uni2: ${paths.base_folder}/embeddings/knl_patos/1/uni2
       all:
         prov-gigapath:
           - ${...ikem.prov-gigapath}
@@ -57,11 +57,11 @@ paths:
           - ${...knl_patos.uni2}
     "2": # level
       ikem:
-        virchow2: ${paths.base_folder}/embeddings/2/ikem/virchow2
+        virchow2: ${paths.base_folder}/embeddings/ikem/2/virchow2
       ftn:
-        virchow2: ${paths.base_folder}/embeddings/2/ftn/virchow2
+        virchow2: ${paths.base_folder}/embeddings/ftn/2/virchow2
       knl_patos:
-        virchow2: ${paths.base_folder}/embeddings/2/knl_patos/virchow2
+        virchow2: ${paths.base_folder}/embeddings/knl_patos/2/virchow2
       all:
         virchow2:
           - ${...ikem.virchow2}
