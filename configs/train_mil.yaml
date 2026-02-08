@@ -38,7 +38,7 @@ data:
     tiling_uris: ${uris.tiling.${level}.${cohort}.train}
     embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
     mode: ${data_mode}
-    embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    # embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
     stride_eq_tile: false
 
 model:
