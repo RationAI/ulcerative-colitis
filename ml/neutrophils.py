@@ -27,7 +27,7 @@ def download_data(datasets: ListConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     for dataset in datasets:
         neutrophils = Path(mlflow.artifacts.download_artifacts(dataset.neutrophils_uri))
         tissue_masks = Path(
-            mlflow.artifacts.download_artifacts(dataset.tissue_masks_uri)
+            mlflow.artifacts.download_artifacts(dataset.tissue_mask_uri)
         )
 
         add_tissue_mask = partial(add_path, folder=tissue_masks, suffix=".tiff")
