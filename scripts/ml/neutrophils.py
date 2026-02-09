@@ -11,6 +11,6 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        "uv run -m ml.neutrophils +data=neutrophils/all",
+        "uv run -m ml.neutrophils +dataset=neutrophils/all",
     ],
 )
