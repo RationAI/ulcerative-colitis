@@ -1,7 +1,7 @@
 # @package _global_
 
 defaults:
-  - dataset/processed/ftn
+  - processed/ftn
   - _self_
 
 tissue_mask_uri: mlflow-artifacts:/86/04778b10de254572b69ce0a101c1eee4/artifacts/tissue_masks # TODO update URI
