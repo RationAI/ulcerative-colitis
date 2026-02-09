@@ -27,7 +27,7 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
     def __init__(self, foundation: str, lr: float | None = None) -> None:
         super().__init__()
         match foundation:
-            case "prov-gigapath" | "uni2-h":
+            case "prov-gigapath" | "uni2":
                 input_dim = 1536
             case "uni":
                 input_dim = 1024
