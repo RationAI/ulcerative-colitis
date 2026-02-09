@@ -115,7 +115,7 @@ def test(
 
     logger.log_table(
         {
-            "slide": test_df["path"].apply(lambda p: p.stem),
+            "slide": test_df["path"].apply(lambda p: Path(p).stem),
             "prediction": x_test.tolist(),
             "prediction_class": y_pred.tolist(),
         },
