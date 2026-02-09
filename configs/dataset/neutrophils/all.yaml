@@ -1,5 +1,3 @@
-# @package _global_
-
 defaults:
   - /dataset/neutrophils@datasets.ftn: ftn
   - /dataset/neutrophils@datasets.ikem: ikem

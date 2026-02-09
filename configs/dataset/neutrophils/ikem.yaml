@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/tiled/ikem/0_320
+  - /dataset/tiled/ikem/0_320@_here_
   - _self_
 
 neutrophils_uri: mlflow-artifacts:/86/c01579c246ad4f66a3b3cc0d8aa644fe/artifacts/neutrophils

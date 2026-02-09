@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/tiled/knl_patos/0_320
+  - /dataset/tiled/knl_patos/0_320@_here_
   - _self_
 
 neutrophils_uri: mlflow-artifacts:/86/24d97109978e4c8ba13ac1972d22be96/artifacts/neutrophils

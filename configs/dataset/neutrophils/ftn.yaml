@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/tiled/ftn/0_320
+  - /dataset/tiled/ftn/0_320@_here_
   - _self_
 
 neutrophils_uri: mlflow-artifacts:/86/deee774e63644dd1a5e3d3e15a429224/artifacts/neutrophils

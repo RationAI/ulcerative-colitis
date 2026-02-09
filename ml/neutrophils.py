@@ -124,7 +124,7 @@ def test(
 
 
 @with_cli_args(["+ml=neutrophils"])
-@hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
+@hydra.main(config_path="../configs", config_name="ml", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     train_df, test_df = download_data(

@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/processed_w_masks/knl_patos
+  - /dataset/processed_w_masks/knl_patos@_here_
   - _self_
 
 mpp: 1.55

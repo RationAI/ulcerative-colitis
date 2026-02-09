@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/processed/knl_patos
+  - /dataset/processed/knl_patos@_here_
   - _self_
 
 tissue_mask_uri: mlflow-artifacts:/86/8ef6d6f0c9af4f35a087596960f675aa/artifacts/tissue_masks # TODO update URI

@@ -1,7 +1,5 @@
-# @package _global_
-
 defaults:
-  - /dataset/processed_w_masks/ftn
+  - /dataset/processed_w_masks/ftn@_here_
   - _self_
 
 mpp: 0.17
