@@ -1,10 +1,8 @@
 from kube_jobs import storage, submit_job
 
 
-COHORT = "ikem"  # "ikem", "ftn", or "knl_patos"
-
 submit_job(
-    job_name=f"ulcerative-colitis-quality-control-{COHORT.replace('_', '-')}",
+    job_name="ulcerative-colitis-quality-control-...",
     username=...,
     public=False,
     cpu=2,
@@ -13,7 +11,7 @@ submit_job(
         "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run -m preprocessing.quality_control +data=processed/{COHORT}",
+        "uv run -m preprocessing.quality_control +dataset=processed/...",
     ],
     storage=[storage.secure.DATA],
 )

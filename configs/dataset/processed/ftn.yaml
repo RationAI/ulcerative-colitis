@@ -1,0 +1,5 @@
+defaults:
+  - /dataset/raw/ftn@_here_
+  - _self_
+
+uri: mlflow-artifacts:/86/142642fc780f4a96800c691168b5c2c3/artifacts/dataset.csv # TODO update URI
