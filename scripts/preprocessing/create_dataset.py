@@ -1,19 +1,17 @@
 from kube_jobs import storage, submit_job
 
 
-COHORT = "ikem"  # "ikem", "ftn", or "knl_patos"
-
 submit_job(
-    job_name=f"ulcerative-colitis-dataset-creation-{COHORT.replace('_', '-')}",
+    job_name="ulcerative-colitis-dataset-creation-...",
     username=...,
     public=False,
     cpu=2,
     memory="4Gi",
     script=[
-        "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
+        "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run -m preprocessing.create_dataset +data=raw/{COHORT}",
+        "uv run -m preprocessing.create_dataset +data=raw/...",
     ],
     storage=[storage.secure.DATA],
 )
