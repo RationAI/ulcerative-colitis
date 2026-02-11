@@ -34,7 +34,7 @@ def process_slide(slide_path: str, level: int, output_path: Path) -> None:
     write_big_tiff(mask, path=mask_path, mpp_x=mpp_x, mpp_y=mpp_y)
 
 
-def download_dataframe(uri: str) -> pd.DataFrame:
+def download_dataset(uri: str) -> pd.DataFrame:
     path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
     df = pd.read_csv(path)
     return df
@@ -44,7 +44,7 @@ def download_dataframe(uri: str) -> pd.DataFrame:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = download_dataframe(config.dataset.uri)
+    df = download_dataset(config.dataset.uri)
 
     with TemporaryDirectory() as output_dir:
         process_items(
