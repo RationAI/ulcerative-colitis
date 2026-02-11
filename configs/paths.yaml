@@ -1,5 +1,5 @@
 paths:
-  base_folder: /mnt/projects/inflammatory_bowel_dissease/ulcerative_colitis
+  base_folder: /mnt/projects/inflammatory_bowel_disease/ulcerative_colitis
   data_folder: /mnt/data
 
   slides:
