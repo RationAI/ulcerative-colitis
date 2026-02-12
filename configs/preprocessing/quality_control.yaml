@@ -1,0 +1,26 @@
+# @package _global_
+
+output_dir: ${project_dir}/quality_control/${dataset.institution}
+
+request_timeout: 18000
+max_concurrent: 5
+
+qc_parameters:
+  mask_level: 3
+  sample_level: 1
+  check_residual: True
+  check_folding: False
+  check_focus: True
+  wb_correction: True
+
+
+metadata:
+  run_name: "🎭 QC Masks: ${dataset.institution}"
+  description: Quality control masks for ${dataset.institution} institution
+  hyperparams:
+    mask_level: ${qc_parameters.mask_level}
+    sample_level: ${qc_parameters.sample_level}
+    check_residual: ${qc_parameters.check_residual}
+    check_folding: ${qc_parameters.check_folding}
+    check_focus: ${qc_parameters.check_focus}
+    wb_correction: ${qc_parameters.wb_correction}

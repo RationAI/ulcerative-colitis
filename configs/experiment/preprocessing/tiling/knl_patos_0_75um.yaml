@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed_w_masks/knl_patos@dataset
+  - _self_
+
+mpp: 0.17 # level 0
+tile_extent: 430 # 75 / 0.17 ≈ 430
+stride: 430
+
+splits:
+  train: 0.0
+  test_preliminary: 0.5
+  test_final: 0.5

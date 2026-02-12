@@ -41,11 +41,11 @@ def download_dataset(uri: str) -> pd.DataFrame:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = download_dataset(config.dataset.uri)
+    dataset = download_dataset(config.dataset.uri)
 
     with TemporaryDirectory() as output_dir:
         process_items(
-            df["path"].to_list(),
+            dataset["path"].to_list(),
             process_item=process_slide,
             fn_kwargs={
                 "level": config.level,
