@@ -20,6 +20,8 @@ from shapely.geometry import box
 from sklearn.model_selection import GroupShuffleSplit
 
 
+QC_BLUR_MEAN_COLUMN = "mean_coverage(Piqe)"
+QC_ARTIFACTS_MEAN_COLUMN = "mean_coverage(ResidualArtifactsAndCoverage)"
 QC_SUBFOLDERS = {"blur": "blur_per_pixel", "artifacts": "artifacts_per_pixel"}
 
 
@@ -90,7 +92,7 @@ def split_dataset(
     return train, test_preliminary, test_final
 
 
-def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
+def add_nancy_index(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     row["nancy_index"] = df.loc[Path(row["path"]).stem, "nancy"]
     return row
 
@@ -98,8 +100,8 @@ def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
 def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     qc_df = cast("pd.Series", df.loc[Path(row["path"]).stem])
 
-    row["blur_mean"] = qc_df["mean_coverage(Piqe)"]
-    row["artifacts_mean"] = qc_df["mean_coverage(ResidualArtifactsAndCoverage)"]
+    row["blur_mean"] = qc_df[QC_BLUR_MEAN_COLUMN]
+    row["artifacts_mean"] = qc_df[QC_ARTIFACTS_MEAN_COLUMN]
 
     return row
 
@@ -191,7 +193,7 @@ def tiling(
     slides = (
         read_slides(paths, tile_extent=tile_extent, stride=stride, mpp=mpp)
         .map(row_hash, **LO_CPU, **LO_MEM)
-        .map(nancy, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
