@@ -9,7 +9,7 @@ submit_job(
     memory="128Gi",
     shm="48Gi",
     script=[
-        "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
+        "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
         "uv run --active -m preprocessing.tiling +experiment=preprocessing/tiling/...",
