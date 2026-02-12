@@ -57,11 +57,11 @@ paths:
           - ${...knl_patos.uni2}
     "2": # level
       ikem:
-        virchow2: ${paths.base_folder}/embeddings/ikem/2/virchow2
+        virchow2: ${paths.base_folder}/embeddings/2/ikem/virchow2
       ftn:
-        virchow2: ${paths.base_folder}/embeddings/ftn/2/virchow2
+        virchow2: ${paths.base_folder}/embeddings/2/ftn/virchow2
       knl_patos:
-        virchow2: ${paths.base_folder}/embeddings/knl_patos/2/virchow2
+        virchow2: ${paths.base_folder}/embeddings/2/knl_patos/virchow2
       all:
         virchow2:
           - ${...ikem.virchow2}
