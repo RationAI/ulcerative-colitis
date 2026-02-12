@@ -19,16 +19,13 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
-ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
 @ray.remote(memory=4 * 1024**3)
 def process_slide(slide_path: str, level: int, output_path: Path) -> None:
     with OpenSlide(slide_path) as slide:
         mpp_x, mpp_y = slide_resolution(slide, level)
 
-    slide = cast("pyvips.Image", pyvips.Image.new_from_file(slide_path, level=level))
-    mask = tissue_mask(slide, mpp=(mpp_x + mpp_y) / 2)
+    image = cast("pyvips.Image", pyvips.Image.new_from_file(slide_path, level=level))
+    mask = tissue_mask(image, mpp=(mpp_x + mpp_y) / 2)
     mask_path = output_path / Path(slide_path).with_suffix(".tiff").name
 
     write_big_tiff(mask, path=mask_path, mpp_x=mpp_x, mpp_y=mpp_y)
@@ -61,4 +58,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()

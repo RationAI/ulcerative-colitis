@@ -26,11 +26,11 @@ class QCParameters(TypedDict):
 
 
 def get_qc_masks(qc_parameters: QCParameters) -> Generator[tuple[str, str], None, None]:
-    if qc_parameters["check_residual"]:
+    if qc_parameters["check_focus"]:
         yield ("Piqe_focus_score_piqe_median", "blur_per_tile")
         yield ("Piqe_piqe_median_activity_mask", "blur_per_pixel")
 
-    if qc_parameters["check_focus"]:
+    if qc_parameters["check_residual"]:
         yield ("ResidualArtifactsAndCoverage_cov_percent_heatmap", "artifacts_per_tile")
         yield ("ResidualArtifactsAndCoverage_coverage_mask", "artifacts_per_pixel")
 
@@ -42,7 +42,8 @@ def organize_masks(output_path: Path, subdir: str, mask_prefix: str) -> None:
     prefix_dir = output_path / subdir
     prefix_dir.mkdir(parents=True, exist_ok=True)
 
-    for file in output_path.glob(f"{mask_prefix}_*.tiff"):
+    # Glob has to be wrapped in list, because we're modifying the directory!!!
+    for file in list(output_path.glob(f"{mask_prefix}_*.tiff")):
         slide_name = file.name.replace(f"{mask_prefix}_", "")
         destination = prefix_dir / slide_name
         file.rename(destination)

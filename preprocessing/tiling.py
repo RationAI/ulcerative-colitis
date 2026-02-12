@@ -17,12 +17,11 @@ from ratiopath.tiling.utils import row_hash
 from ray.data.expressions import col
 from shapely import Polygon
 from shapely.geometry import box
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 
 
-ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
+QC_BLUR_MEAN_COLUMN = "mean_coverage(Piqe)"
+QC_ARTIFACTS_MEAN_COLUMN = "mean_coverage(ResidualArtifactsAndCoverage)"
 QC_SUBFOLDERS = {"blur": "blur_per_pixel", "artifacts": "artifacts_per_pixel"}
 
 
@@ -37,13 +36,27 @@ class _RayMemResources(TypedDict):
 LO_CPU: _RayCpuResources = {"num_cpus": 0.1}
 HI_CPU: _RayCpuResources = {"num_cpus": 0.2}
 LO_MEM: _RayMemResources = {"memory": 128 * 1024**2}
-HI_MEM: _RayMemResources = {"memory": 1024**3}
+HI_MEM: _RayMemResources = {"memory": 256 * 1024**2}
 
 
 def download_dataset(uri: str) -> pd.DataFrame:
     path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
     df = pd.read_csv(path, index_col="slide_id")
     return df
+
+
+def train_test_split_groups(
+    df: pd.DataFrame,
+    train_size: float | None = None,
+    test_size: float | None = None,
+    random_state: int | None = None,
+    groups: pd.Series | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    splitter = GroupShuffleSplit(
+        1, train_size=train_size, test_size=test_size, random_state=random_state
+    )
+    train_idx, test_idx = next(splitter.split(df, groups=groups))
+    return df.iloc[train_idx], df.iloc[test_idx]
 
 
 def split_dataset(
@@ -53,19 +66,14 @@ def split_dataset(
         splits["train"] + splits["test_preliminary"] + splits["test_final"], 1.0
     ), "Splits must sum to 1.0"
 
-    train: pd.DataFrame
-    test: pd.DataFrame
-    test_preliminary: pd.DataFrame
-    test_final: pd.DataFrame
-
     if splits["train"] == 0.0:
         train = pd.DataFrame(columns=dataset.columns)
         test = dataset
     else:
-        train, test = train_test_split(
+        train, test = train_test_split_groups(
             dataset,
             train_size=splits["train"],
-            stratify=dataset["nancy"],
+            groups=dataset["case_id"],
             random_state=random_state,
         )
 
@@ -74,17 +82,17 @@ def split_dataset(
         test_final = test
     else:
         preliminary_size = splits["test_preliminary"] / (1.0 - splits["train"])
-        test_preliminary, test_final = train_test_split(
+        test_preliminary, test_final = train_test_split_groups(
             test,
             train_size=preliminary_size,
-            stratify=test["nancy"],
+            groups=test["case_id"],
             random_state=random_state,
         )
 
     return train, test_preliminary, test_final
 
 
-def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
+def add_nancy_index(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     row["nancy_index"] = df.loc[Path(row["path"]).stem, "nancy"]
     return row
 
@@ -92,8 +100,8 @@ def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
 def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     qc_df = cast("pd.Series", df.loc[Path(row["path"]).stem])
 
-    row["blur_mean"] = qc_df["mean_coverage(Piqe)"]
-    row["artifacts_mean"] = qc_df["mean_coverage(ResidualArtifactsAndCoverage)"]
+    row["blur_mean"] = qc_df[QC_BLUR_MEAN_COLUMN]
+    row["artifacts_mean"] = qc_df[QC_ARTIFACTS_MEAN_COLUMN]
 
     return row
 
@@ -185,17 +193,22 @@ def tiling(
     slides = (
         read_slides(paths, tile_extent=tile_extent, stride=stride, mpp=mpp)
         .map(row_hash, **LO_CPU, **LO_MEM)
-        .map(nancy, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .map(add_mask_paths, fn_args=(qc_folder, tissue_folder), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
     tissue_roi = create_tissue_roi(tile_extent)
     qc_roi = create_qc_roi(tile_extent)
 
     tiles = (
-        slides.flat_map(tile, **HI_CPU, **LO_MEM)
-        .repartition(target_num_rows_per_block=128)
+        slides.map(
+            add_mask_paths,  # type: ignore[reportArgumentType]
+            fn_args=(qc_folder, tissue_folder),
+            **LO_CPU,
+            **LO_MEM,
+        )
+        .flat_map(tile, **HI_CPU, **LO_MEM)
+        .repartition(target_num_rows_per_block=4096)
         .with_column(
             "tissue_overlap",
             tile_overlay_overlap(
@@ -275,4 +288,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()

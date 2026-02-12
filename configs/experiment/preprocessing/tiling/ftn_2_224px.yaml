@@ -1,7 +1,7 @@
 # @package _global_
 
 defaults:
-  - /data/processed_w_masks/ftn
+  - /dataset/processed_w_masks/ftn@dataset
   - _self_
 
 mpp: 1.55 # level 2
@@ -9,6 +9,6 @@ tile_extent: 224
 stride: 112
 
 splits:
-  train: 0.0
-  test_preliminary: 0.5
-  test_final: 0.5
+  train: 0.7
+  test_preliminary: 0.15
+  test_final: 0.15

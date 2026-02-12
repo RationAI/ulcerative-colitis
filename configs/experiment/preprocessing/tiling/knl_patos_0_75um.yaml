@@ -1,12 +1,12 @@
 # @package _global_
 
 defaults:
-  - /data/processed_w_masks/knl_patos
+  - /dataset/processed_w_masks/knl_patos@dataset
   - _self_
 
 mpp: 0.17 # level 0
 tile_extent: 430 # 75 / 0.17 ≈ 430
-stride: 215
+stride: 430
 
 splits:
   train: 0.0
