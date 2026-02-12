@@ -1,0 +1,6 @@
+# @package _global_
+
+defaults:
+  - /dataset/tiled/ikem/1_224@dataset
+  - /preprocessing/tile_encoder/uni
+  - _self_
