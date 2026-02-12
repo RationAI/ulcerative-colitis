@@ -17,12 +17,11 @@ from ratiopath.tiling.utils import row_hash
 from ray.data.expressions import col
 from shapely import Polygon
 from shapely.geometry import box
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 
 
-ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
+QC_BLUR_MEAN_COLUMN = "mean_coverage(Piqe)"
+QC_ARTIFACTS_MEAN_COLUMN = "mean_coverage(ResidualArtifactsAndCoverage)"
 QC_SUBFOLDERS = {"blur": "blur_per_pixel", "artifacts": "artifacts_per_pixel"}
 
 
@@ -46,6 +45,20 @@ def download_dataset(uri: str) -> pd.DataFrame:
     return df
 
 
+def train_test_split_groups(
+    df: pd.DataFrame,
+    train_size: float | None = None,
+    test_size: float | None = None,
+    random_state: int | None = None,
+    groups: pd.Series | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    splitter = GroupShuffleSplit(
+        1, train_size=train_size, test_size=test_size, random_state=random_state
+    )
+    train_idx, test_idx = next(splitter.split(df, groups=groups))
+    return df.iloc[train_idx], df.iloc[test_idx]
+
+
 def split_dataset(
     dataset: pd.DataFrame, splits: dict[str, float], random_state: int = 42
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -53,19 +66,14 @@ def split_dataset(
         splits["train"] + splits["test_preliminary"] + splits["test_final"], 1.0
     ), "Splits must sum to 1.0"
 
-    train: pd.DataFrame
-    test: pd.DataFrame
-    test_preliminary: pd.DataFrame
-    test_final: pd.DataFrame
-
     if splits["train"] == 0.0:
         train = pd.DataFrame(columns=dataset.columns)
         test = dataset
     else:
-        train, test = train_test_split(
+        train, test = train_test_split_groups(
             dataset,
             train_size=splits["train"],
-            stratify=dataset["nancy"],
+            groups=dataset["case_id"],
             random_state=random_state,
         )
 
@@ -74,17 +82,17 @@ def split_dataset(
         test_final = test
     else:
         preliminary_size = splits["test_preliminary"] / (1.0 - splits["train"])
-        test_preliminary, test_final = train_test_split(
+        test_preliminary, test_final = train_test_split_groups(
             test,
             train_size=preliminary_size,
-            stratify=test["nancy"],
+            groups=test["case_id"],
             random_state=random_state,
         )
 
     return train, test_preliminary, test_final
 
 
-def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
+def add_nancy_index(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     row["nancy_index"] = df.loc[Path(row["path"]).stem, "nancy"]
     return row
 
@@ -92,8 +100,8 @@ def nancy(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
 def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     qc_df = cast("pd.Series", df.loc[Path(row["path"]).stem])
 
-    row["blur_mean"] = qc_df["mean_coverage(Piqe)"]
-    row["artifacts_mean"] = qc_df["mean_coverage(ResidualArtifactsAndCoverage)"]
+    row["blur_mean"] = qc_df[QC_BLUR_MEAN_COLUMN]
+    row["artifacts_mean"] = qc_df[QC_ARTIFACTS_MEAN_COLUMN]
 
     return row
 
@@ -185,7 +193,7 @@ def tiling(
     slides = (
         read_slides(paths, tile_extent=tile_extent, stride=stride, mpp=mpp)
         .map(row_hash, **LO_CPU, **LO_MEM)
-        .map(nancy, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
 
@@ -280,4 +288,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()

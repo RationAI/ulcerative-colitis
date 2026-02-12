@@ -1,19 +1,17 @@
 from kube_jobs import storage, submit_job
 
 
-COHORT = "ikem"  # "ikem", "ftn", or "knl_patos"
-
 submit_job(
-    job_name=f"ulcerative-colitis-tissue-masks-{COHORT.replace('_', '-')}",
+    job_name="ulcerative-colitis-tissue-masks-...",
     username=...,
     public=False,
     cpu=64,
     memory="32Gi",
     script=[
-        "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
+        "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run --active -m preprocessing.tissue_masks +data=processed/{COHORT}",
+        "uv run --active -m preprocessing.tissue_masks +dataset=processed/...",
     ],
     storage=[storage.secure.DATA],
 )

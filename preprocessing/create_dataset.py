@@ -17,12 +17,12 @@ REGEX = {
     # HE - stain type
     # (?:_0[1-6])? - optional underscore and slide number (01 to 06)
     # .czi - file extension
-    "ikem": re.compile(r"^[0-9]{1,5}_2[1-4]_HE(?:_0[1-6])?\.czi"),
+    "ikem": re.compile(r"^[0-9]{1,5}_2[1-4]_HE(?:_0[1-6])?\.czi$"),
     # [0-9]{1,6} - case ID (1 to 6 digits) (in year scope)
     # _ - underscore separator
     # 2[0-5] - year (2020 to 2025)
     # .czi - file extension
-    "ftn": re.compile(r"[0-9]{1,6}_2[0-5]\.czi"),
+    "ftn": re.compile(r"^[0-9]{1,6}_2[0-5]\.czi"),
     # [0-9]{1,5} - case ID (1 to 5 digits) (in year scope)
     # _ - underscore separator
     # 25 - year 2025
@@ -32,14 +32,14 @@ REGEX = {
     # HE - stain type
     # (0[1-9]|1[0-2]) - slide number (01 to 12)
     # .czi - file extension
-    "knl_patos": re.compile(r"[0-9]{1,5}_25_[A-F]_HE(0[1-9]|1[0-2])\.czi"),
+    "knl_patos": re.compile(r"^[0-9]{1,5}_25_[A-F]_HE(0[1-9]|1[0-2])\.czi$"),
 }
 
 
 def get_labels(folder_path: Path, labels: list[str]) -> pd.DataFrame:
     dfs = []
     for labels_file in labels:
-        labels_path = Path(folder_path) / labels_file
+        labels_path = folder_path / labels_file
 
         if labels_path.suffix == ".csv":
             # One labels file is in CSV format
@@ -117,19 +117,15 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         dataset.to_csv(output_path, index=True)
         logger.log_artifact(str(output_path))
 
-        if missing_slides:
-            missing_slides_path = tmpdir_path / "missing_slides.txt"
-            with open(missing_slides_path, "w") as f:
-                for slide in missing_slides:
-                    f.write(f"{slide}\n")
-            logger.log_artifact(str(missing_slides_path))
+        def _log_missing_items(items: list[str], filename: str) -> None:
+            if not items:
+                return
+            file_path = tmpdir_path / filename
+            file_path.write_text("\n".join(items) + "\n")
+            logger.log_artifact(str(file_path))
 
-        if missing_labels:
-            missing_labels_path = tmpdir_path / "missing_labels.txt"
-            with open(missing_labels_path, "w") as f:
-                for label in missing_labels:
-                    f.write(f"{label}\n")
-            logger.log_artifact(str(missing_labels_path))
+        _log_missing_items(missing_slides, "missing_slides.txt")
+        _log_missing_items(missing_labels, "missing_labels.txt")
 
 
 if __name__ == "__main__":

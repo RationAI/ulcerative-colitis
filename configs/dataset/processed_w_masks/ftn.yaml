@@ -1,0 +1,6 @@
+defaults:
+  - /dataset/processed/ftn@_here_
+  - _self_
+
+tissue_mask_uri: mlflow-artifacts:/86/04778b10de254572b69ce0a101c1eee4/artifacts/tissue_masks # TODO update URI
+qc_mask_uri: mlflow-artifacts:/86/c8edfb2541e84b44b1a28be3540c1a35/artifacts # TODO update URI

@@ -1,0 +1,6 @@
+defaults:
+  - /dataset/processed/ikem@_here_
+  - _self_
+
+tissue_mask_uri: mlflow-artifacts:/86/13359cdd5d1a47ddabc352b9aa0d7635/artifacts/tissue_masks # TODO update URI
+qc_mask_uri: mlflow-artifacts:/86/98443fe2b67445d5a56598bff15b7f27/artifacts # TODO update URI
