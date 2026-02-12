@@ -1,6 +1,6 @@
 # @package _global_
 
 defaults:
-  - /data/tiled/ftn/2_224
+  - /dataset/tiled/ftn/2_224@dataset
   - /preprocessing/tile_encoder/virchow2
   - _self_

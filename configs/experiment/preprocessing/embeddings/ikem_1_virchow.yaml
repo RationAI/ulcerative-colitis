@@ -1,6 +1,6 @@
 # @package _global_
 
 defaults:
-  - /data/tiled/ikem/1_224
+  - /dataset/tiled/ikem/1_224@dataset
   - /preprocessing/tile_encoder/virchow
   - _self_

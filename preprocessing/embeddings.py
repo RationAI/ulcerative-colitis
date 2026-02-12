@@ -185,7 +185,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     tile_encoder = tile_encoder.to(device)
 
     with torch.no_grad():
-        dataset = load_dataset(config.dataset.uris.values())
+        dataset = load_dataset(config.dataset.tiling_uris.values())
 
         for slide_dataset in tqdm(dataset.generate_datasets()):
             slide_name = str(slide_dataset.slide_metadata["name"])
