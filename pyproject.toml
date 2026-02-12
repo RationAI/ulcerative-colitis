@@ -34,5 +34,4 @@ rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/
 rationai-tiling = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" }
 rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
 rationai-sdk = { git = "https://gitlab.ics.muni.cz/rationai/infrastructure/rationai-sdk-python.git" }
-ratiopath = { git = "https://github.com/RationAI/ratiopath.git", branch = "fix/read-overlay" }
 report = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/tools/report.git" }
