@@ -16,9 +16,6 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
-ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
 def download_slide_tiles(uris: Iterable[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
     slidess, tiless = [], []
     for uri in uris:
@@ -78,7 +75,7 @@ def process_slide(
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    slides, tiles = download_slide_tiles(config.dataset.uris.values())
+    slides, tiles = download_slide_tiles(config.dataset.tiling_uris.values())
     tiles_ref = ray.put(tiles)
 
     with TemporaryDirectory() as output_dir:
@@ -96,4 +93,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()

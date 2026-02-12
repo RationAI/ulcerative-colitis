@@ -5,6 +5,6 @@ defaults:
 mpp: 0.17
 tile_extent: 320
 level: 0
-uris:
+tiling_uris:
   test_preliminary: "mlflow-artifacts:/86/7b9a446145b14965981bbac88e8e2c8b/artifacts/test preliminary - knl_patos" # TODO update URI
   test_final: "mlflow-artifacts:/86/7b9a446145b14965981bbac88e8e2c8b/artifacts/test final - knl_patos" # TODO update URI
