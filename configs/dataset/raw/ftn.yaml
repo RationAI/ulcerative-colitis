@@ -1,0 +1,5 @@
+institution: ftn
+folder: /mnt/data/FTN/colon/IBD_AI
+labels:
+  - IBD_AI_FTN.xlsx
+  - IBD_AI_FTN_doplnek.xlsx

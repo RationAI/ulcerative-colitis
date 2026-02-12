@@ -20,12 +20,12 @@ dependencies = [
     "ray>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
-    "ratiopath",
+    "ratiopath>=1.1.1",
 ]
 
 [dependency-groups]
 dev = ["mypy", "ruff", "ipykernel"]
-run = ["rationai-kube-jobs"]
+job = ["rationai-kube-jobs"]
 report = ["report"]
 
 [tool.uv.sources]

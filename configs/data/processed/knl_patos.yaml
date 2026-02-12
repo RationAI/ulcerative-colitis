@@ -1,5 +1,0 @@
-# @package _global_
-
-dataset:
-  institution: knl_patos
-  uri: mlflow-artifacts:/86/afbcfd43cb3c4fd0b1e9b5dbe7327d91/artifacts/dataset.csv # TODO update URI

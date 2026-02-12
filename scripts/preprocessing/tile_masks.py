@@ -8,10 +8,10 @@ submit_job(
     cpu=64,
     memory="32Gi",
     script=[
-        "git clone https://gitlab.ics.muni.cz/rationai/digital-pathology/pathology/ulcerative-colitis.git workdir",
+        "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        "uv run --active -m preprocessing.tile_masks +data=tiled/.../...",
+        "uv run --active -m preprocessing.tile_masks +dataset=tiled/.../...",
     ],
     storage=[storage.secure.Data],
 )
