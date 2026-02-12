@@ -1,0 +1,11 @@
+defaults:
+  - /dataset/processed_w_masks/ftn@_here_
+  - _self_
+
+mpp: 0.17
+tile_extent: 430
+level: 0
+uris:
+  train: "mlflow-artifacts:/86/de450f835f0d4462a91b35f4a79a500f/artifacts/train - ftn" # TODO update URI
+  test_preliminary: "mlflow-artifacts:/86/de450f835f0d4462a91b35f4a79a500f/artifacts/test preliminary - ftn" # TODO update URI
+  test_final: "mlflow-artifacts:/86/de450f835f0d4462a91b35f4a79a500f/artifacts/test final - ftn" # TODO update URI
