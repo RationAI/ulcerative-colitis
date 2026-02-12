@@ -161,8 +161,6 @@ def save_embeddings(
         slide_tiles_y (torch.Tensor): The y-coordinates of the tiles.
         embeddings_path (Path): The path to save the embeddings to.
     """
-    embeddings_path.parent.mkdir(parents=True, exist_ok=True)
-
     df = pd.DataFrame(
         {
             "x": slide_tiles_x.numpy(),
@@ -178,8 +176,14 @@ def save_embeddings(
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    login(token=os.environ["HF_TOKEN"])
+    hf_token = os.getenv("HF_TOKEN")
+    if not hf_token:
+        raise ValueError(
+            "Hugging Face token not found. Please set the HF_TOKEN environment variable."
+        )
+    login(token=hf_token)
     dest = Path(config.output_dir)
+    dest.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tile_encoder: FoundationModel = hydra.utils.instantiate(config.tile_encoder)
     tile_encoder = tile_encoder.to(device)
@@ -200,7 +204,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
                     slide_dataset,
                     batch_size=config.dataloader.batch_size,
                     num_workers=config.dataloader.num_workers,
-                    persistent_workers=config.dataloader.persistent_workers,
+                    persistent_workers=config.dataloader.persistent_workers
+                    and config.dataloader.num_workers > 0,
                 )
                 slide_tiles_embeddings = torch.zeros(
                     (len(slide_dataset), tile_encoder.embed_dim), dtype=torch.float32

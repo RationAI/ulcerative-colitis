@@ -16,6 +16,7 @@ class LabelMode(Enum):
 
 
 def process_slides(slides: pd.DataFrame, mode: LabelMode | None = None) -> pd.DataFrame:
+    slides = slides.copy()
     match mode:
         case LabelMode.NEUTROPHILS:
             slides["neutrophils"] = slides["nancy_index"] >= 2
