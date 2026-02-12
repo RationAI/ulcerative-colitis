@@ -115,24 +115,24 @@ uris:
           - ${...knl_patos.test_final}
     "2": # level
       ikem: 
-        train: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/train - ikem
-        test_preliminary: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/test preliminary - ikem
-        test_final: mlflow-artifacts:/86/772f1a2adea543b482d3cec12700351e/artifacts/test final - ikem
+        train: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/train - ikem
+        test_preliminary: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/test preliminary - ikem
+        test_final: mlflow-artifacts:/86/847946ac5a88451885b0d35fe48ee2e2/artifacts/test final - ikem
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       ftn: 
-        train: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/train - ftn
-        test_preliminary: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/test preliminary - ftn
-        test_final: mlflow-artifacts:/86/f1ff46e59ae54feb97088b4baf419330/artifacts/test final - ftn
+        train: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/train - ftn
+        test_preliminary: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/test preliminary - ftn
+        test_final: mlflow-artifacts:/86/812db62a640347b2ac21e5949e35dc84/artifacts/test final - ftn
         all:
           - ${..train}
           - ${..test_preliminary}
           - ${..test_final}
       knl_patos: 
-        test_preliminary: mlflow-artifacts:/86/c15d17315af64952a849b21984f728ed/artifacts/test preliminary - knl_patos
-        test_final: mlflow-artifacts:/86/c15d17315af64952a849b21984f728ed/artifacts/test final - knl_patos
+        test_preliminary: mlflow-artifacts:/86/81c63863a2b04ae383632d93c3b25b8c/artifacts/test preliminary - knl_patos
+        test_final: mlflow-artifacts:/86/81c63863a2b04ae383632d93c3b25b8c/artifacts/test final - knl_patos
         all:
           - ${..test_preliminary}
           - ${..test_final}
