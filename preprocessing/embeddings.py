@@ -38,6 +38,26 @@ class ProvGigaPath(FoundationModel):
         return self.module(x)
 
 
+class Virchow(FoundationModel):
+    def __init__(self, name: str) -> None:
+        super().__init__(name, 2560)
+
+        # For this, you need to setup HF_TOKEN=<X> env.variable.
+        self.module = timm.create_model(
+            "hf-hub:paige-ai/Virchow",
+            pretrained=True,
+            mlp_layer=SwiGLUPacked,
+            act_layer=torch.nn.SiLU,
+        ).eval()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        output = self.module(x)
+
+        class_token = output[:, 0]
+        patch_tokens = output[:, 1:]
+        return torch.cat([class_token, patch_tokens.mean(1)], dim=-1)
+
+
 class Virchow2(FoundationModel):
     def __init__(self, name: str) -> None:
         super().__init__(name, 2560)
@@ -60,6 +80,23 @@ class Virchow2(FoundationModel):
 
         # concatenate class token and average pool of patch tokens
         return torch.cat([class_token, patch_tokens.mean(1)], dim=-1)  # size: B x 2560
+
+
+class UNI(FoundationModel):
+    def __init__(self, name: str) -> None:
+        super().__init__(name, 1024)
+
+        # For this, you need to setup HF_TOKEN=<X> env.variable.
+
+        self.module = timm.create_model(
+            "hf-hub:MahmoodLab/uni",
+            pretrained=True,
+            init_values=1e-5,
+            dynamic_img_size=True,
+        ).eval()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.module(x)
 
 
 class UNI2(FoundationModel):
