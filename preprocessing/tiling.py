@@ -20,9 +20,6 @@ from shapely.geometry import box
 from sklearn.model_selection import GroupShuffleSplit
 
 
-ray.init(runtime_env={"excludes": [".git", ".venv"]})
-
-
 QC_SUBFOLDERS = {"blur": "blur_per_pixel", "artifacts": "artifacts_per_pixel"}
 
 
@@ -289,4 +286,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()
