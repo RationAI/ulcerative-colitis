@@ -1,0 +1,97 @@
+from collections.abc import Iterable
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import cast
+
+import hydra
+import mlflow.artifacts
+import numpy as np
+import pandas as pd
+import pyvips
+import ray
+from omegaconf import DictConfig
+from openslide import OpenSlide
+from rationai.masks import process_items, slide_resolution, tile_mask, write_big_tiff
+from rationai.mlkit import autolog, with_cli_args
+from rationai.mlkit.lightning.loggers import MLFlowLogger
+
+
+def download_slide_tiles(uris: Iterable[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    slidess, tiless = [], []
+    for uri in uris:
+        path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
+        slidess.append(pd.read_parquet(Path(path) / "slides.parquet"))
+        tiless.append(pd.read_parquet(Path(path) / "tiles.parquet"))
+
+    slides = pd.concat(slidess).reset_index(drop=True)
+    tiles = pd.concat(tiless).reset_index(drop=True)
+    return slides, tiles
+
+
+@ray.remote(memory=4 * 1024**3)
+def process_slide(
+    slide: pd.Series,
+    tiles: pd.DataFrame,  # tiles are automatically serialized by Ray
+    level: int,
+    output_folder: Path,
+) -> None:
+    with OpenSlide(slide["path"]) as slide_wsi:
+        mask_extent_x, mask_extent_y = slide_wsi.level_dimensions[level]
+        mpp_x, mpp_y = slide_resolution(slide_wsi, level)
+
+    slide_tiles = tiles[tiles["slide_id"] == slide.id]
+
+    blur_slide_tiles = slide_tiles[slide_tiles["blur"] > 0.25]
+    artifacts_slide_tiles = slide_tiles[slide_tiles["artifacts"] > 0.25]
+
+    drop_indices = blur_slide_tiles.index.union(artifacts_slide_tiles.index)
+    slide_tiles = slide_tiles.drop(drop_indices)
+
+    for folder, tiles_subset in [
+        ("blur_tiles", blur_slide_tiles),
+        ("artifacts_tiles", artifacts_slide_tiles),
+        ("clean_tiles", slide_tiles),
+    ]:
+        if tiles_subset.empty:
+            continue
+
+        mask = tile_mask(
+            tiles_subset,
+            tile_extent=(slide["tile_extent_x"], slide["tile_extent_y"]),
+            size=(slide["extent_x"], slide["extent_y"]),
+        )
+        mask = cast("pyvips.Image", pyvips.Image.new_from_array(np.array(mask)))
+        mask = cast(
+            "pyvips.Image",
+            mask.resize(mask_extent_x / mask.width, vscale=mask_extent_y / mask.height),  # type: ignore[reportCallIssue]
+        )
+
+        mask_path = output_folder / folder / f"{Path(slide['path']).stem}.tiff"
+        mask_path.parent.mkdir(parents=True, exist_ok=True)
+        write_big_tiff(mask, mask_path, mpp_x=mpp_x, mpp_y=mpp_y)
+
+
+@with_cli_args(["+preprocessing=tile_masks"])
+@hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
+@autolog
+def main(config: DictConfig, logger: MLFlowLogger) -> None:
+    slides, tiles = download_slide_tiles(config.dataset.tiling_uris.values())
+    tiles_ref = ray.put(tiles)
+
+    with TemporaryDirectory() as output_dir:
+        process_items(
+            (slide for _, slide in slides.iterrows()),
+            process_item=process_slide,
+            fn_kwargs={
+                "tiles": tiles_ref,
+                "level": config.level,
+                "output_folder": Path(output_dir),
+            },
+            max_concurrent=config.max_concurrent,
+        )
+        logger.log_artifacts(local_dir=output_dir, artifact_path=config.artifact_path)
+
+
+if __name__ == "__main__":
+    ray.init(runtime_env={"excludes": [".git", ".venv"]})
+    main()
