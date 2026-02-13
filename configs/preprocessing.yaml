@@ -1,0 +1,9 @@
+# @package _global_
+
+defaults:
+  - base
+  - _self_
+
+dataset: ???
+    
+project_dir: /mnt/projects/inflammatory_bowel_disease/ulcerative_colitis

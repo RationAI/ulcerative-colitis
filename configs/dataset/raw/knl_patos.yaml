@@ -1,0 +1,17 @@
+institution: knl_patos
+folder: /mnt/data/KNL_PATOS/colon/IBD_AI
+# [0-9]{1,5} - case ID (1 to 5 digits) (in year scope)
+# _ - underscore separator
+# 25 - year 2025
+# _ - underscore separator
+# [A-F] - block identifier (A to F)
+# _ - underscore separator
+# HE - stain type
+# (0[1-9]|1[0-2]) - slide number (01 to 12)
+# .czi - file extension
+regex_pattern: ^[0-9]{1,5}_25_[A-F]_HE(0[1-9]|1[0-2])\.czi$
+labels:
+  - IBD_AI_Liberec.xlsx
+  - IBD_AI_Liberec_02.xlsx
+  - IBD_AI_Liberec_10_2025.xlsx
+  - IBD_AI_Liberec_28_10_2025.xlsx

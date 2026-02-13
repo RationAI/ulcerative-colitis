@@ -1,0 +1,7 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - _self_
+
+metadata:
+  experiment_name: Ulcerative Colitis

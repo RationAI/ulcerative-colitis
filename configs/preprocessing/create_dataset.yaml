@@ -1,0 +1,5 @@
+# @package _global_
+
+metadata:
+  run_name: "📂 Dataset Creation: ${dataset.institution}"
+  description: "Create dataset for ${dataset.institution} institution"
