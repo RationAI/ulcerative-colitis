@@ -35,11 +35,11 @@ def process_slide(slide_path: str, level: int, output_path: Path) -> None:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = pd.read_csv(download_artifacts(config.dataset.uri))
+    dataset = pd.read_csv(download_artifacts(config.dataset.uri))
 
     with TemporaryDirectory() as output_dir:
         process_items(
-            df["path"],
+            dataset["path"],
             process_item=process_slide,
             fn_kwargs={
                 "level": config.level,
@@ -52,6 +52,5 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
-    ray.init(runtime_env={"excludes": [".git", ".venv"]})
-    main()
-    ray.shutdown()
+    with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
+        main()
