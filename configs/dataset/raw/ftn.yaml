@@ -1,5 +1,10 @@
 institution: ftn
 folder: /mnt/data/FTN/colon/IBD_AI
+# [0-9]{1,6} - case ID (1 to 6 digits) (in year scope)
+# _ - underscore separator
+# 2[0-5] - year (2020 to 2025)
+# .czi - file extension
+regex_pattern: ^[0-9]{1,6}_2[0-5]\.czi$
 labels:
   - IBD_AI_FTN.xlsx
   - IBD_AI_FTN_doplnek.xlsx
