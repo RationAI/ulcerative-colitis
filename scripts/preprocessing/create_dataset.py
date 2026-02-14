@@ -11,7 +11,7 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        "uv run -m preprocessing.create_dataset +data=raw/...",
+        "uv run -m preprocessing.create_dataset +dataset=raw/...",
     ],
     storage=[storage.secure.DATA],
 )
