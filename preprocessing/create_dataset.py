@@ -32,7 +32,7 @@ def get_labels(folder_path: Path, labels: list[str]) -> pd.DataFrame:
     return labels_df
 
 
-def get_slides(folder_path: Path, pattern: re.Pattern) -> pd.DataFrame:
+def get_slides(folder_path: Path, pattern: re.Pattern[str]) -> pd.DataFrame:
     slides = []
     for slide_path in folder_path.iterdir():
         if not pattern.fullmatch(slide_path.name):
@@ -48,7 +48,7 @@ def get_slides(folder_path: Path, pattern: re.Pattern) -> pd.DataFrame:
 
 
 def create_dataset(
-    folder: str, labels: list[str], institution: str, pattern: re.Pattern
+    folder: str, labels: list[str], institution: str, pattern: re.Pattern[str]
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
     folder_path = Path(folder)
     labels_df = get_labels(folder_path, labels)
