@@ -3,10 +3,10 @@ from tempfile import TemporaryDirectory
 from typing import cast
 
 import hydra
-import mlflow.artifacts
 import pandas as pd
 import pyvips
 import ray
+from mlflow.artifacts import download_artifacts
 from omegaconf import DictConfig
 from openslide import OpenSlide
 from rationai.masks import (
@@ -31,21 +31,15 @@ def process_slide(slide_path: str, level: int, output_path: Path) -> None:
     write_big_tiff(mask, path=mask_path, mpp_x=mpp_x, mpp_y=mpp_y)
 
 
-def download_dataset(uri: str) -> pd.DataFrame:
-    path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
-    df = pd.read_csv(path)
-    return df
-
-
 @with_cli_args(["+preprocessing=tissue_masks"])
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = download_dataset(config.dataset.uri)
+    df = pd.read_csv(download_artifacts(config.dataset.uri))
 
     with TemporaryDirectory() as output_dir:
         process_items(
-            df["path"].to_list(),
+            df["path"],
             process_item=process_slide,
             fn_kwargs={
                 "level": config.level,
@@ -60,3 +54,4 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 if __name__ == "__main__":
     ray.init(runtime_env={"excludes": [".git", ".venv"]})
     main()
+    ray.shutdown()
