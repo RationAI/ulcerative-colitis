@@ -1,0 +1,5 @@
+defaults:
+  - /dataset/raw/ftn@_here_
+  - _self_
+
+uri: mlflow-artifacts:/86/d2b2f1835fc647e2ba3639ce606f4768/artifacts/dataset.csv
