@@ -2,4 +2,4 @@ defaults:
   - /dataset/raw/ikem@_here_
   - _self_
 
-uri: mlflow-artifacts:/86/52d0081d60ba4585a16a3bd341d5ab09/artifacts/dataset.csv # TODO update URI
+uri: mlflow-artifacts:/86/7c6e7cc142494d45b6513185318d4462/artifacts/dataset.csv

@@ -9,33 +9,6 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
-REGEX = {
-    # [0-9]{1,5} - case ID (1 to 5 digits) (in year scope)
-    # _ - underscore separator
-    # 2[1-4] - year (2021 to 2024)
-    # _ - underscore separator
-    # HE - stain type
-    # (?:_0[1-6])? - optional underscore and slide number (01 to 06)
-    # .czi - file extension
-    "ikem": re.compile(r"^[0-9]{1,5}_2[1-4]_HE(?:_0[1-6])?\.czi$"),
-    # [0-9]{1,6} - case ID (1 to 6 digits) (in year scope)
-    # _ - underscore separator
-    # 2[0-5] - year (2020 to 2025)
-    # .czi - file extension
-    "ftn": re.compile(r"^[0-9]{1,6}_2[0-5]\.czi"),
-    # [0-9]{1,5} - case ID (1 to 5 digits) (in year scope)
-    # _ - underscore separator
-    # 25 - year 2025
-    # _ - underscore separator
-    # [A-F] - block identifier (A to F)
-    # _ - underscore separator
-    # HE - stain type
-    # (0[1-9]|1[0-2]) - slide number (01 to 12)
-    # .czi - file extension
-    "knl_patos": re.compile(r"^[0-9]{1,5}_25_[A-F]_HE(0[1-9]|1[0-2])\.czi$"),
-}
-
-
 def get_labels(folder_path: Path, labels: list[str]) -> pd.DataFrame:
     dfs = []
     for labels_file in labels:
@@ -59,10 +32,10 @@ def get_labels(folder_path: Path, labels: list[str]) -> pd.DataFrame:
     return labels_df
 
 
-def get_slides(folder_path: Path, institution: str) -> pd.DataFrame:
+def get_slides(folder_path: Path, pattern: re.Pattern[str]) -> pd.DataFrame:
     slides = []
     for slide_path in folder_path.iterdir():
-        if not REGEX[institution].fullmatch(slide_path.name):
+        if not pattern.fullmatch(slide_path.name):
             continue
         case_id = "_".join(slide_path.stem.split("_")[:2])
 
@@ -75,11 +48,11 @@ def get_slides(folder_path: Path, institution: str) -> pd.DataFrame:
 
 
 def create_dataset(
-    folder: str, labels: list[str], institution: str
+    folder: str, labels: list[str], institution: str, pattern: re.Pattern[str]
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
     folder_path = Path(folder)
     labels_df = get_labels(folder_path, labels)
-    slides_df = get_slides(folder_path, institution)
+    slides_df = get_slides(folder_path, pattern)
 
     # IKEM has only case-level labels (FTN has one slide per case)
     on = "case_id" if institution == "ikem" else "slide_id"
@@ -107,7 +80,10 @@ def create_dataset(
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     dataset, missing_slides, missing_labels = create_dataset(
-        config.dataset.folder, config.dataset.labels, config.dataset.institution
+        config.dataset.folder,
+        config.dataset.labels,
+        config.dataset.institution,
+        re.compile(config.dataset.regex_pattern),
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
