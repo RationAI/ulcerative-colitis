@@ -50,7 +50,7 @@ def organize_masks(output_path: Path, subdir: str, mask_prefix: str) -> None:
 
 
 async def qc_main(
-    output_path: str,
+    output_path: Path,
     slides: list[str],
     logger: MLFlowLogger,
     request_timeout: int,
@@ -69,7 +69,7 @@ async def qc_main(
             total=len(slides),
         ):
             if not result.success:
-                with open(Path(output_path) / "qc_errors.log", "a") as log_file:
+                with open(output_path / "qc_errors.log", "a") as log_file:
                     log_file.write(
                         f"Failed to process {result.wsi_path}: {result.error}\n"
                     )
@@ -88,7 +88,7 @@ async def qc_main(
         for f in csvs:
             f.unlink()
 
-        logger.log_artifacts(local_dir=output_path)
+        logger.log_artifacts(local_dir=str(output_path))
 
 
 def download_dataset(uri: str) -> pd.DataFrame:
@@ -108,7 +108,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     asyncio.run(
         qc_main(
-            output_path=output_path.absolute().as_posix(),
+            output_path=output_path,
             slides=df["path"].to_list(),
             logger=logger,
             request_timeout=config.request_timeout,
