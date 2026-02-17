@@ -113,7 +113,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             logger=logger,
             request_timeout=config.request_timeout,
             max_concurrent=config.max_concurrent,
-            qc_parameters=QCParameters(**config.qc_parameters),
+            qc_parameters=config.qc_parameters,
         )
     )
 
