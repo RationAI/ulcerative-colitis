@@ -45,6 +45,7 @@ class DataModule(LightningDataModule):
             case "fit" | "validate":
                 dataset = instantiate(self.datasets["train"])
                 if self.datasets.get("val") is not None:
+                    self.train = dataset
                     self.val = instantiate(self.datasets["val"])
                 else:
                     assert self.kfold_splits is not None and self.k is not None
