@@ -42,13 +42,18 @@ class DataModule(LightningDataModule):
 
     def setup(self, stage: str) -> None:
         match stage:
-            case "fit" | "validatie":
+            case "fit" | "validate":
                 assert self.kfold_splits is not None and self.k is not None
                 dataset = instantiate(self.datasets["train"])
-                kf = KFold(n_splits=self.kfold_splits, random_state=42, shuffle=True)
-                train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k - 1]
-                self.train = create_subset(dataset, train_idx)
-                self.val = create_subset(dataset, val_idx)
+                if self.datasets.get("val") is not None:
+                    self.val = instantiate(self.datasets["val"])
+                else:
+                    kf = KFold(
+                        n_splits=self.kfold_splits, random_state=42, shuffle=True
+                    )
+                    train_idx, val_idx = list(kf.split(range(len(dataset))))[self.k - 1]
+                    self.train = create_subset(dataset, train_idx)
+                    self.val = create_subset(dataset, val_idx)
             case "test":
                 self.test = instantiate(self.datasets["test"])
             case "predict":

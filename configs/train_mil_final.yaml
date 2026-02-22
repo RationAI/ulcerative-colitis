@@ -1,0 +1,58 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.train: tile_embeddings/tile_embeddings
+  - uris
+  - paths
+  - _self_
+
+seed: ${random_seed:}
+mode: fit
+checkpoint: null
+cohort: ???
+data_mode: ???
+level: ???
+foundation: ???
+
+trainer:
+  enable_checkpointing: True
+  max_epochs: 300
+  log_every_n_steps: 5
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      save_top_k: 1
+      monitor: validation/kappa
+      mode: max
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: validation/kappa
+      mode: max
+      patience: 20 
+
+data:
+  batch_size: 8
+  num_workers: 4
+  train:
+    tiling_uris: ${uris.tiling.${level}.${cohort}.train}
+    embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
+    mode: ${data_mode}
+    embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    stride_eq_tile: false
+  val:
+    tiling_uris: ${uris.tiling.${level}.${cohort}.test_preliminary}
+    embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
+    mode: ${data_mode}
+    embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    stride_eq_tile: false
+
+model:
+  _target_: ulcerative_colitis.ulcerative_colitis_attention_mil.UlcerativeColitisModelAttentionMIL
+  lr: 0.00001
+  foundation: ${foundation}
+
+metadata:
+  experiment_name: 'Ulcerative Colitis'
+  run_name: '🏋️‍♂️ Training: ${data_mode} - ${cohort} - ${level} - ${foundation} (final)'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+
