@@ -2,7 +2,7 @@ defaults:
   - hydra: default
   - logger: mlflow
   - /data/datasets@data.train: tile_embeddings/tile_embeddings
-  - /data/dataset@data.val: tile_embeddings/tile_embeddings
+  - /data/datasets@data.val: tile_embeddings/tile_embeddings
   - uris
   - paths
   - _self_
