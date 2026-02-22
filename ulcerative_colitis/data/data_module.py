@@ -33,8 +33,6 @@ class DataModule(LightningDataModule):
         self.kfold_splits = kfold_splits
         self.k = k
 
-        print("K", self.k)
-        print("K-Fold splits", self.kfold_splits)
         if self.kfold_splits is None and self.k is not None:
             raise ValueError("kfold_splits cannot be None if k is set.")
 
@@ -45,11 +43,11 @@ class DataModule(LightningDataModule):
     def setup(self, stage: str) -> None:
         match stage:
             case "fit" | "validate":
-                assert self.kfold_splits is not None and self.k is not None
                 dataset = instantiate(self.datasets["train"])
                 if self.datasets.get("val") is not None:
                     self.val = instantiate(self.datasets["val"])
                 else:
+                    assert self.kfold_splits is not None and self.k is not None
                     kf = KFold(
                         n_splits=self.kfold_splits, random_state=42, shuffle=True
                     )
