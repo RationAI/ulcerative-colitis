@@ -33,6 +33,8 @@ class DataModule(LightningDataModule):
         self.kfold_splits = kfold_splits
         self.k = k
 
+        print("K", self.k)
+        print("K-Fold splits", self.kfold_splits)
         if self.kfold_splits is None and self.k is not None:
             raise ValueError("kfold_splits cannot be None if k is set.")
 
