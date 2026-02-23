@@ -15,7 +15,9 @@ foundation: ???
 level: ???
 K: ???
 
-trainer: {}
+trainer:
+  callbacks:
+    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
 
 data:
   batch_size: 8
@@ -33,7 +35,7 @@ model:
 
 metadata:
   experiment_name: 'Ulcerative Colitis' 
-  run_name: '📏 Testing: ${data_mode} ${cohort} ${foundation} (fold ${K}/5, set=${data.test.stride_eq_tile}) MIL'
+  run_name: '📏 Testing: ${data_mode} - ${cohort} - ${level} - ${foundation} (fold ${K}/5)'
   description: 'Ulcerative Colitis'
   user: AdamK
   hyperparams: {}
