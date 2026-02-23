@@ -110,6 +110,8 @@ class UlcerativeColitisModelAttentionMIL(LightningModule):
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
 
+        return outputs
+
     def predict_step(self, batch: TileEmbeddingsPredictInput) -> Output:  # pylint: disable=arguments-differ
         return self(batch[0])
 

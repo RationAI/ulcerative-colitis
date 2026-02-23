@@ -112,6 +112,8 @@ class UlcerativeColitisModelAttentionMILMulticlass(LightningModule):
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
 
+        return torch.softmax(outputs, dim=-1)
+
     def predict_step(  # pylint: disable=arguments-differ
         self, batch: TileEmbeddingsPredictInput, batch_idx: int, dataloader_idx: int = 0
     ) -> Output:
