@@ -1,0 +1,41 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - /data/datasets@data.test: tile_embeddings/tile_embeddings
+  - paths
+  - uris
+  - _self_
+
+seed: ${random_seed:}
+mode: test
+cohort: ???
+checkpoint: ???
+data_mode: ???
+foundation: ???
+level: ???
+
+trainer:
+  callbacks:
+    - _target_: ulcerative_colitis.callbacks.MLFlowPredictionCallback
+
+data:
+  batch_size: 8
+  num_workers: 4
+  test:
+    mode: ${data_mode}
+    tiling_uris: ${uris.tiling.${level}.${cohort}.test_final}
+    embeddings_uris: ${uris.embeddings.${level}.${cohort}.${foundation}}
+    embeddings_folders: ${paths.embeddings.${level}.${cohort}.${foundation}}
+    stride_eq_tile: false
+
+model:
+  _target_: ulcerative_colitis.ulcerative_colitis_attention_mil.UlcerativeColitisModelAttentionMIL
+  foundation: ${foundation}
+
+metadata:
+  experiment_name: 'Ulcerative Colitis' 
+  run_name: '📏 Testing: ${data_mode} - ${cohort} - ${level} - ${foundation} (final)'
+  description: 'Ulcerative Colitis'
+  user: AdamK
+  hyperparams: {}
+
