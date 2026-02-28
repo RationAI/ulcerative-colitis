@@ -1,0 +1,14 @@
+# @package _global_
+
+splits:
+  train: ???
+  test_preliminary: ???
+  test_final: ???
+
+n_folds: 5
+
+metadata:
+  run_name: "✂️ Dataset spliting: ${dataset.institution}"
+  description: Dataset spliting for ${dataset.institution} dataset.
+  hyperparams: ${splits}
+

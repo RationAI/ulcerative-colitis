@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/knl_patos@dataset
+  - _self_
+
+splits:
+  train: 0.0
+  test_preliminary: 0.5
+  test_final: 0.5
