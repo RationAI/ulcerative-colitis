@@ -19,6 +19,7 @@ dependencies = [
     "ray>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
+    "ratiopath",
 ]
 
 [dependency-groups]
@@ -30,3 +31,4 @@ rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/
 rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" }
 rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
 rationai-sdk = { git = "https://gitlab.ics.muni.cz/rationai/infrastructure/rationai-sdk-python.git" }
+ratiopath = { git = "https://github.com/RationAI/ratiopath.git", branch = "feature/splits" }
