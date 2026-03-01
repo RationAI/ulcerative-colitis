@@ -6,9 +6,10 @@ splits:
   test_final: ???
 
 n_folds: 5
+random_state: 42
 
 metadata:
-  run_name: "✂️ Dataset spliting: ${dataset.institution}"
-  description: Dataset spliting for ${dataset.institution} dataset.
+  run_name: "✂️ Dataset splitting: ${dataset.institution}"
+  description: Dataset splitting for ${dataset.institution} dataset.
   hyperparams: ${splits}
 

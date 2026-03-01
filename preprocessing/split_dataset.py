@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 
 
 def split_dataset(
-    dataset: pd.DataFrame, splits: DictConfig
+    dataset: pd.DataFrame, splits: DictConfig, random_state: int
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     assert isclose(sum(splits.values()), 1.0), "Splits must sum to 1.0"
 
@@ -24,7 +24,7 @@ def split_dataset(
         train, test = train_test_split(
             dataset,
             train_size=splits["train"],
-            random_state=42,
+            random_state=random_state,
             stratify=dataset["nancy"],
             groups=dataset["case_id"],
         )
@@ -37,7 +37,7 @@ def split_dataset(
         test_preliminary, test_final = train_test_split(
             test,
             train_size=preliminary_size,
-            random_state=42,
+            random_state=random_state,
             stratify=test["nancy"],
             groups=test["case_id"],
         )
@@ -45,11 +45,13 @@ def split_dataset(
     return train, test_preliminary, test_final
 
 
-def add_folds(train: pd.DataFrame, n_folds: int) -> pd.DataFrame:
+def add_folds(train: pd.DataFrame, n_folds: int, random_state: int) -> pd.DataFrame:
     if train.empty:
         return train
 
-    splitter = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=42)
+    splitter = StratifiedGroupKFold(
+        n_splits=n_folds, shuffle=True, random_state=random_state
+    )
     train["fold"] = -1
     for fold, (_, val_idx) in enumerate(
         splitter.split(train, y=train["nancy"], groups=train["case_id"])
@@ -64,10 +66,10 @@ def add_folds(train: pd.DataFrame, n_folds: int) -> pd.DataFrame:
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     dataset = pd.read_csv(download_artifacts(config.dataset.uri))
 
-    print("whole dataset", dataset["nancy"].value_counts() / len(dataset))
-
-    train, test_preliminary, test_final = split_dataset(dataset, config.splits)
-    train = add_folds(train, config.n_folds)
+    train, test_preliminary, test_final = split_dataset(
+        dataset, config.splits, config.random_state
+    )
+    train = add_folds(train, config.n_folds, config.random_state)
 
     with TemporaryDirectory() as tmpdir:
         for name, df in (
