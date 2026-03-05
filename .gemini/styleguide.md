@@ -8,9 +8,17 @@
 - **Research context over production validation:** This is research code. Do not suggest adding heavy input validation, complex exception handling, or enterprise-grade defensive programming unless the current logic will explicitly crash the pipeline. Prioritize readability.
 - **Testing:** Do not block PRs or aggressively request unit tests. We do not enforce strict unit testing for this repository.
 
+## 📝 General Comment Style
+- Keep comments **short and actionable**.
+- Prefer **bullet points** over long paragraphs.
+- Point to specific lines or sections when possible.
+- Suggest improvements, not rewrite entire snippets.
+- Avoid repetition of what the code already clearly states.
+- Defer to the repo’s existing conventions unless there’s a clear bug or inconsistency.
+
 ## 🔬 Domain-Specific Guidance (RationAI & ratiopath)
 - **Use `ratiopath`:** This project relies on our library `ratiopath`. 
-  - If you see custom tiling logic, suggest using `ratiopath.tilers`.
+  - If you see custom tiling logic, suggest using `ratiopath.tiling`.
   - If you see custom annotation parsing (ASAP/GeoJSON), suggest using `ratiopath.parsers`.
   - Check if Ray-based distributed processing in `ratiopath` is being used efficiently for large-scale WSI tasks.
 - **WSI Handling:** Verify that `openslide` or `ratiopath` calls use the correct downsample levels and that tile offsets are calculated correctly.
