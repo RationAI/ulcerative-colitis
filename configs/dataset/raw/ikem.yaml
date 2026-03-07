@@ -1,5 +1,13 @@
 institution: ikem
 folder: /mnt/data/IKEM/colon/IBD_AI/20x
+# [0-9]{1,5} - case ID (1 to 5 digits) (in year scope)
+# _ - underscore separator
+# 2[1-4] - year (2021 to 2024)
+# _ - underscore separator
+# HE - stain type
+# (?:_0[1-6])? - optional underscore and slide number (01 to 06)
+# .czi - file extension
+regex_pattern: ^[0-9]{1,5}_2[1-4]_HE(?:_0[1-6])?\.czi$
 labels:
   - Fab_IBD_AI_12_2024.csv
   - IBD_AI_2.xlsx

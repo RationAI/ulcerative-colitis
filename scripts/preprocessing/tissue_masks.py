@@ -7,6 +7,7 @@ submit_job(
     public=False,
     cpu=64,
     memory="32Gi",
+    shm="16Gi",
     script=[
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",

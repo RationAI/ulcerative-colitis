@@ -2,4 +2,4 @@ defaults:
   - /dataset/raw/knl_patos@_here_
   - _self_
 
-uri: mlflow-artifacts:/86/afbcfd43cb3c4fd0b1e9b5dbe7327d91/artifacts/dataset.csv # TODO update URI
+uri: mlflow-artifacts:/86/f690f64ded624da9a7150a7a92385aec/artifacts/dataset.csv

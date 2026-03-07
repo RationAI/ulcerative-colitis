@@ -17,10 +17,4 @@ qc_parameters:
 metadata:
   run_name: "🎭 QC Masks: ${dataset.institution}"
   description: Quality control masks for ${dataset.institution} institution
-  hyperparams:
-    mask_level: ${qc_parameters.mask_level}
-    sample_level: ${qc_parameters.sample_level}
-    check_residual: ${qc_parameters.check_residual}
-    check_folding: ${qc_parameters.check_folding}
-    check_focus: ${qc_parameters.check_focus}
-    wb_correction: ${qc_parameters.wb_correction}
+  hyperparams: ${qc_parameters}
