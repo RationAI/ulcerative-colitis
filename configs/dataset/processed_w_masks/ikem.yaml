@@ -2,5 +2,10 @@ defaults:
   - /dataset/processed/ikem@_here_
   - _self_
 
-tissue_mask_uri: mlflow-artifacts:/86/13359cdd5d1a47ddabc352b9aa0d7635/artifacts/tissue_masks # TODO update URI
-qc_mask_uri: mlflow-artifacts:/86/98443fe2b67445d5a56598bff15b7f27/artifacts # TODO update URI
+mlflow_uris:
+  tissue_mask: mlflow-artifacts:/86/94481ac59246471fb874bfb4dccb5e67/artifacts/tissue_masks
+  qc_mask: mlflow-artifacts:/86/65e794b652ab4369aad2e7dbe60eddca/artifacts
+  splits:
+    train: mlflow-artifacts:/86/9a2d8f975bc24dceb5271c5699560a8f/artifacts/train.csv
+    test_preliminary: mlflow-artifacts:/86/9a2d8f975bc24dceb5271c5699560a8f/artifacts/test_preliminary.csv
+    test_final: mlflow-artifacts:/86/9a2d8f975bc24dceb5271c5699560a8f/artifacts/test_final.csv

@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import TypedDict
 
 import hydra
-import mlflow.artifacts
 import pandas as pd
 import rationai
+from mlflow.artifacts import download_artifacts
 from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
@@ -91,17 +91,11 @@ async def qc_main(
         logger.log_artifacts(local_dir=str(output_path))
 
 
-def download_dataset(uri: str) -> pd.DataFrame:
-    path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
-    df = pd.read_csv(path)
-    return df
-
-
 @with_cli_args(["+preprocessing=quality_control"])
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    df = download_dataset(config.dataset.uri)
+    dataset = pd.read_csv(download_artifacts(config.dataset.mlflow_uris.dataset))
 
     output_path = Path(config.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -109,7 +103,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     asyncio.run(
         qc_main(
             output_path=output_path,
-            slides=df["path"].to_list(),
+            slides=dataset["path"].to_list(),
             logger=logger,
             request_timeout=config.request_timeout,
             max_concurrent=config.max_concurrent,

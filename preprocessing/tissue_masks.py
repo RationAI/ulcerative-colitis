@@ -35,7 +35,7 @@ def process_slide(slide_path: str, level: int, output_path: Path) -> None:
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    dataset = pd.read_csv(download_artifacts(config.dataset.uri))
+    dataset = pd.read_csv(download_artifacts(config.dataset.mlflow_uris.dataset))
 
     with TemporaryDirectory() as output_dir:
         process_items(

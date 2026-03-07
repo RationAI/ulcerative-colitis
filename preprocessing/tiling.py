@@ -1,4 +1,3 @@
-from math import isclose
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -17,7 +16,6 @@ from ratiopath.tiling.utils import row_hash
 from ray.data.expressions import col
 from shapely import Polygon
 from shapely.geometry import box
-from sklearn.model_selection import GroupShuffleSplit
 
 
 QC_BLUR_MEAN_COLUMN = "mean_coverage(Piqe)"
@@ -39,59 +37,6 @@ LO_MEM: _RayMemResources = {"memory": 128 * 1024**2}
 HI_MEM: _RayMemResources = {"memory": 256 * 1024**2}
 
 
-def download_dataset(uri: str) -> pd.DataFrame:
-    path = mlflow.artifacts.download_artifacts(artifact_uri=uri)
-    df = pd.read_csv(path, index_col="slide_id")
-    return df
-
-
-def train_test_split_groups(
-    df: pd.DataFrame,
-    train_size: float | None = None,
-    test_size: float | None = None,
-    random_state: int | None = None,
-    groups: pd.Series | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    splitter = GroupShuffleSplit(
-        1, train_size=train_size, test_size=test_size, random_state=random_state
-    )
-    train_idx, test_idx = next(splitter.split(df, groups=groups))
-    return df.iloc[train_idx], df.iloc[test_idx]
-
-
-def split_dataset(
-    dataset: pd.DataFrame, splits: dict[str, float], random_state: int = 42
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    assert isclose(
-        splits["train"] + splits["test_preliminary"] + splits["test_final"], 1.0
-    ), "Splits must sum to 1.0"
-
-    if splits["train"] == 0.0:
-        train = pd.DataFrame(columns=dataset.columns)
-        test = dataset
-    else:
-        train, test = train_test_split_groups(
-            dataset,
-            train_size=splits["train"],
-            groups=dataset["case_id"],
-            random_state=random_state,
-        )
-
-    if splits["test_preliminary"] == 0.0:
-        test_preliminary = pd.DataFrame(columns=test.columns)
-        test_final = test
-    else:
-        preliminary_size = splits["test_preliminary"] / (1.0 - splits["train"])
-        test_preliminary, test_final = train_test_split_groups(
-            test,
-            train_size=preliminary_size,
-            groups=test["case_id"],
-            random_state=random_state,
-        )
-
-    return train, test_preliminary, test_final
-
-
 def add_nancy_index(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     row["nancy_index"] = df.loc[Path(row["path"]).stem, "nancy"]
     return row
@@ -103,6 +48,11 @@ def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
     row["blur_mean"] = qc_df[QC_BLUR_MEAN_COLUMN]
     row["artifacts_mean"] = qc_df[QC_ARTIFACTS_MEAN_COLUMN]
 
+    return row
+
+
+def add_fold(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
+    row["fold"] = df.loc[Path(row["path"]).stem, "fold"]
     return row
 
 
@@ -178,15 +128,13 @@ def select(row: dict[str, Any]) -> dict[str, Any]:
 
 def tiling(
     df: pd.DataFrame,
-    qc_mask_uri: str,
-    tissue_mask_uri: str,
+    qc_folder: Path,
+    tissue_folder: Path,
     tile_extent: int,
     stride: int,
     mpp: float,
     tissue_threshold: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    qc_folder = Path(mlflow.artifacts.download_artifacts(qc_mask_uri))
-    tissue_folder = Path(mlflow.artifacts.download_artifacts(tissue_mask_uri))
     qc_df = pd.read_csv(qc_folder / "qc_metrics.csv", index_col="slide_name")
     paths = df["path"].tolist()
 
@@ -196,6 +144,9 @@ def tiling(
         .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
         .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
     )
+
+    if "fold" in df.columns:
+        slides = slides.map(add_fold, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
 
     tissue_roi = create_tissue_roi(tile_extent)
     qc_roi = create_qc_roi(tile_extent)
@@ -261,22 +212,18 @@ def tiling(
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    dataset = download_dataset(config.dataset.uri)
+    qc_folder = Path(
+        mlflow.artifacts.download_artifacts(config.dataset.mlflow_uris.qc_mask)
+    )
+    tissue_folder = Path(
+        mlflow.artifacts.download_artifacts(config.dataset.mlflow_uris.tissue_mask)
+    )
 
-    train, test_preliminary, test_final = split_dataset(dataset, config.splits)
-
-    for df, name in [
-        (train, "train"),
-        (test_preliminary, "test preliminary"),
-        (test_final, "test final"),
-    ]:
-        if df.empty:
-            continue
-
+    for name, df in config.dataset.mlflow_uris.splits.items():
         df_slides, df_tiles = tiling(
             df,
-            qc_mask_uri=config.dataset.qc_mask_uri,
-            tissue_mask_uri=config.dataset.tissue_mask_uri,
+            qc_folder=qc_folder,
+            tissue_folder=tissue_folder,
             tile_extent=config.tile_extent,
             stride=config.stride,
             mpp=config.mpp,

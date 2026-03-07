@@ -1,17 +1,12 @@
 # @package _global_
 
-mpp: ???
-tile_extent: ???
-stride: ???
+mpp: 1.55 # level 2
+tile_extent: 224
+stride: 112
 tissue_threshold: 0.5
 
-splits:
-  train: ???
-  test_preliminary: ???
-  test_final: ???
-
 metadata:
-  run_name: "🧱 Tiling: ${dataset.institution} ${tile_extent}"
+  run_name: "🧱 Tiling: ${dataset.institution}"
   description: Tile extraction for ${dataset.institution} institution with tile extent ${tile_extent}
   hyperparams:
     mpp: ${mpp}
