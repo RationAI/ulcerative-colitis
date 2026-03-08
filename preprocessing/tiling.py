@@ -219,9 +219,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         mlflow.artifacts.download_artifacts(config.dataset.mlflow_uris.tissue_mask)
     )
 
-    for name, df in config.dataset.mlflow_uris.splits.items():
+    for name, split_uri in config.dataset.mlflow_uris.splits.items():
+        split = pd.read_csv(mlflow.artifacts.download_artifacts(split_uri))
         df_slides, df_tiles = tiling(
-            df,
+            split,
             qc_folder=qc_folder,
             tissue_folder=tissue_folder,
             tile_extent=config.tile_extent,
