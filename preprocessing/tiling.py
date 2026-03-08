@@ -220,7 +220,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     )
 
     for name, split_uri in config.dataset.mlflow_uris.splits.items():
-        split = pd.read_csv(mlflow.artifacts.download_artifacts(split_uri))
+        split = pd.read_csv(
+            mlflow.artifacts.download_artifacts(split_uri), index_col="slide_id"
+        )
+
         df_slides, df_tiles = tiling(
             split,
             qc_folder=qc_folder,
