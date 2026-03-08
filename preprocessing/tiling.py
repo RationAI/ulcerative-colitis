@@ -6,8 +6,7 @@ import mlflow.artifacts
 import pandas as pd
 import ray
 from omegaconf import DictConfig
-from rationai.mlkit import with_cli_args
-from rationai.mlkit.autolog import autolog
+from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from rationai.tiling.writers import save_mlflow_dataset
 from ratiopath.ray import read_slides
