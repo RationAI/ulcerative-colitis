@@ -99,7 +99,7 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def extract_coverages(row: dict[str, Any], *cols) -> dict[str, Any]:
+def extract_coverages(row: dict[str, Any], *cols: str) -> dict[str, Any]:
     for c in cols:
         overlap = row[f"{c}_overlap"]
         zero_overlap = overlap.get("0", 0)
@@ -140,19 +140,19 @@ def tiling(
     slides = (
         read_slides(paths, tile_extent=tile_extent, stride=stride, mpp=mpp)
         .map(row_hash, **LO_CPU, **LO_MEM)
-        .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(add_nancy_index, fn_args=(df,), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
+        .map(qc_agg, fn_args=(qc_df,), **HI_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
     )
 
     if "fold" in df.columns:
-        slides = slides.map(add_fold, fn_args=(df,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        slides = slides.map(add_fold, fn_args=(df,), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
 
     tissue_roi = create_tissue_roi(tile_extent)
     qc_roi = create_qc_roi(tile_extent)
 
     tiles = (
         slides.map(
-            add_mask_paths,  # type: ignore[reportArgumentType]
+            add_mask_paths,  # pyright: ignore[reportArgumentType]
             fn_args=(qc_folder, tissue_folder),
             **LO_CPU,
             **LO_MEM,
@@ -168,12 +168,12 @@ def tiling(
                 col("tile_y"),
                 col("mpp_x"),
                 col("mpp_y"),
-            ),  # type: ignore[reportCallIssue]
+            ),  # pyright: ignore[reportCallIssue]
             **HI_CPU,
             **HI_MEM,
         )
-        .map(extract_coverages, fn_args=("tissue",), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
-        .filter(filter_tissue, fn_args=(tissue_threshold,), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(extract_coverages, fn_args=("tissue",), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
+        .filter(filter_tissue, fn_args=(tissue_threshold,), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
         .with_column(
             "blur_overlap",
             tile_overlay_overlap(
@@ -183,7 +183,7 @@ def tiling(
                 col("tile_y"),
                 col("mpp_x"),
                 col("mpp_y"),
-            ),  # type: ignore[reportCallIssue]
+            ),  # pyright: ignore[reportCallIssue]
             **HI_CPU,
             **HI_MEM,
         )
@@ -196,11 +196,11 @@ def tiling(
                 col("tile_y"),
                 col("mpp_x"),
                 col("mpp_y"),
-            ),  # type: ignore[reportCallIssue]
+            ),  # pyright: ignore[reportCallIssue]
             **HI_CPU,
             **HI_MEM,
         )
-        .map(extract_coverages, fn_args=("blur", "artifacts"), **LO_CPU, **LO_MEM)  # type: ignore[reportArgumentType]
+        .map(extract_coverages, fn_args=("blur", "artifacts"), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
         .map(select, **LO_CPU, **LO_MEM)
     )
 
