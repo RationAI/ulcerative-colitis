@@ -1,0 +1,11 @@
+defaults:
+  - /dataset/processed_w_masks/ikem@_here_
+  - _self_
+
+mpp: 0.52
+tile_extent: 224
+level: 1
+tiling_uris:
+  train: "mlflow-artifacts:/86/ece822e7c0e3416f97212267c773c8ac/artifacts/train - ikem" # TODO update URI
+  test_preliminary: "mlflow-artifacts:/86/ece822e7c0e3416f97212267c773c8ac/artifacts/test preliminary - ikem" # TODO update URI
+  test_final: "mlflow-artifacts:/86/ece822e7c0e3416f97212267c773c8ac/artifacts/test final - ikem" # TODO update URI
