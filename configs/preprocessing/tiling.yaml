@@ -1,0 +1,15 @@
+# @package _global_
+
+mpp: 1.55 # level 2
+tile_extent: 224
+stride: 112
+tissue_threshold: 0.5
+
+metadata:
+  run_name: "🧱 Tiling: ${dataset.institution}"
+  description: Tile extraction for ${dataset.institution} institution with tile extent ${tile_extent}
+  hyperparams:
+    mpp: ${mpp}
+    tile_extent: ${tile_extent}
+    stride: ${stride}
+    tissue_threshold: ${tissue_threshold}

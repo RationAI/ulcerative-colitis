@@ -1,0 +1,10 @@
+defaults:
+  - /dataset/processed/knl_patos@_here_
+  - _self_
+
+mlflow_uris:
+  tissue_mask: mlflow-artifacts:/86/6cdfa5ce4f7242a9b2bb394bfd5ed705/artifacts/tissue_masks
+  qc_mask: mlflow-artifacts:/86/7cc5586efbca4ecd8f7ac2847b4ee199/artifacts
+  splits:
+    test_preliminary: mlflow-artifacts:/86/4d517fd564c741ec8e14679a340ebcb0/artifacts/test_preliminary.csv
+    test_final: mlflow-artifacts:/86/4d517fd564c741ec8e14679a340ebcb0/artifacts/test_final.csv

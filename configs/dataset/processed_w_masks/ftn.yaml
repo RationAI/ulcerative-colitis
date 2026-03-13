@@ -1,0 +1,11 @@
+defaults:
+  - /dataset/processed/ftn@_here_
+  - _self_
+
+mlflow_uris:
+  tissue_mask: mlflow-artifacts:/86/17149d1de7014112aba3a252a76d10bc/artifacts/tissue_masks
+  qc_mask: mlflow-artifacts:/86/d2301fc279c94682a639583731c2fded/artifacts
+  splits:
+    train: mlflow-artifacts:/86/a0fa337bf26146dab42062237285737f/artifacts/train.csv
+    test_preliminary: mlflow-artifacts:/86/1c8e7a9b0c5f4d1b8a3e6c9e2c8f0a9/artifacts/test_preliminary.csv
+    test_final: mlflow-artifacts:/86/a0fa337bf26146dab42062237285737f/artifacts/test_final.csv
