@@ -96,5 +96,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ctx = ray.data.DataContext.get_current()
+    ctx.enable_rich_progress_bars = True
+    ctx.use_ray_tqdm = False
+
     with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
         main()
