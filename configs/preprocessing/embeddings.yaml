@@ -1,0 +1,14 @@
+# @package _global_
+
+model: virchow2
+output_dir: ${project_dir}/embeddings/${dataset.institution}
+concurrency: 1024
+batch_size: 2048
+
+metadata:
+  run_name: "🔢 Embeddings: ${dataset.institution}"
+  description: Tile embeddings for ${dataset.institution} using model ${model}
+  hyperparams:
+    model: ${model}
+    concurrency: ${concurrency}
+    batch_size: ${batch_size}
