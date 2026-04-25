@@ -1,5 +1,5 @@
 defaults:
-  - /dataset/processed/ftn@_here_
+  - /dataset/processed_w_masks/ftn@_here_
   - _self_
 
 mlflow_uris:
