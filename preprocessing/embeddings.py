@@ -74,9 +74,11 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ]
         tiles_enriched = tiles.join(slide_info, on="slide_id")
 
-        ds = ray.data.from_pandas(tiles_enriched).repartition(
-            target_num_rows_per_block=config.batch_size
-        )
+        chunks = [
+            tiles_enriched.iloc[i : i + config.batch_size]
+            for i in range(0, len(tiles_enriched), config.batch_size)
+        ]
+        ds = ray.data.from_pandas(chunks)
         ds = ds.map_batches(
             EmbedTiles,
             fn_constructor_args=(config.model, config.concurrency),
