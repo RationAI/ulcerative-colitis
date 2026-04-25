@@ -14,5 +14,5 @@ submit_job(
         "uv sync --frozen",
         "uv run --active -m preprocessing.embeddings +dataset=tiled/...",
     ],
-    storage=[storage.secure.DATA],
+    storage=[storage.secure.DATA, storage.secure.PROJECTS],
 )
