@@ -72,10 +72,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         slide_info = slides.set_index("id")[
             ["path", "level", "tile_extent_x", "tile_extent_y"]
         ]
-        slides = slides.sort_values("path")
-        tiles_enriched = tiles.join(slide_info, on="slide_id").sort_values(
-            ["path", "y", "x"]
-        )
+        tiles_enriched = tiles.join(slide_info, on="slide_id")
 
         ds = ray.data.from_pandas(tiles_enriched).repartition(
             target_num_rows_per_block=config.batch_size
@@ -95,7 +92,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             shutil.rmtree(tiles_parquet_dir)
 
         slides.to_parquet(split_dir / "slides.parquet", index=False)
-        ds.write_parquet(str(tiles_parquet_dir), max_rows_per_file=100_000)
+        ds.write_parquet(str(tiles_parquet_dir))
 
         logger.log_artifacts(str(split_dir), f"{name} - {config.dataset.institution}")
 
