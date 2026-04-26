@@ -72,6 +72,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             read_tiles_batch,  # type: ignore[arg-type]
             batch_format="pandas",
             batch_size=config.batch_size,
+            concurrency=1,
         )
         ds = ds.map(
             EmbedTiles,  # type: ignore[arg-type]
