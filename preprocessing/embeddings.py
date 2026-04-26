@@ -82,6 +82,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             compute=ray.data.ActorPoolStrategy(
                 max_tasks_in_flight_per_actor=config.concurrency
             ),
+            memory=224 * 224 * 224 * 3 * 10,
             max_concurrency=config.concurrency,
         )
 
