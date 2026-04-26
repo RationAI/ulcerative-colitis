@@ -74,7 +74,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             read_tiles_batch,  # type: ignore[arg-type]
             batch_format="pandas",
             batch_size=config.batch_size,
-            ray_remote_args={"memory": config.batch_size * 224 * 224 * 3 * 2},
+            memory=config.batch_size * 224 * 224 * 3 * 2,
         )
         ds = ds.map(
             EmbedTiles,  # type: ignore[arg-type]
