@@ -38,6 +38,7 @@ class EmbedTiles:
 
     def __call__(self, batch: pd.DataFrame) -> pd.DataFrame:
         tile_images: list[Image.Image] = []
+        tile_indices: list[int] = []
         batch = batch.reset_index(drop=True)
 
         for path, group in batch.groupby("path"):
@@ -50,14 +51,15 @@ class EmbedTiles:
                 "level": pa.array(group["level"].tolist()),
             }
             tiles = read_openslide_tiles(path, **kwargs)
-            for i in range(len(group)):
+            for i, idx in enumerate(group.index):
                 tile_images.append(Image.fromarray(tiles[i]))
+                tile_indices.append(idx)
 
         embeddings = asyncio.run(self._embed_all(tile_images))
 
         return batch.drop(
             columns=["path", "level", "tile_extent_x", "tile_extent_y"]
-        ).assign(embedding=pd.Series(list(embeddings)))
+        ).assign(embedding=pd.Series(embeddings, index=tile_indices))
 
 
 @with_cli_args(["+preprocessing=embeddings"])
