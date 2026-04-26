@@ -6,10 +6,10 @@ import hydra
 import mlflow.artifacts
 import pandas as pd
 import pyarrow as pa
-import rationai
 import ray
 from omegaconf import DictConfig
 from PIL import Image
+from rationai import AsyncClient
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ratiopath.tiling.read_slide_tiles import read_openslide_tiles
@@ -24,7 +24,7 @@ class EmbedTiles:
     async def _embed_all(self, images: list[Image.Image]) -> list[list[float]]:
         semaphore = asyncio.Semaphore(self.concurrency)
 
-        async with rationai.AsyncClient() as client:
+        async with AsyncClient() as client:
 
             async def embed_one(img: Image.Image) -> list[float]:
                 async with semaphore:
@@ -57,7 +57,7 @@ class EmbedTiles:
 
         return batch.drop(
             columns=["path", "level", "tile_extent_x", "tile_extent_y"]
-        ).assign(embedding=list(embeddings))  # type: ignore[call-overload]
+        ).assign(embedding=pd.Series(list(embeddings)))
 
 
 @with_cli_args(["+preprocessing=embeddings"])
