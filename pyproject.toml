@@ -17,7 +17,7 @@ dependencies = [
     "rationai-mlkit",
     "rationai-masks",
     "rationai-tiling",
-    "ray>=2.52.1",
+    "ray[data]>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
     "ratiopath>=1.1.2",

@@ -3,7 +3,7 @@
 model: virchow2
 output_dir: ${project_dir}/embeddings/${dataset.institution}
 concurrency: 1024
-batch_size: 2048
+batch_size: 256
 
 metadata:
   run_name: "🔢 Embeddings: ${dataset.institution}"
