@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 
+import httpx
 import hydra
 import mlflow.artifacts
 import pandas as pd
@@ -15,9 +16,13 @@ from ray.data.expressions import col
 
 
 class EmbedTiles:
-    def __init__(self, model: str) -> None:
+    def __init__(self, model: str, concurrency: int) -> None:
         self.model = model
-        self.client = AsyncClient()
+        self.client = AsyncClient(
+            limits=httpx.Limits(
+                max_connections=concurrency, max_keepalive_connections=concurrency
+            )
+        )
 
     async def __call__(self, row: dict) -> dict:
         embedding = (
@@ -63,7 +68,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ds = ds.drop_columns(["path", "level", "tile_extent_x", "tile_extent_y"])
         ds = ds.map(
             EmbedTiles,  # type: ignore[arg-type]
-            fn_constructor_args=(config.model,),
+            fn_constructor_args=(config.model, config.concurrency),
             compute=ray.data.ActorPoolStrategy(
                 max_tasks_in_flight_per_actor=config.concurrency
             ),
