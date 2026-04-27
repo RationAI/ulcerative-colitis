@@ -10,7 +10,7 @@ from rationai import AsyncClient
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ratiopath.tiling.read_slide_tiles import read_slide_tiles
-from ray.data import col
+from ray.data.expressions import col
 
 
 class EmbedTiles:
@@ -20,8 +20,10 @@ class EmbedTiles:
 
     async def __call__(self, row: dict) -> dict:
         embedding = (
-            await self.client.models.embed_image(self.model, row["tile"])
-        ).reshape(-1).tolist()
+            (await self.client.models.embed_image(self.model, row["tile"]))
+            .reshape(-1)
+            .tolist()
+        )
         del row["tile"]
         row["embedding"] = embedding
         return row
