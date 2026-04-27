@@ -54,7 +54,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ).repartition(target_num_rows_per_block=config.batch_size)
         ds = ds.with_column(
             "tile",
-            read_slide_tiles(
+            read_slide_tiles(  # pyright: ignore[reportCallIssue]
                 col("path"),
                 col("x"),
                 col("y"),
@@ -82,7 +82,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             shutil.rmtree(tiles_parquet_dir)
 
         slides.to_parquet(split_dir / "slides.parquet", index=False)
-        ds.write_parquet(str(tiles_parquet_dir))
+        ds.write_parquet(str(tiles_parquet_dir), min_rows_per_file=config.rows_per_file)
 
         logger.log_artifacts(str(split_dir), f"{name} - {config.dataset.institution}")
 
