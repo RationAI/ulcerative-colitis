@@ -43,7 +43,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ]
         tiles_enriched = tiles.join(slide_info, on="slide_id")
 
-        ds = ray.data.from_pandas(tiles_enriched)
+        ds = ray.data.from_pandas(tiles_enriched).repartition(
+            target_num_rows_per_block=config.batch_size
+        )
         ds = ds.with_column(
             "tile",
             read_slide_tiles(
