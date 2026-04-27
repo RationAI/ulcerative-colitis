@@ -4,6 +4,7 @@ from pathlib import Path
 import hydra
 import mlflow.artifacts
 import pandas as pd
+import pyarrow as pa
 import ray
 from omegaconf import DictConfig
 from rationai import AsyncClient
@@ -43,9 +44,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ]
         tiles_enriched = tiles.join(slide_info, on="slide_id")
 
-        ds = ray.data.from_pandas(tiles_enriched).repartition(
-            target_num_rows_per_block=config.batch_size
-        )
+        ds = ray.data.from_arrow(
+            pa.Table.from_pandas(tiles_enriched, preserve_index=False)
+        ).repartition(target_num_rows_per_block=config.batch_size)
         ds = ds.with_column(
             "tile",
             read_slide_tiles(
