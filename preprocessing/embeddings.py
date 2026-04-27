@@ -48,8 +48,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             "tile",
             read_slide_tiles(
                 col("path"),
-                col("tile_x"),
-                col("tile_y"),
+                col("x"),
+                col("y"),
                 col("tile_extent_x"),
                 col("tile_extent_y"),
                 col("level"),
