@@ -3,7 +3,7 @@
 model: virchow2
 output_dir: ${project_dir}/embeddings/${dataset.institution}
 concurrency: 128
-batch_size: 128
+block_size: 128
 rows_per_file: 50000
 
 metadata:
@@ -12,5 +12,5 @@ metadata:
   hyperparams:
     model: ${model}
     concurrency: ${concurrency}
-    batch_size: ${batch_size}
+    block_size: ${block_size}
     rows_per_file: ${rows_per_file}

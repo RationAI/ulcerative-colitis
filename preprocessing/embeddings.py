@@ -52,7 +52,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
         ds = ray.data.from_arrow(
             pa.Table.from_pandas(tiles_enriched, preserve_index=False)
-        ).repartition(target_num_rows_per_block=config.batch_size)
+        ).repartition(target_num_rows_per_block=config.block_size)
         ds = ds.with_column(
             "tile",
             read_slide_tiles(  # pyright: ignore[reportCallIssue]
@@ -71,7 +71,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             EmbedTiles,  # pyright: ignore[reportArgumentType]
             fn_constructor_args=(config.model, config.concurrency),
             compute=ray.data.ActorPoolStrategy(
-                max_tasks_in_flight_per_actor=config.concurrency
+                size=1,
+                max_tasks_in_flight_per_actor=config.concurrency,
             ),
             max_concurrency=config.concurrency,
         )
