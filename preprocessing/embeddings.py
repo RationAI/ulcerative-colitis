@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Any
 
 import httpx
 import hydra
@@ -8,7 +9,7 @@ import pandas as pd
 import pyarrow as pa
 import ray
 from omegaconf import DictConfig
-from rationai import AsyncClient
+from rationai import AsyncClient  # type: ignore[attr-defined]
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ratiopath.tiling.read_slide_tiles import read_slide_tiles
@@ -24,7 +25,7 @@ class EmbedTiles:
             )
         )
 
-    async def __call__(self, row: dict) -> dict:
+    async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
         embedding = (
             (await self.client.models.embed_image(self.model, row["tile"]))
             .reshape(-1)
@@ -67,7 +68,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         )
         ds = ds.drop_columns(["path", "level", "tile_extent_x", "tile_extent_y"])
         ds = ds.map(
-            EmbedTiles,  # type: ignore[arg-type]
+            EmbedTiles,  # pyright: ignore[reportArgumentType]
             fn_constructor_args=(config.model, config.concurrency),
             compute=ray.data.ActorPoolStrategy(
                 max_tasks_in_flight_per_actor=config.concurrency
