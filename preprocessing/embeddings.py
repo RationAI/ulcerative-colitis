@@ -79,7 +79,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
         split_dir = Path(config.output_dir) / str(name)
         split_dir.mkdir(parents=True, exist_ok=True)
-        tiles_parquet_dir = split_dir / "tiles.parquet"
+        tiles_parquet_dir = split_dir / "tiles"
         if tiles_parquet_dir.exists():
             shutil.rmtree(tiles_parquet_dir)
 
