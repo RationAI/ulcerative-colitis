@@ -71,8 +71,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             EmbedTiles,  # pyright: ignore[reportArgumentType]
             fn_constructor_args=(config.model, config.concurrency),
             compute=ray.data.ActorPoolStrategy(
-                size=1,
-                max_tasks_in_flight_per_actor=config.concurrency,
+                max_size=4,
+                max_tasks_in_flight_per_actor=config.concurrency // 4,
             ),
             max_concurrency=config.concurrency,
         )

@@ -2,7 +2,7 @@
 
 model: virchow2
 output_dir: ${project_dir}/embeddings/${dataset.institution}
-concurrency: 128
+concurrency: 512
 block_size: 128
 rows_per_file: 50000
 
