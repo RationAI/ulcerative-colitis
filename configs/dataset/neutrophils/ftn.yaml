@@ -1,0 +1,6 @@
+defaults:
+  - /dataset/tiled/ftn/0_320@_here_
+  - _self_
+
+mlflow_uris:
+  neutrophils: mlflow-artifacts:/86/deee774e63644dd1a5e3d3e15a429224/artifacts/neutrophils
