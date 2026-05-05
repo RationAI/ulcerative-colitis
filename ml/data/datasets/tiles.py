@@ -4,6 +4,7 @@ from typing import Generic, TypeVar
 import pandas as pd
 from albumentations.core.composition import TransformType
 from albumentations.pytorch import ToTensorV2
+from datasets import Dataset as HFDataset
 from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
 from torch.utils.data import Dataset
 
@@ -17,8 +18,8 @@ T = TypeVar("T", bound=TilesSample | TilesPredictSample)
 class _Tiles(Dataset[T], Generic[T]):
     def __init__(
         self,
-        slide_metadata: pd.Series,
-        tiles: pd.DataFrame,
+        slide_metadata: dict,
+        tiles: HFDataset,
         mode: LabelMode | str | None,
         include_labels: bool = True,
         transforms: TransformType | None = None,
@@ -48,8 +49,8 @@ class _Tiles(Dataset[T], Generic[T]):
         image = self.slide_tiles[idx]
         metadata = MetadataTiles(
             slide_id=self.slide_tiles.slide_path.stem,
-            x=self.slide_tiles.tiles.iloc[idx]["x"],
-            y=self.slide_tiles.tiles.iloc[idx]["y"],
+            x=self.slide_tiles.tiles[idx]["x"],
+            y=self.slide_tiles.tiles[idx]["y"],
         )
 
         if self.transforms is not None:
@@ -83,14 +84,14 @@ class Tiles(MetaTiledSlides[TilesSample]):
         self.slides = process_slides(self.slides, self.mode)
         return (
             _Tiles(
-                slide_metadata=slide,
-                tiles=self.filter_tiles_by_slide(slide["id"]),
+                slide_metadata=dict(slide),
+                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
                 mode=self.mode,
                 include_labels=True,
                 transforms=self.transforms,
                 to_tensor=self.to_tensor,
             )
-            for _, slide in self.slides.iterrows()
+            for slide in self.slides
         )
 
 
@@ -109,12 +110,12 @@ class TilesPredict(MetaTiledSlides[TilesPredictSample]):
         self.slides = process_slides(self.slides)
         return (
             _Tiles(
-                slide_metadata=slide,
-                tiles=self.filter_tiles_by_slide(slide["id"]),
+                slide_metadata=dict(slide),
+                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
                 mode=None,
                 include_labels=False,
                 transforms=self.transforms,
                 to_tensor=self.to_tensor,
             )
-            for _, slide in self.slides.iterrows()
+            for slide in self.slides
         )
