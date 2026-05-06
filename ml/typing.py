@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import TypeAlias, TypedDict
 
-import pandas as pd
+from datasets import Dataset as HFDataset
 from torch import Tensor
 
 
@@ -18,21 +18,30 @@ TilesSample: TypeAlias = tuple[Tensor, Tensor, MetadataTiles]
 TilesPredictSample: TypeAlias = tuple[Tensor, MetadataTiles]
 
 
-class MetadataTileEmbeddings(Metadata):
+class MetadataEmbeddings(Metadata):
+    x: int
+    y: int
+
+
+EmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataEmbeddings]
+EmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataEmbeddings]
+
+
+class MetadataBags(Metadata):
     slide_name: str
     slide_path: Path
     level: int
     tile_extent_x: int
     tile_extent_y: int
-    tiles: pd.DataFrame
+    tiles: HFDataset
     x: Tensor  # Tensor[int]
     y: Tensor  # Tensor[int]
 
 
-TileEmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataTileEmbeddings]
-TileEmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataTileEmbeddings]
+BagsSample: TypeAlias = tuple[Tensor, Tensor, MetadataBags]
+BagsPredictSample: TypeAlias = tuple[Tensor, MetadataBags]
 
-TileEmbeddingsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataTileEmbeddings]]
-TileEmbeddingsPredictInput: TypeAlias = tuple[Tensor, list[MetadataTileEmbeddings]]
+BagsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataBags]]
+BagsPredictInput: TypeAlias = tuple[Tensor, list[MetadataBags]]
 
 Output: TypeAlias = Tensor

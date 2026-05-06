@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from typing import Generic, TypeVar
 
-import pandas as pd
 from albumentations.core.composition import TransformType
 from albumentations.pytorch import ToTensorV2
 from datasets import Dataset as HFDataset
