@@ -8,6 +8,7 @@ from rationai.mlkit.data.datasets import MetaTiledSlides, OpenSlideTilesDataset
 from torch.utils.data import Dataset
 
 from ml.data.datasets.labels import LabelMode, get_label, process_slides
+from ml.data.datasets.utils import filter_tiles
 from ml.typing import MetadataTiles, TilesPredictSample, TilesSample
 
 
@@ -73,10 +74,12 @@ class Tiles(MetaTiledSlides[TilesSample]):
         mode: LabelMode | str,
         transforms: TransformType | None = None,
         to_tensor: bool = True,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         self.transforms = transforms
         self.mode = LabelMode(mode)
         self.to_tensor = to_tensor
+        self.thresholds = thresholds or {}
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesSample]]:
@@ -84,7 +87,9 @@ class Tiles(MetaTiledSlides[TilesSample]):
         return (
             _Tiles(
                 slide_metadata=dict(slide),
-                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
+                tiles=filter_tiles(
+                    self.filter_tiles_by_slide(dict(slide)["id"]), self.thresholds
+                ),
                 mode=self.mode,
                 include_labels=True,
                 transforms=self.transforms,
@@ -100,9 +105,11 @@ class TilesPredict(MetaTiledSlides[TilesPredictSample]):
         uris: Iterable[str] | str,
         transforms: TransformType | None = None,
         to_tensor: bool = True,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         self.transforms = transforms
         self.to_tensor = to_tensor
+        self.thresholds = thresholds or {}
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesPredictSample]]:
@@ -110,7 +117,9 @@ class TilesPredict(MetaTiledSlides[TilesPredictSample]):
         return (
             _Tiles(
                 slide_metadata=dict(slide),
-                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
+                tiles=filter_tiles(
+                    self.filter_tiles_by_slide(dict(slide)["id"]), self.thresholds
+                ),
                 mode=None,
                 include_labels=False,
                 transforms=self.transforms,

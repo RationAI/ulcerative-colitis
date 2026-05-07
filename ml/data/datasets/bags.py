@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Generic, TypeVar
@@ -8,6 +9,7 @@ from rationai.mlkit.data.datasets import SlidesTilesLoader
 from torch.utils.data import Dataset
 
 from ml.data.datasets.labels import LabelMode, get_label, process_slides
+from ml.data.datasets.utils import filter_tiles
 from ml.typing import BagsPredictSample, BagsSample, MetadataBags
 
 
@@ -21,19 +23,23 @@ class _Bags(Dataset[T], Generic[T]):
         mode: LabelMode | str | None = None,
         padding: bool = True,
         include_labels: bool = True,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
+        self.thresholds = thresholds or {}
 
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
 
         self._meta = SlidesTilesLoader(uris=tiling_uris)
-        self.tiles = self._meta.tiles
+        self.tiles = filter_tiles(self._meta.tiles, self.thresholds)
+        self._meta.tiles = self.tiles
+        self._meta._slide_id_to_indices = self._build_tile_index(self.tiles)
         self.slides = process_slides(self._meta.slides, self.mode)
 
         self.padding = padding
-        self.max_embeddings = self.tiles["slide_id"].value_counts().max()
+        self.max_embeddings = max(Counter(self.tiles["slide_id"]).values())
 
     def __len__(self) -> int:
         return len(self.slides)
@@ -74,12 +80,14 @@ class Bags(_Bags[BagsSample]):
         tiling_uris: Iterable[str] | str,
         mode: LabelMode | str,
         padding: bool = True,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,
             mode=mode,
             padding=padding,
             include_labels=True,
+            thresholds=thresholds,
         )
 
 
@@ -89,10 +97,12 @@ class BagsPredict(_Bags[BagsPredictSample]):
         tiling_uris: Iterable[str] | str,
         mode: LabelMode | str | None = None,
         padding: bool = True,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,
             mode=mode,
             padding=padding,
             include_labels=False,
+            thresholds=thresholds,
         )

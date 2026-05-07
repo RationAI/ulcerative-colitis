@@ -7,6 +7,7 @@ from rationai.mlkit.data.datasets import MetaTiledSlides
 from torch.utils.data import Dataset
 
 from ml.data.datasets.labels import LabelMode, get_label, process_slides
+from ml.data.datasets.utils import filter_tiles
 from ml.typing import EmbeddingsPredictSample, EmbeddingsSample, MetadataEmbeddings
 
 
@@ -54,8 +55,10 @@ class Embeddings(MetaTiledSlides[EmbeddingsSample]):
         self,
         uris: Iterable[str] | str,
         mode: LabelMode | str,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         self.mode = LabelMode(mode)
+        self.thresholds = thresholds or {}
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Embeddings[EmbeddingsSample]]:
@@ -63,7 +66,9 @@ class Embeddings(MetaTiledSlides[EmbeddingsSample]):
         return (
             _Embeddings(
                 slide_metadata=dict(slide),
-                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
+                tiles=filter_tiles(
+                    self.filter_tiles_by_slide(dict(slide)["id"]), self.thresholds
+                ),
                 mode=self.mode,
                 include_labels=True,
             )
@@ -76,8 +81,10 @@ class EmbeddingsPredict(MetaTiledSlides[EmbeddingsPredictSample]):
         self,
         uris: Iterable[str] | str,
         mode: LabelMode | str,
+        thresholds: dict[str, float] | None = None,
     ) -> None:
         self.mode = LabelMode(mode)
+        self.thresholds = thresholds or {}
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Embeddings[EmbeddingsPredictSample]]:
@@ -85,7 +92,9 @@ class EmbeddingsPredict(MetaTiledSlides[EmbeddingsPredictSample]):
         return (
             _Embeddings(
                 slide_metadata=dict(slide),
-                tiles=self.filter_tiles_by_slide(dict(slide)["id"]),
+                tiles=filter_tiles(
+                    self.filter_tiles_by_slide(dict(slide)["id"]), self.thresholds
+                ),
                 mode=self.mode,
                 include_labels=False,
             )
