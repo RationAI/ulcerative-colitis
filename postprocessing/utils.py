@@ -35,7 +35,9 @@ def load_folds(
 ) -> list[dict[str, pd.DataFrame]]:
     folds_data = []
     for fold in folds:
-        fold_dfs = {task: load_fold_predictions(uris[task][fold], label_map) for task in TASKS}
+        fold_dfs = {
+            task: load_fold_predictions(uris[task][fold], label_map) for task in TASKS
+        }
         common = fold_dfs[TASKS[0]].index
         for df in fold_dfs.values():
             common = common.intersection(df.index)
