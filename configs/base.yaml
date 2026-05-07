@@ -3,5 +3,7 @@ defaults:
   - logger: mlflow
   - _self_
 
+project_dir: /mnt/projects/inflammatory_bowel_disease/ulcerative_colitis
+
 metadata:
   experiment_name: Ulcerative Colitis
