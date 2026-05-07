@@ -1,0 +1,6 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem@dataset
+  - /predictions/ikem@predictions
+  - _self_
