@@ -49,7 +49,7 @@ class _Bags(Dataset[T], Generic[T]):
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
 
         metadata = MetadataBags(
-            slide_id=slide_metadata["id"],
+            slide_name=slide_metadata["id"],
             slide_name=slide_name,
             slide_path=Path(slide_metadata["path"]),
             level=slide_metadata["level"],

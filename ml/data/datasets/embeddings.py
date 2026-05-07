@@ -35,7 +35,7 @@ class _Embeddings(Generic[T], Dataset[T]):
     def __getitem__(self, idx: int) -> EmbeddingsSample | EmbeddingsPredictSample:
         tile = self.tiles[idx]
         metadata = MetadataEmbeddings(
-            slide_id=self.slide_metadata["name"],
+            slide_name=self.slide_metadata["name"],
             x=tile["x"],
             y=tile["y"],
         )

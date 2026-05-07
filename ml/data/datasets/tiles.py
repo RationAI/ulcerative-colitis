@@ -47,7 +47,7 @@ class _Tiles(Dataset[T], Generic[T]):
     def __getitem__(self, idx: int) -> TilesSample | TilesPredictSample:
         image = self.slide_tiles[idx]
         metadata = MetadataTiles(
-            slide_id=self.slide_tiles.slide_path.stem,
+            slide_name=self.slide_tiles.slide_path.stem,
             x=self.slide_tiles.tiles[idx]["x"],
             y=self.slide_tiles.tiles[idx]["y"],
         )
