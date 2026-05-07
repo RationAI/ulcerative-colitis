@@ -6,7 +6,11 @@ from torch import Tensor
 
 
 class Metadata(TypedDict):
-    slide_id: str
+    slide_name: str
+
+
+class MetadataBatch(TypedDict):
+    slide_name: list[str]
 
 
 class MetadataTiles(Metadata):
@@ -14,21 +18,28 @@ class MetadataTiles(Metadata):
     y: int
 
 
+class MetadataTilesBatch(MetadataBatch):
+    x: Tensor
+    y: Tensor
+
+
 TilesSample: TypeAlias = tuple[Tensor, Tensor, MetadataTiles]
 TilesPredictSample: TypeAlias = tuple[Tensor, MetadataTiles]
 
+TilesInput: TypeAlias = tuple[Tensor, Tensor, MetadataTilesBatch]
+TilesPredictInput: TypeAlias = tuple[Tensor, MetadataTilesBatch]
 
-class MetadataEmbeddings(Metadata):
-    x: int
-    y: int
-
+MetadataEmbeddings: TypeAlias = MetadataTiles
+MetadataEmbeddingsBatch: TypeAlias = MetadataTilesBatch
 
 EmbeddingsSample: TypeAlias = tuple[Tensor, Tensor, MetadataEmbeddings]
 EmbeddingsPredictSample: TypeAlias = tuple[Tensor, MetadataEmbeddings]
 
+EmbeddingsInput: TypeAlias = tuple[Tensor, Tensor, MetadataEmbeddingsBatch]
+EmbeddingsPredictInput: TypeAlias = tuple[Tensor, MetadataEmbeddingsBatch]
+
 
 class MetadataBags(Metadata):
-    slide_name: str
     slide_path: Path
     level: int
     tile_extent_x: int
