@@ -20,7 +20,7 @@ from ml.modeling import sigmoid_normalization
 from ml.typing import BagsInput, BagsPredictInput, Output
 
 
-class MILBase(LightningModule):
+class MIL(LightningModule):
     def __init__(
         self, foundation: str, num_classes: int, lr: float | None = None
     ) -> None:
