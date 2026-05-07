@@ -1,0 +1,11 @@
+# @package _global_
+
+folds: ["1/5", "2/5", "3/5", "4/5", "5/5"]
+confidence: ???  # options: entropy, herfindahl, std
+
+metadata:
+  run_name: "Markov Chain Confidence (${confidence}): ${dataset.institution}"
+  description: Markov chain absorption confidence scores for ${dataset.institution}
+  hyperparams:
+    folds: ${folds}
+    confidence: ${confidence}

@@ -1,0 +1,8 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/knl_patos@dataset
+  - /predictions/knl_patos@predictions
+  - _self_
+
+confidence: entropy
