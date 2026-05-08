@@ -35,7 +35,7 @@ class _Bags(Dataset[T], Generic[T]):
         self._meta = SlidesTilesLoader(uris=tiling_uris)
         self.tiles = filter_tiles(self._meta.tiles, self.thresholds)
         self._meta.tiles = self.tiles
-        self._meta._slide_id_to_indices = self._build_tile_index(self.tiles)
+        self._meta._slide_id_to_indices = self._meta._build_tile_index(self.tiles)
         self.slides = process_slides(self._meta.slides, self.mode)
 
         self.padding = padding
