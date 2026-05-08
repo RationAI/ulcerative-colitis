@@ -1,0 +1,9 @@
+defaults:
+  - /ml/test
+  - /ml/model: ordered_regression
+  - /ml/data: tiles
+  - /ml/backbone@model.backbone: vgg16
+  - _self_
+
+metadata:
+  run_name: '📏 Testing: Ordered Regression Tiles - ${data.test.mode} - fold ${val_fold}'

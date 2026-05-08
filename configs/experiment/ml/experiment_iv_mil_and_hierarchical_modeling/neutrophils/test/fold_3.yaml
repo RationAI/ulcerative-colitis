@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_iv_mil_and_hierarchical_modeling/neutrophils/train/fold_3
+  - /ml/test
+  - /checkpoints/experiment_iv_mil_and_hierarchical_modeling/neutrophils/fold_3
+  - _self_
+
+data:
+  test:
+    uris: embeddings/ikem/1_prov-gigapath
+    mode: neutrophils

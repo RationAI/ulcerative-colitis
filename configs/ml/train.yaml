@@ -1,11 +1,8 @@
 defaults:
-  - hydra: default
-  - logger: mlflow
+  - /ml
   - _self_
 
-seed: ${random_seed:}
 mode: fit
-checkpoint: null
 val_fold: ???
 
 trainer:
@@ -21,7 +18,3 @@ trainer:
       monitor: validation/kappa
       mode: max
       patience: 20
-
-metadata:
-  experiment_name: Ulcerative Colitis
-  user: AdamK

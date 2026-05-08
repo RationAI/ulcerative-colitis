@@ -1,0 +1,8 @@
+defaults:
+  - /ml/test
+  - /ml/model: mil
+  - /ml/data: bags
+  - _self_
+
+metadata:
+  run_name: '📏 Testing: MIL Bags - ${data.test.mode} - fold ${val_fold}'

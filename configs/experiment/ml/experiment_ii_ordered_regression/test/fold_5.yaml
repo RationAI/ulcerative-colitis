@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_ii_ordered_regression/train/fold_5
+  - /ml/test
+  - /checkpoints/experiment_ii_ordered_regression/fold_5
+  - _self_
+
+data:
+  test:
+    uris: tiled/ikem/0_512
+    mode: all

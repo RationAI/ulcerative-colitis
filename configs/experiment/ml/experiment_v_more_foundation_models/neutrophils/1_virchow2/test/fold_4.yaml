@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_v_more_foundation_models/neutrophils/1_virchow2/train/fold_4
+  - /ml/test
+  - /checkpoints/experiment_v_more_foundation_models/neutrophils/1_virchow2/fold_4
+  - _self_
+
+data:
+  test:
+    uris: embeddings/ikem/1_virchow2
+    mode: neutrophils

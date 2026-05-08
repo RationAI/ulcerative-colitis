@@ -1,0 +1,12 @@
+defaults:
+  - /experiment/ml/train/classification_tiles
+  - _self_
+
+val_fold: 5
+data:
+  train:
+    uris: tiled/ikem/0_512
+    mode: all
+  val:
+    uris: tiled/ikem/0_512
+    mode: all

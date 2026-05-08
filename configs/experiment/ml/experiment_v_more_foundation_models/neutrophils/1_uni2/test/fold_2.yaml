@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_v_more_foundation_models/neutrophils/1_uni2/train/fold_2
+  - /ml/test
+  - /checkpoints/experiment_v_more_foundation_models/neutrophils/1_uni2/fold_2
+  - _self_
+
+data:
+  test:
+    uris: embeddings/ikem/1_uni2
+    mode: neutrophils

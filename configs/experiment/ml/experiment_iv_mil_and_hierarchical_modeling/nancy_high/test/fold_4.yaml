@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_iv_mil_and_hierarchical_modeling/nancy_high/train/fold_4
+  - /ml/test
+  - /checkpoints/experiment_iv_mil_and_hierarchical_modeling/nancy_high/fold_4
+  - _self_
+
+data:
+  test:
+    uris: embeddings/ikem/1_prov-gigapath
+    mode: nancy_high

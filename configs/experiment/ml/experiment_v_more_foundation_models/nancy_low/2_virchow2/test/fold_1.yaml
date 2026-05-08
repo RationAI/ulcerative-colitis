@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_v_more_foundation_models/nancy_low/2_virchow2/train/fold_1
+  - /ml/test
+  - /checkpoints/experiment_v_more_foundation_models/nancy_low/2_virchow2/fold_1
+  - _self_
+
+data:
+  test:
+    uris: embeddings/ikem/2_virchow2
+    mode: nancy_low

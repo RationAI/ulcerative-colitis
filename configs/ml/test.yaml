@@ -1,0 +1,10 @@
+defaults:
+  - /ml
+  - _self_
+
+mode: test
+checkpoint: ???
+
+trainer:
+  callbacks:
+    - _target_: ml.callbacks.MLFlowPredictionCallback

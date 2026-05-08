@@ -14,3 +14,7 @@ val:
   mode: ???
   val_fold: ${val_fold}
   is_val: true
+test:
+  _target_: ml.data.datasets.Bags
+  uris: ???
+  mode: ???

@@ -1,0 +1,15 @@
+defaults:
+  - /experiment/ml/train/mil_bags
+  - _self_
+
+val_fold: 3
+data:
+  train:
+    uris: embeddings/ikem/1_uni2
+    mode: nancy_low
+  val:
+    uris: embeddings/ikem/1_uni2
+    mode: nancy_low
+model:
+  foundation: uni2
+  num_classes: 3

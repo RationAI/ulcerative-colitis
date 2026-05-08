@@ -1,0 +1,13 @@
+defaults:
+  - /ml/test
+  - /ml/model: classification
+  - /ml/data: embeddings
+  - /ml/backbone@model.backbone: identity
+  - _self_
+
+model:
+  decode_head:
+    _target_: ml.modeling.LinearProbe
+
+metadata:
+  run_name: '📏 Testing: Classification Embeddings - ${data.test.mode} - fold ${val_fold}'
