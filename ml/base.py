@@ -9,7 +9,7 @@ from rationai.mlkit.metrics import (
     MeanAggregator,
 )
 from torch import Tensor
-from torch.nn import Module, ModuleDict
+from torch.nn import Module, ModuleDict, Softmax
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
 from torchmetrics import MetricCollection
@@ -32,6 +32,7 @@ class BaseModule(LightningModule):
         super().__init__()
         self.backbone = backbone
         self.lr = lr
+        self.activation = Softmax(dim=-1)
 
     N_CLASSES = 5
 
@@ -86,16 +87,18 @@ class BaseModule(LightningModule):
         loss = self.criterion(outputs, targets)
         self.log("validation/loss", loss, on_epoch=True, prog_bar=True)
         targets = targets.reshape(-1)
-        self.update_metrics(self.val_metrics, outputs, targets, metadata)
+        probabilities = self.activation(outputs)
+        self.update_metrics(self.val_metrics, probabilities, targets, metadata)
         self.log_metrics(self.val_metrics)
 
     def test_step(self, batch: TilesInput) -> Output:
         inputs, targets, metadata = batch
         outputs = self(inputs)
         targets = targets.reshape(-1)
-        self.update_metrics(self.test_metrics, outputs, targets, metadata)
+        probabilities = self.activation(outputs)
+        self.update_metrics(self.test_metrics, probabilities, targets, metadata)
         self.log_metrics(self.test_metrics)
-        return outputs
+        return probabilities
 
     def predict_step(self, batch: TilesPredictInput) -> Output:
         return self(batch[0])

@@ -10,6 +10,4 @@ class ClassificationHead(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = self.global_pool(x)  # (B, C, 1, 1)
         x = x.flatten(start_dim=-3, end_dim=-1)  # (B, C)
-        x = self.proj(x)
-        x = x.softmax(dim=-1)
-        return x
+        return self.proj(x)

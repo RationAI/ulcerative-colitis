@@ -104,7 +104,7 @@ class MIL(LightningModule):
             self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
 
-    def test_step(self, batch: BagsInput) -> None:
+    def test_step(self, batch: BagsInput) -> Tensor:
         bags, labels, _ = batch
 
         outputs = self(bags)

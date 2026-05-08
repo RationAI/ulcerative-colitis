@@ -1,5 +1,5 @@
 from torch import Tensor
-from torch.nn import Module
+from torch.nn import Identity, Module
 
 from ml.base import BaseModule
 from ml.loss import CumulativeLinkLoss
@@ -14,6 +14,7 @@ class OrderedRegression(BaseModule):
         self.decode_head = RegressionHead()
         self.cumulative_link = LogisticCumulativeLink(num_classes=self.N_CLASSES)
         self.criterion = CumulativeLinkLoss()
+        self.activation = Identity()
         self._build_metrics()
 
     def forward(self, x: Tensor) -> Output:
