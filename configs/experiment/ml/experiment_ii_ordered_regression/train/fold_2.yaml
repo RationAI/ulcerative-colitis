@@ -1,12 +1,13 @@
 defaults:
   - /experiment/ml/train/ordered_regression_tiles
+  - /dataset/tiled/ikem/0_512@ikem
   - _self_
 
 val_fold: 2
 data:
   train:
-    uris: tiled/ikem/0_512
+    uris: ${ikem.mlflow_uris.tiling.train}
     mode: all
   val:
-    uris: tiled/ikem/0_512
+    uris: ${ikem.mlflow_uris.tiling.train}
     mode: all

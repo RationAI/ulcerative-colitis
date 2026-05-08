@@ -6,5 +6,5 @@ defaults:
 
 data:
   test:
-    uris: embeddings/ikem/1_uni2
+    uris: ${ikem.mlflow_uris.embeddings.test_preliminary}
     mode: nancy_low

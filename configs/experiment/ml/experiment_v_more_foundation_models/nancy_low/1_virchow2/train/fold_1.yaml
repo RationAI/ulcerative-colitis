@@ -1,14 +1,15 @@
 defaults:
   - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem/1_virchow2@ikem
   - _self_
 
 val_fold: 1
 data:
   train:
-    uris: embeddings/ikem/1_virchow2
+    uris: ${ikem.mlflow_uris.embeddings.train}
     mode: nancy_low
   val:
-    uris: embeddings/ikem/1_virchow2
+    uris: ${ikem.mlflow_uris.embeddings.train}
     mode: nancy_low
 model:
   foundation: virchow2

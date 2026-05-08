@@ -6,5 +6,5 @@ defaults:
 
 data:
   test:
-    uris: tiled/ikem/0_512
+    uris: ${ikem.mlflow_uris.tiling.test_preliminary}
     mode: all

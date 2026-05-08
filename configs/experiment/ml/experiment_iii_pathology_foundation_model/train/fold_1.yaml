@@ -1,12 +1,13 @@
 defaults:
   - /experiment/ml/train/classification_embeddings
+  - /dataset/embeddings/ikem/1_prov-gigapath@ikem
   - _self_
 
 val_fold: 1
 data:
   train:
-    uris: embeddings/ikem/1_prov-gigapath
+    uris: ${ikem.mlflow_uris.embeddings.train}
     mode: all
   val:
-    uris: embeddings/ikem/1_prov-gigapath
+    uris: ${ikem.mlflow_uris.embeddings.train}
     mode: all
