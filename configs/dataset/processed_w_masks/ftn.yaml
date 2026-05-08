@@ -3,9 +3,9 @@ defaults:
   - _self_
 
 mlflow_uris:
-  tissue_mask: mlflow-artifacts:/86/17149d1de7014112aba3a252a76d10bc/artifacts/tissue_masks
-  qc_mask: mlflow-artifacts:/86/d2301fc279c94682a639583731c2fded/artifacts
+  tissue_mask: ???
+  qc_mask: ???
   splits:
-    train: mlflow-artifacts:/86/a0fa337bf26146dab42062237285737f/artifacts/train.csv
-    test_preliminary: mlflow-artifacts:/86/a0fa337bf26146dab42062237285737f/artifacts/test_preliminary.csv
-    test_final: mlflow-artifacts:/86/a0fa337bf26146dab42062237285737f/artifacts/test_final.csv
+    train: ???
+    test_preliminary: ???
+    test_final: ???

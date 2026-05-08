@@ -4,5 +4,5 @@ defaults:
 
 mlflow_uris:
   embeddings:
-    test_preliminary: mlflow-artifacts:/86/d57c09bc02914ff58ba659b91f34c469/artifacts/test_preliminary - knl_patos
-    test_final: mlflow-artifacts:/86/d57c09bc02914ff58ba659b91f34c469/artifacts/test_final - knl_patos
+    test_preliminary: ???
+    test_final: ???

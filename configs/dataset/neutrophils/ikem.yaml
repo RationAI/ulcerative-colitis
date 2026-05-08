@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 mlflow_uris:
-  neutrophils: mlflow-artifacts:/86/c01579c246ad4f66a3b3cc0d8aa644fe/artifacts/neutrophils
+  neutrophils: ???

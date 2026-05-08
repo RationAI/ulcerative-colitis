@@ -4,6 +4,6 @@ defaults:
 
 mlflow_uris:
   tiling:
-    train: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/train - ftn
-    test_preliminary: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/test_preliminary - ftn
-    test_final: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/test_final - ftn
+    train: ???
+    test_preliminary: ???
+    test_final: ???
