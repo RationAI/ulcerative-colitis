@@ -56,13 +56,17 @@ class Embeddings(MetaTiledSlides[EmbeddingsSample]):
         uris: Iterable[str] | str,
         mode: LabelMode | str,
         thresholds: dict[str, float] | None = None,
+        val_fold: int | None = None,
+        is_val: bool = False,
     ) -> None:
         self.mode = LabelMode(mode)
         self.thresholds = thresholds or {}
+        self.val_fold = val_fold
+        self.is_val = is_val
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Embeddings[EmbeddingsSample]]:
-        self.slides = process_slides(self.slides, self.mode)
+        self.slides = process_slides(self.slides, self.mode, val_fold=self.val_fold, is_val=self.is_val)
         return (
             _Embeddings(
                 slide_metadata=dict(slide),

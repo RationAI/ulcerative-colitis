@@ -24,6 +24,8 @@ class _Bags(Dataset[T], Generic[T]):
         padding: bool = True,
         include_labels: bool = True,
         thresholds: dict[str, float] | None = None,
+        val_fold: int | None = None,
+        is_val: bool = False,
     ) -> None:
         self.mode = LabelMode(mode) if mode is not None else None
         self.include_labels = include_labels
@@ -36,7 +38,7 @@ class _Bags(Dataset[T], Generic[T]):
         self.tiles = filter_tiles(self._meta.tiles, self.thresholds)
         self._meta.tiles = self.tiles
         self._meta._slide_id_to_indices = self._meta._build_tile_index(self.tiles)
-        self.slides = process_slides(self._meta.slides, self.mode)
+        self.slides = process_slides(self._meta.slides, self.mode, val_fold=val_fold, is_val=is_val)
 
         self.padding = padding
         self.max_embeddings = max(Counter(self.tiles["slide_id"]).values())
@@ -81,6 +83,8 @@ class Bags(_Bags[BagsSample]):
         mode: LabelMode | str,
         padding: bool = True,
         thresholds: dict[str, float] | None = None,
+        val_fold: int | None = None,
+        is_val: bool = False,
     ) -> None:
         super().__init__(
             tiling_uris=tiling_uris,
@@ -88,6 +92,8 @@ class Bags(_Bags[BagsSample]):
             padding=padding,
             include_labels=True,
             thresholds=thresholds,
+            val_fold=val_fold,
+            is_val=is_val,
         )
 
 

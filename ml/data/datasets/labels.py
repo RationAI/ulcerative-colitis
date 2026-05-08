@@ -12,7 +12,12 @@ class LabelMode(Enum):
     ALL = "all"
 
 
-def process_slides(slides: HFDataset, mode: LabelMode | None = None) -> HFDataset:
+def process_slides(
+    slides: HFDataset,
+    mode: LabelMode | None = None,
+    val_fold: int | None = None,
+    is_val: bool = False,
+) -> HFDataset:
     match mode:
         case LabelMode.NEUTROPHILS:
             slides = slides.map(lambda x: {"neutrophils": x["nancy_index"] >= 2})
@@ -25,6 +30,12 @@ def process_slides(slides: HFDataset, mode: LabelMode | None = None) -> HFDatase
         case LabelMode.ALL:
             # Keep all labels
             pass
+
+    if val_fold is not None:
+        if is_val:
+            slides = slides.filter(lambda x: x["fold"] == val_fold)
+        else:
+            slides = slides.filter(lambda x: x["fold"] != val_fold)
 
     slides = slides.map(lambda x: {"name": Path(x["path"]).stem})
     return slides
