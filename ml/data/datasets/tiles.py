@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from albumentations.core.composition import TransformType
 from albumentations.pytorch import ToTensorV2
@@ -60,11 +60,11 @@ class _Tiles(Dataset[T], Generic[T]):
             image = self.to_tensor(image=image)["image"]
 
         if not self.include_labels:
-            return image, metadata
+            return cast("T", (image, metadata))
 
         assert self.mode is not None, "Mode must be specified for labels."
         label = get_label(self.slide_metadata, self.mode)
-        return image, label, metadata
+        return cast("T", (image, label, metadata))
 
 
 class Tiles(MetaTiledSlides[TilesSample]):
@@ -72,7 +72,7 @@ class Tiles(MetaTiledSlides[TilesSample]):
     def labels(self) -> list[int]:
         return [
             int(get_label(ds.slide_metadata, self.mode).item())
-            for ds in self.datasets
+            for ds in cast("list[_Tiles[TilesSample]]", self.datasets)
             for _ in range(len(ds))
         ]
 

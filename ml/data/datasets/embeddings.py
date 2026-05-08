@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 import torch
 from datasets import Dataset as HFDataset
@@ -17,7 +17,7 @@ T = TypeVar("T", bound=EmbeddingsSample | EmbeddingsPredictSample)
 class _Embeddings(Generic[T], Dataset[T]):
     def __init__(
         self,
-        slide_metadata: dict,
+        slide_metadata: dict[str, Any],
         tiles: HFDataset,
         mode: LabelMode | str | None,
         include_labels: bool = True,
@@ -43,11 +43,11 @@ class _Embeddings(Generic[T], Dataset[T]):
 
         embedding = torch.tensor(tile["embedding"])
         if not self.include_labels:
-            return embedding, metadata
+            return cast("T", (embedding, metadata))
 
         assert self.mode is not None, "Mode must be specified for labels."
         label = get_label(tile, self.mode)
-        return embedding, label, metadata
+        return cast("T", (embedding, label, metadata))
 
 
 class Embeddings(MetaTiledSlides[EmbeddingsSample]):
@@ -55,7 +55,7 @@ class Embeddings(MetaTiledSlides[EmbeddingsSample]):
     def labels(self) -> list[int]:
         return [
             int(get_label(ds.slide_metadata, self.mode).item())
-            for ds in self.datasets
+            for ds in cast("list[_Embeddings[EmbeddingsSample]]", self.datasets)
             for _ in range(len(ds))
         ]
 

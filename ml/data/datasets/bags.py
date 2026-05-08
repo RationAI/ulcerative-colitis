@@ -1,7 +1,7 @@
 from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, cast
 
 import torch
 import torch.nn.functional as F
@@ -70,12 +70,12 @@ class _Bags(Dataset[T], Generic[T]):
         )
 
         if not self.include_labels:
-            return embeddings, metadata
+            return cast("T", (embeddings, metadata))
 
         assert self.mode is not None
         label = get_label(slide_metadata, self.mode)
 
-        return embeddings, label, metadata
+        return cast("T", (embeddings, label, metadata))
 
 
 class Bags(_Bags[BagsSample]):
