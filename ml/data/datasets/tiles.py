@@ -95,7 +95,9 @@ class Tiles(MetaTiledSlides[TilesSample]):
         super().__init__(uris=(uris,) if isinstance(uris, str) else uris)
 
     def generate_datasets(self) -> Iterable[_Tiles[TilesSample]]:
-        self.slides = process_slides(self.slides, self.mode, val_fold=self.val_fold, is_val=self.is_val)
+        self.slides = process_slides(
+            self.slides, self.mode, val_fold=self.val_fold, is_val=self.is_val
+        )
         return (
             _Tiles(
                 slide_metadata=dict(slide),
