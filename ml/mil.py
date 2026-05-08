@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import cast
+from typing import Any, Literal, cast
 
 import torch
 from lightning import LightningModule
@@ -48,7 +48,9 @@ class MIL(LightningModule):
         self.activation = nn.Sigmoid() if num_classes == 1 else nn.Softmax(dim=-1)
         self.lr = lr
 
-        task = "binary" if num_classes == 1 else "multiclass"
+        task: Literal["binary", "multiclass"] = (
+            "binary" if num_classes == 1 else "multiclass"
+        )
         metrics: dict[str, Metric | MetricCollection] = {
             "AUC": AUROC(task=task, num_classes=num_classes, average="none"),
             "accuracy": Accuracy(task=task, num_classes=num_classes),
@@ -125,8 +127,8 @@ class MIL(LightningModule):
             raise ValueError("Learning rate must be set for training.")
         return Adam(self.parameters(), lr=self.lr)
 
-    def log_dict(self, metrics: MetricCollection, *args, **kwargs) -> None:
-        for name, result in metrics.compute().items():
+    def log_dict(self, dictionary: MetricCollection, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        for name, result in dictionary.compute().items():
             result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):

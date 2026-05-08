@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from albumentations.core.composition import TransformType
 from albumentations.pytorch import ToTensorV2
@@ -18,7 +18,7 @@ T = TypeVar("T", bound=TilesSample | TilesPredictSample)
 class _Tiles(Dataset[T], Generic[T]):
     def __init__(
         self,
-        slide_metadata: dict,
+        slide_metadata: dict[str, Any],
         tiles: HFDataset,
         mode: LabelMode | str | None,
         include_labels: bool = True,
@@ -45,7 +45,7 @@ class _Tiles(Dataset[T], Generic[T]):
     def __len__(self) -> int:
         return len(self.slide_tiles)
 
-    def __getitem__(self, idx: int) -> TilesSample | TilesPredictSample:
+    def __getitem__(self, idx: int) -> T:
         image = self.slide_tiles[idx]
         metadata = MetadataTiles(
             slide_name=self.slide_tiles.slide_path.stem,

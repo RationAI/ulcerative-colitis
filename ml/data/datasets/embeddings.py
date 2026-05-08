@@ -33,7 +33,7 @@ class _Embeddings(Generic[T], Dataset[T]):
     def __len__(self) -> int:
         return len(self.tiles)
 
-    def __getitem__(self, idx: int) -> EmbeddingsSample | EmbeddingsPredictSample:
+    def __getitem__(self, idx: int) -> T:
         tile = self.tiles[idx]
         metadata = MetadataEmbeddings(
             slide_name=self.slide_metadata["name"],

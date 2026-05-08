@@ -1,10 +1,13 @@
+from typing import cast
+
 from lightning import Callback, LightningModule, Trainer
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from rationai.mlkit.lightning.loggers.mlflow import MLFlowLogger
 
-from ml.typing import Output
+from ml.typing import Input, MetadataBags, MetadataBatch, Output
 
 
-def _slide_names(metadata) -> list[str]:
+def _slide_names(metadata: list[MetadataBags] | MetadataBatch) -> list[str]:
     if isinstance(metadata, dict):
         return metadata["slide_name"]
     return [m["slide_name"] for m in metadata]
@@ -15,7 +18,7 @@ class MLFlowPredictionCallback(Callback):
         self,
         trainer: Trainer,
         outputs: Output,
-        batch: tuple,
+        batch: Input,
     ) -> None:
         assert isinstance(trainer.logger, MLFlowLogger)
         trainer.logger.log_table(
@@ -31,7 +34,7 @@ class MLFlowPredictionCallback(Callback):
         trainer: Trainer,
         pl_module: LightningModule,
         outputs: Output,
-        batch: tuple,
+        batch: Input,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
@@ -42,9 +45,9 @@ class MLFlowPredictionCallback(Callback):
         self,
         trainer: Trainer,
         pl_module: LightningModule,
-        outputs: Output,
-        batch: tuple,
+        outputs: STEP_OUTPUT,
+        batch: Input,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        self._on_batch_end(trainer, outputs, batch)
+        self._on_batch_end(trainer, cast("Output", outputs), batch)

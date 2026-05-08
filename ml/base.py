@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 
 from lightning import LightningModule
 from rationai.mlkit.metrics import (
@@ -12,7 +12,7 @@ from torch import Tensor
 from torch.nn import Module, ModuleDict, Softmax
 from torch.optim.adam import Adam
 from torch.optim.optimizer import Optimizer
-from torchmetrics import MetricCollection
+from torchmetrics import Metric, MetricCollection
 from torchmetrics.classification import (
     MulticlassAccuracy,
     MulticlassAUROC,
@@ -32,7 +32,7 @@ class BaseModule(LightningModule):
         super().__init__()
         self.backbone = backbone
         self.lr = lr
-        self.activation = Softmax(dim=-1)
+        self.activation: Module = Softmax(dim=-1)
 
     N_CLASSES = 5
 
@@ -48,7 +48,10 @@ class BaseModule(LightningModule):
             "kappa": MulticlassCohenKappa(num_classes=self.N_CLASSES),
         }
         val_metrics: dict[str, MetricCollection] = {
-            "tiles_all": MetricCollection(metrics, prefix="validation/tiles/"),
+            "tiles_all": MetricCollection(
+                cast("dict[str, Metric | MetricCollection]", metrics),
+                prefix="validation/tiles/",
+            ),
             "slide_max": AggregatedMetricCollection(
                 metrics,
                 aggregator=MaxAggregator(),
@@ -106,7 +109,7 @@ class BaseModule(LightningModule):
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=self.lr)
 
-    def log_dict(self, dictionary: MetricCollection, *args, **kwargs) -> None:
+    def log_dict(self, dictionary: MetricCollection, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
         for name, metric in dictionary.items():
             result = cast("Tensor", metric.compute())
             if result.shape:

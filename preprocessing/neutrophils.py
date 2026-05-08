@@ -23,7 +23,7 @@ class NeutrophilDetector(torch.nn.Module):
                 "torch.nn.Module",
                 torch.hub.load("ultralytics/yolov5", "custom", path=temp_file.name),
             )
-        self.model.conf = confidence
+        self.model.conf = torch.tensor(confidence)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)

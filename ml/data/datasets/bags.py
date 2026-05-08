@@ -48,7 +48,7 @@ class _Bags(Dataset[T], Generic[T]):
     def __len__(self) -> int:
         return len(self.slides)
 
-    def __getitem__(self, idx: int) -> BagsSample | BagsPredictSample:
+    def __getitem__(self, idx: int) -> T:
         slide_metadata = self.slides[idx]
         tiles = self._meta.filter_tiles_by_slide(slide_metadata["id"])
         slide_name = str(slide_metadata["name"])

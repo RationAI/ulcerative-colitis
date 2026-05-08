@@ -1,5 +1,6 @@
 from functools import partial
 from pathlib import Path
+from typing import cast
 
 import hydra
 import mlflow.artifacts
@@ -23,7 +24,8 @@ def add_path(path: str, folder: Path, suffix: str) -> Path:
 
 
 def download_data(datasets: ListConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
-    train_dfs, test_dfs = [], []
+    train_dfs: list[pd.DataFrame] = []
+    test_dfs: list[pd.DataFrame] = []
     for dataset in datasets:
         uris = dataset.mlflow_uris
         neutrophils = Path(mlflow.artifacts.download_artifacts(uris.neutrophils))
@@ -43,11 +45,9 @@ def download_data(datasets: ListConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
                     )
                     .set_index("id")
                     .assign(
-                        tissue_mask=lambda df, f=add_tissue_mask: df["path"].apply(f)  # type: ignore[reportCallIssues]
+                        tissue_mask=lambda df, f=add_tissue_mask: df["path"].map(f),
                     )
-                    .assign(
-                        neutrophils=lambda df, f=add_neutrophils: df["path"].apply(f)  # type: ignore[reportCallIssues]
-                    )
+                    .assign(neutrophils=lambda df, f=add_neutrophils: df["path"].map(f))
                 )
 
     return pd.concat(train_dfs), pd.concat(test_dfs)
@@ -55,10 +55,10 @@ def download_data(datasets: ListConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def get_tissue_size(tissue_mask_path: Path) -> float:
     """Calculate tissue size in mm^2."""
-    image = pyvips.Image.new_from_file(tissue_mask_path)
-    mpp_x = 1000 / image.get("Xres")  # type: ignore[pyvips]
-    mpp_y = 1000 / image.get("Yres")  # type: ignore[pyvips]
-    return image.avg() * image.width * image.height / 255 * mpp_x * mpp_y * 1e-6  # type: ignore[pyvips]
+    image = cast("pyvips.Image", pyvips.Image.new_from_file(tissue_mask_path))
+    mpp_x = 1000 / image.get("Xres")  # pyright: ignore[reportOperatorIssue]
+    mpp_y = 1000 / image.get("Yres")  # pyright: ignore[reportOperatorIssue]
+    return image.avg() * image.width * image.height / 255 * mpp_x * mpp_y * 1e-6  # pyright: ignore[reportOperatorIssue, reportCallIssue, reportOptionalCall]
 
 
 def create_dataset(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:

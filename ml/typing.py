@@ -9,6 +9,13 @@ class Metadata(TypedDict):
     slide_name: str
 
 
+Sample: TypeAlias = tuple[Tensor, Tensor, Metadata]
+PredictSample: TypeAlias = tuple[Tensor, Metadata]
+
+# Input: TypeAlias = tuple[Tensor, Tensor, list[Metadata]]
+# PredictInput: TypeAlias = tuple[Tensor, list[Metadata]]
+
+
 class MetadataBatch(TypedDict):
     slide_name: list[str]
 
@@ -55,4 +62,6 @@ BagsPredictSample: TypeAlias = tuple[Tensor, MetadataBags]
 BagsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataBags]]
 BagsPredictInput: TypeAlias = tuple[Tensor, list[MetadataBags]]
 
+Input: TypeAlias = BagsInput | TilesInput | EmbeddingsInput
+PredictInput: TypeAlias = BagsPredictInput | TilesPredictInput | EmbeddingsPredictInput
 Output: TypeAlias = Tensor

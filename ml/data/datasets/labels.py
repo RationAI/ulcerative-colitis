@@ -1,5 +1,6 @@
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import torch
 from datasets import Dataset as HFDataset
@@ -41,7 +42,7 @@ def process_slides(
     return slides
 
 
-def get_label(slide_metadata: dict, mode: LabelMode) -> torch.Tensor:
+def get_label(slide_metadata: dict[str, Any], mode: LabelMode) -> torch.Tensor:
     match mode:
         case LabelMode.NEUTROPHILS:
             return torch.tensor(slide_metadata["neutrophils"]).float()
