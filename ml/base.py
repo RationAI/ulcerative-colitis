@@ -89,12 +89,13 @@ class BaseModule(LightningModule):
         self.update_metrics(self.val_metrics, outputs, targets, metadata)
         self.log_metrics(self.val_metrics)
 
-    def test_step(self, batch: TilesInput) -> None:
+    def test_step(self, batch: TilesInput) -> Output:
         inputs, targets, metadata = batch
         outputs = self(inputs)
         targets = targets.reshape(-1)
         self.update_metrics(self.test_metrics, outputs, targets, metadata)
         self.log_metrics(self.test_metrics)
+        return outputs
 
     def predict_step(self, batch: TilesPredictInput) -> Output:
         return self(batch[0])

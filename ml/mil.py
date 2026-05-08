@@ -109,12 +109,13 @@ class MIL(LightningModule):
 
         outputs = self(bags)
 
-        self.test_metrics.update(self.activation(outputs), labels)
+        probabilities = self.activation(outputs)
+        self.test_metrics.update(probabilities, labels)
         self.log_dict(
             self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
         )
 
-        return outputs
+        return probabilities
 
     def predict_step(self, batch: BagsPredictInput) -> Output:
         return self.activation(self(batch[0]))
