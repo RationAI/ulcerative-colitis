@@ -1,14 +1,13 @@
 from enum import Enum
 
 import hydra
-import mlflow
 import numpy as np
 import pandas as pd
 from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
-from postprocessing.utils import load_predictions, load_label_map
+from postprocessing.utils import load_label_map, load_predictions
 
 
 class Confidence(Enum):
@@ -65,7 +64,10 @@ def compute_confidence(pi: np.ndarray, mode: Confidence) -> np.ndarray:
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     confidence_mode = Confidence(config.confidence)
     label_map = load_label_map(config.dataset.mlflow_uris.dataset)
-    uris = {task: config.predictions.mlflow_uris[task] for task in ["neutrophils", "nancy_low", "nancy_high"]}
+    uris = {
+        task: config.predictions.mlflow_uris[task]
+        for task in ["neutrophils", "nancy_low", "nancy_high"]
+    }
     data = load_predictions(uris, label_map)
 
     pi = absorption_distribution(

@@ -5,12 +5,13 @@ from typing import cast
 import hydra
 import pandas as pd
 import torch
-from ml.data.datasets import TilesPredict
 from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+from ml.data.datasets import TilesPredict
 
 
 class NeutrophilDetector(torch.nn.Module):

@@ -6,6 +6,7 @@ from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import Trainer, autolog
 
+
 OmegaConf.register_new_resolver(
     "random_seed", lambda: randint(0, 2**31), use_cache=True
 )
