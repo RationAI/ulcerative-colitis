@@ -38,7 +38,9 @@ class _Bags(Dataset[T], Generic[T]):
         self.tiles = filter_tiles(self._meta.tiles, self.thresholds)
         self._meta.tiles = self.tiles
         self._meta._slide_id_to_indices = self._meta._build_tile_index(self.tiles)
-        self.slides = process_slides(self._meta.slides, self.mode, val_fold=val_fold, is_val=is_val)
+        self.slides = process_slides(
+            self._meta.slides, self.mode, val_fold=val_fold, is_val=is_val
+        )
 
         self.padding = padding
         self.max_embeddings = max(Counter(self.tiles["slide_id"]).values())
@@ -77,6 +79,11 @@ class _Bags(Dataset[T], Generic[T]):
 
 
 class Bags(_Bags[BagsSample]):
+    @property
+    def labels(self) -> list[int]:
+        assert self.mode is not None
+        return [int(get_label(dict(slide), self.mode).item()) for slide in self.slides]
+
     def __init__(
         self,
         tiling_uris: Iterable[str] | str,

@@ -51,6 +51,14 @@ class _Embeddings(Generic[T], Dataset[T]):
 
 
 class Embeddings(MetaTiledSlides[EmbeddingsSample]):
+    @property
+    def labels(self) -> list[int]:
+        return [
+            int(get_label(ds.slide_metadata, self.mode).item())
+            for ds in self.datasets
+            for _ in range(len(ds))
+        ]
+
     def __init__(
         self,
         uris: Iterable[str] | str,

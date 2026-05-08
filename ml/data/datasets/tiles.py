@@ -68,6 +68,14 @@ class _Tiles(Dataset[T], Generic[T]):
 
 
 class Tiles(MetaTiledSlides[TilesSample]):
+    @property
+    def labels(self) -> list[int]:
+        return [
+            int(get_label(ds.slide_metadata, self.mode).item())
+            for ds in self.datasets
+            for _ in range(len(ds))
+        ]
+
     def __init__(
         self,
         uris: Iterable[str] | str,

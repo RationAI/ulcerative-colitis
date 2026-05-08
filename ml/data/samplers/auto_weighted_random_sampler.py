@@ -1,26 +1,18 @@
-from collections.abc import Sequence
+from collections import Counter
+from typing import Protocol
 
-import pandas as pd
 from torch.utils.data import WeightedRandomSampler
 
-from ml.data.datasets import (
-    SlideEmbeddingsSubset,
-    TileEmbeddingsSubset,
-    TilesSubset,
-)
+
+class LabeledDataset(Protocol):
+    def __len__(self) -> int: ...
+    @property
+    def labels(self) -> list[int]: ...
 
 
 class AutoWeightedRandomSampler(WeightedRandomSampler):
-    def __init__(
-        self,
-        dataset: TilesSubset | TileEmbeddingsSubset | SlideEmbeddingsSubset,
-        column: str,
-        replacement: bool = True,
-    ) -> None:
-        super().__init__(
-            self._get_weights(dataset.slides[column]), len(dataset), replacement
-        )
-
-    def _get_weights(self, column: pd.Series) -> Sequence[float]:
-        value_counts = column.value_counts()
-        return column.apply(lambda x: 1 / value_counts[x]).tolist()
+    def __init__(self, dataset: LabeledDataset, replacement: bool = True) -> None:
+        labels = dataset.labels
+        counts = Counter(labels)
+        weights = [1.0 / counts[label] for label in labels]
+        super().__init__(weights, len(dataset), replacement)
