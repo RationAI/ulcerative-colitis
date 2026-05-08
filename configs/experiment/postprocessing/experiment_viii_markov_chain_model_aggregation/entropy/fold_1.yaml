@@ -1,0 +1,8 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem@dataset
+  - /predictions/ikem/fold_1@predictions
+  - _self_
+
+confidence: entropy

@@ -1,9 +1,5 @@
 # @package _global_
 
-folds: ["1/5", "2/5", "3/5", "4/5", "5/5"]
-
 metadata:
-  run_name: "Ensembling: ${dataset.institution}"
+  run_name: "🔀 Ensembling: ${dataset.institution}"
   description: Slide-level ensembling for ${dataset.institution}
-  hyperparams:
-    folds: ${folds}

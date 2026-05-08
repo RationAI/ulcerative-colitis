@@ -1,0 +1,16 @@
+defaults:
+  - /experiment/ml/final/neutrophils/train
+  - /ml/test
+  - /checkpoints/final/neutrophils
+  - _self_
+
+data:
+  test:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_final}
+      - ${ftn.mlflow_uris.embeddings.test_final}
+      - ${knl_patos.mlflow_uris.embeddings.test_final}
+    mode: neutrophils
+
+metadata:
+  run_name: '📏 Testing: MIL Bags - neutrophils - final'

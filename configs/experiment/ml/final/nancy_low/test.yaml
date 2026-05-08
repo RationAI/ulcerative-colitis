@@ -1,0 +1,17 @@
+defaults:
+  - /experiment/ml/final/nancy_low/train
+  - /ml/test
+  - /checkpoints/final/nancy_low
+  - _self_
+
+data:
+  test:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_final}
+      - ${ftn.mlflow_uris.embeddings.test_final}
+      - ${knl_patos.mlflow_uris.embeddings.test_final}
+    mode: nancy_low
+
+metadata:
+  run_name: '📏 Testing: MIL Bags - nancy_low - final'
+

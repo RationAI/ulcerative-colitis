@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
-from postprocessing.utils import load_folds, load_label_map
+from postprocessing.utils import load_predictions, load_label_map
 
 
 class Confidence(Enum):
@@ -20,27 +20,27 @@ class Confidence(Enum):
 def absorption_distribution(
     neut_df: pd.DataFrame, nlow_df: pd.DataFrame, nhigh_df: pd.DataFrame
 ) -> np.ndarray:
-    low = np.array(nlow_df["prediction"].tolist())   # (n, 3)
+    low = np.array(nlow_df["prediction"].tolist())  # (n, 3)
     high = np.array(nhigh_df["prediction"].tolist())  # (n, 4)
 
     a = 1.0 - np.array(neut_df["prediction"])  # P(neut -> nancy_low)
-    b = low[:, 2]   # P(nancy_low  -> nancy_high)
-    c = low[:, 0]   # P(nancy_low  -> NHI-0)
+    b = low[:, 2]  # P(nancy_low  -> nancy_high)
+    c = low[:, 0]  # P(nancy_low  -> NHI-0)
     d = high[:, 0]  # P(nancy_high -> nancy_low)
     e = high[:, 1]  # P(nancy_high -> NHI-2)
     f = high[:, 2]  # P(nancy_high -> NHI-3)
 
     denom = 1.0 - b * d
-    flow_low = a + d - a * d          # absorption flow factor for NHI 0/1
+    flow_low = a + d - a * d  # absorption flow factor for NHI 0/1
     flow_high = 1.0 - a * (1.0 - b)  # absorption flow factor for NHI 2/3/4
 
     return np.column_stack(
         [
-            c * flow_low / denom,             # P(NHI-0)
-            low[:, 1] * flow_low / denom,     # P(NHI-1)
-            e * flow_high / denom,            # P(NHI-2)
-            f * flow_high / denom,            # P(NHI-3)
-            high[:, 3] * flow_high / denom,   # P(NHI-4)
+            c * flow_low / denom,  # P(NHI-0)
+            low[:, 1] * flow_low / denom,  # P(NHI-1)
+            e * flow_high / denom,  # P(NHI-2)
+            f * flow_high / denom,  # P(NHI-3)
+            high[:, 3] * flow_high / denom,  # P(NHI-4)
         ]
     )
 
@@ -65,33 +65,30 @@ def compute_confidence(pi: np.ndarray, mode: Confidence) -> np.ndarray:
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     confidence_mode = Confidence(config.confidence)
     label_map = load_label_map(config.dataset.mlflow_uris.dataset)
-    folds: list[str] = list(config.folds)
-    folds_data = load_folds(config.predictions.mlflow_uris, folds, label_map)
+    uris = {task: config.predictions.mlflow_uris[task] for task in ["neutrophils", "nancy_low", "nancy_high"]}
+    data = load_predictions(uris, label_map)
 
-    rows = []
-    for fold, fold_data in zip(folds, folds_data, strict=True):
-        pi = absorption_distribution(
-            fold_data["neutrophils"], fold_data["nancy_low"], fold_data["nancy_high"]
-        )
-        confidence = compute_confidence(pi, confidence_mode)
+    pi = absorption_distribution(
+        data["neutrophils"], data["nancy_low"], data["nancy_high"]
+    )
+    confidence = compute_confidence(pi, confidence_mode)
 
+    rows = [
+        {
+            "slide": slide,
+            "pi_0": pi_row[0],
+            "pi_1": pi_row[1],
+            "pi_2": pi_row[2],
+            "pi_3": pi_row[3],
+            "pi_4": pi_row[4],
+            "confidence": conf,
+        }
         for slide, pi_row, conf in zip(
-            fold_data["neutrophils"].index, pi, confidence, strict=True
-        ):
-            rows.append(
-                {
-                    "slide": slide,
-                    "fold": fold,
-                    "pi_0": pi_row[0],
-                    "pi_1": pi_row[1],
-                    "pi_2": pi_row[2],
-                    "pi_3": pi_row[3],
-                    "pi_4": pi_row[4],
-                    "confidence": conf,
-                }
-            )
+            data["neutrophils"].index, pi, confidence, strict=True
+        )
+    ]
 
-    mlflow.log_table(pd.DataFrame(rows), artifact_file="confidence.json")
+    logger.log_table(pd.DataFrame(rows), artifact_file="confidence.json")
 
 
 if __name__ == "__main__":

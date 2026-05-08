@@ -1,0 +1,27 @@
+defaults:
+  - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem/2_virchow2@ikem
+  - /dataset/embeddings/ftn/2_virchow2@ftn
+  - /dataset/embeddings/knl_patos/2_virchow2@knl_patos
+  - _self_
+
+val_fold: null
+data:
+  train:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.train}
+      - ${ftn.mlflow_uris.embeddings.train}
+      - ${knl_patos.mlflow_uris.embeddings.train}
+    mode: nancy_low
+  val:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_preliminary}
+      - ${ftn.mlflow_uris.embeddings.test_preliminary}
+      - ${knl_patos.mlflow_uris.embeddings.test_preliminary}
+    mode: nancy_low
+model:
+  foundation: virchow2
+  num_classes: 3
+
+metadata:
+  run_name: '🏋️‍♂️ Training: MIL Bags - nancy_low - final'

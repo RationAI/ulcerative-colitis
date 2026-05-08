@@ -15,7 +15,7 @@ def load_label_map(dataset_uri: str) -> dict[str, int]:
     return {str(k): int(v) for k, v in dataset["nancy"].items()}
 
 
-def load_fold_predictions(uri: str, label_map: dict[str, int]) -> pd.DataFrame:
+def load_task_predictions(uri: str, label_map: dict[str, int]) -> pd.DataFrame:
     artifact_path = Path(mlflow.artifacts.download_artifacts(uri))
     if artifact_path.is_dir():
         (artifact_path,) = artifact_path.glob("*.json")
@@ -28,19 +28,12 @@ def load_fold_predictions(uri: str, label_map: dict[str, int]) -> pd.DataFrame:
     return df.set_index("slide")
 
 
-def load_folds(
-    uris: Mapping[str, Mapping[str, str]],
-    folds: list[str],
+def load_predictions(
+    uris: Mapping[str, str],
     label_map: dict[str, int],
-) -> list[dict[str, pd.DataFrame]]:
-    folds_data = []
-    for fold in folds:
-        fold_dfs = {
-            task: load_fold_predictions(uris[task][fold], label_map) for task in TASKS
-        }
-        common = fold_dfs[TASKS[0]].index
-        for df in fold_dfs.values():
-            common = common.intersection(df.index)
-        folds_data.append({k: v.loc[common] for k, v in fold_dfs.items()})
-        print(f"Fold {fold}: {len(common)} slides")
-    return folds_data
+) -> dict[str, pd.DataFrame]:
+    task_dfs = {task: load_task_predictions(uris[task], label_map) for task in TASKS}
+    common = task_dfs[TASKS[0]].index
+    for df in task_dfs.values():
+        common = common.intersection(df.index)
+    return {k: v.loc[common] for k, v in task_dfs.items()}

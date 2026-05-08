@@ -1,8 +1,0 @@
-# @package _global_
-
-defaults:
-  - /dataset/processed/ftn@dataset
-  - /predictions/ftn@predictions
-  - _self_
-
-confidence: herfindahl

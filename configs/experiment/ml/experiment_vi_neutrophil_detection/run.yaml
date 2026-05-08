@@ -2,6 +2,3 @@ defaults:
   - /ml/neutrophils
   - /dataset/neutrophils@dataset: ikem
   - _self_
-
-metadata:
-  run_name: 'Neutrophils ML - ikem - 0_320'
