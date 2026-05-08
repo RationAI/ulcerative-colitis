@@ -1,0 +1,15 @@
+defaults:
+  - /experiment/ml/mil_bags
+  - _self_
+
+val_fold: 5
+data:
+  train:
+    uris: embeddings/ikem/1_virchow2
+    mode: neutrophils
+  val:
+    uris: embeddings/ikem/1_virchow2
+    mode: neutrophils
+model:
+  foundation: virchow2
+  num_classes: 1

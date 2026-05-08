@@ -82,6 +82,15 @@ class DataModule(LightningDataModule):
         )
 
 
+class BagsDataModule(DataModule):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(
+            collate_fn=collate_fn,
+            collate_fn_predict=collate_fn_predict,
+            **kwargs,
+        )
+
+
 def collate_fn(
     batch: list[tuple[Tensor, Tensor, Metadata]],
 ) -> tuple[Tensor, Tensor, list[Metadata]]:

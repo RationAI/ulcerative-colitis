@@ -1,0 +1,9 @@
+defaults:
+  - /dataset/tiled/ikem/1_224@_here_
+  - _self_
+
+mlflow_uris:
+  embeddings:
+    train: mlflow-artifacts:/86/854bd20a112f450cb31843e5c436854b/artifacts/train - ikem
+    test_preliminary: mlflow-artifacts:/86/854bd20a112f450cb31843e5c436854b/artifacts/test_preliminary - ikem
+    test_final: mlflow-artifacts:/86/854bd20a112f450cb31843e5c436854b/artifacts/test_final - ikem

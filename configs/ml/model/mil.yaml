@@ -1,0 +1,4 @@
+_target_: ml.mil.MIL
+foundation: ???
+num_classes: ???
+lr: 1e-5

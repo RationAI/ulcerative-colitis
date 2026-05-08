@@ -1,0 +1,16 @@
+_target_: ml.data.DataModule
+batch_size: 32
+num_workers: 4
+weighted_sampling: true
+train:
+  _target_: ml.data.datasets.Tiles
+  uris: ???
+  mode: ???
+  val_fold: ${val_fold}
+  is_val: false
+val:
+  _target_: ml.data.datasets.Tiles
+  uris: ???
+  mode: ???
+  val_fold: ${val_fold}
+  is_val: true

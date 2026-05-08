@@ -6,9 +6,6 @@ from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import Trainer, autolog
 
-from ml.data import DataModule
-
-
 OmegaConf.register_new_resolver(
     "random_seed", lambda: randint(0, 2**31), use_cache=True
 )
@@ -22,7 +19,6 @@ def main(config: DictConfig, logger: Logger | None) -> None:
     data = hydra.utils.instantiate(
         config.data,
         _recursive_=False,  # to avoid instantiating all the datasets
-        _target_=DataModule,
     )
     model = hydra.utils.instantiate(config.model)
 

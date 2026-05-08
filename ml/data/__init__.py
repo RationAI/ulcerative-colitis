@@ -1,4 +1,4 @@
-from ml.data.data_module import DataModule
+from ml.data.data_module import BagsDataModule, DataModule
 
 
-__all__ = ["DataModule"]
+__all__ = ["BagsDataModule", "DataModule"]

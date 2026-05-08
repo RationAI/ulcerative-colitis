@@ -1,0 +1,13 @@
+defaults:
+  - /ml/train
+  - /ml/model: classification
+  - /ml/data: tiles
+  - /ml/backbone@model.backbone: vgg16
+  - _self_
+
+model:
+  decode_head:
+    _target_: ml.modeling.ClassificationHead
+
+metadata:
+  run_name: 'Classification Tiles - ${data.train.mode} - fold ${val_fold}'

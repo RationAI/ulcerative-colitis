@@ -1,0 +1,7 @@
+# @package _global_
+
+defaults:
+  - /dataset/tiled/ikem/1_224@_here_
+  - _self_
+
+model: prov-gigapath

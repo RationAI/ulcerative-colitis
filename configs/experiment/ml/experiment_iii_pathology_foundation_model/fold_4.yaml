@@ -1,0 +1,12 @@
+defaults:
+  - /experiment/ml/classification_embeddings
+  - _self_
+
+val_fold: 4
+data:
+  train:
+    uris: embeddings/ikem/1_prov-gigapath
+    mode: all
+  val:
+    uris: embeddings/ikem/1_prov-gigapath
+    mode: all

@@ -1,0 +1,27 @@
+defaults:
+  - hydra: default
+  - logger: mlflow
+  - _self_
+
+seed: ${random_seed:}
+mode: fit
+checkpoint: null
+val_fold: ???
+
+trainer:
+  enable_checkpointing: true
+  max_epochs: 300
+  log_every_n_steps: 5
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      save_top_k: 1
+      monitor: validation/kappa
+      mode: max
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: validation/kappa
+      mode: max
+      patience: 20
+
+metadata:
+  experiment_name: Ulcerative Colitis
+  user: AdamK

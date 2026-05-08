@@ -1,0 +1,8 @@
+defaults:
+  - /ml/train
+  - /ml/model: mil
+  - /ml/data: bags
+  - _self_
+
+metadata:
+  run_name: 'MIL Bags - ${data.train.mode} - fold ${val_fold}'

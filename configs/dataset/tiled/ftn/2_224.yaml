@@ -1,0 +1,9 @@
+defaults:
+  - /dataset/processed_w_masks/ftn@_here_
+  - _self_
+
+mlflow_uris:
+  tiling:
+    train: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/train - ftn
+    test_preliminary: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/test_preliminary - ftn
+    test_final: mlflow-artifacts:/86/b82e5dcc6bf840cf92bea0e0cfdc7603/artifacts/test_final - ftn

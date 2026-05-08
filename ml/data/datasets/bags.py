@@ -19,7 +19,7 @@ T = TypeVar("T", bound=BagsSample | BagsPredictSample)
 class _Bags(Dataset[T], Generic[T]):
     def __init__(
         self,
-        tiling_uris: Iterable[str] | str,
+        uris: Iterable[str] | str,
         mode: LabelMode | str | None = None,
         padding: bool = True,
         include_labels: bool = True,
@@ -34,7 +34,7 @@ class _Bags(Dataset[T], Generic[T]):
         if self.include_labels and self.mode is None:
             raise ValueError("Mode must be specified when including labels.")
 
-        self._meta = SlidesTilesLoader(uris=tiling_uris)
+        self._meta = SlidesTilesLoader(uris=uris)
         self.tiles = filter_tiles(self._meta.tiles, self.thresholds)
         self._meta.tiles = self.tiles
         self._meta._slide_id_to_indices = self._meta._build_tile_index(self.tiles)
@@ -86,7 +86,7 @@ class Bags(_Bags[BagsSample]):
 
     def __init__(
         self,
-        tiling_uris: Iterable[str] | str,
+        uris: Iterable[str] | str,
         mode: LabelMode | str,
         padding: bool = True,
         thresholds: dict[str, float] | None = None,
@@ -94,7 +94,7 @@ class Bags(_Bags[BagsSample]):
         is_val: bool = False,
     ) -> None:
         super().__init__(
-            tiling_uris=tiling_uris,
+            uris=uris,
             mode=mode,
             padding=padding,
             include_labels=True,
@@ -107,13 +107,13 @@ class Bags(_Bags[BagsSample]):
 class BagsPredict(_Bags[BagsPredictSample]):
     def __init__(
         self,
-        tiling_uris: Iterable[str] | str,
+        uris: Iterable[str] | str,
         mode: LabelMode | str | None = None,
         padding: bool = True,
         thresholds: dict[str, float] | None = None,
     ) -> None:
         super().__init__(
-            tiling_uris=tiling_uris,
+            uris=uris,
             mode=mode,
             padding=padding,
             include_labels=False,
