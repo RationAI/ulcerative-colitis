@@ -17,7 +17,7 @@ from ray.data.expressions import col
 
 
 class EmbedTiles:
-    def __init__(self, model: str, concurrency: int) -> None:
+    def __init__(self, model: str, concurrency: int, pool_tokens: str) -> None:
         self.model = model
         self.client = AsyncClient(
             limits=httpx.Limits(
@@ -25,10 +25,15 @@ class EmbedTiles:
             ),
             timeout=200,
         )
+        self.pool_tokens = pool_tokens
 
     async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
         embedding = (
-            (await self.client.models.embed_image(self.model, row["tile"]))
+            (
+                await self.client.models.embed_image(
+                    self.model, row["tile"], pool_tokens=self.pool_tokens
+                )
+            )
             .reshape(-1)
             .tolist()
         )
@@ -70,7 +75,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ds = ds.drop_columns(["path", "level", "tile_extent_x", "tile_extent_y"])
         ds = ds.map(
             EmbedTiles,  # pyright: ignore[reportArgumentType]
-            fn_constructor_args=(config.model, config.concurrency),
+            fn_constructor_args=(config.model, config.concurrency, config.pool_tokens),
             compute=ray.data.ActorPoolStrategy(
                 max_size=4,
                 max_tasks_in_flight_per_actor=config.concurrency // 4,
