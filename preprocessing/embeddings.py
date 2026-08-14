@@ -17,24 +17,18 @@ from ray.data.expressions import col
 
 
 class EmbedTiles:
-    def __init__(self, model: str, concurrency: int, pool_tokens: str) -> None:
-        self.model = f"{model}/"
+    def __init__(self, model: str, concurrency: int) -> None:
+        self.model = model
         self.client = AsyncClient(
-            models_base_url="http://rayservice-model-fix-serve-svc.rationai-jobs-ns.svc.cluster.local:8000",
             limits=httpx.Limits(
                 max_connections=concurrency, max_keepalive_connections=concurrency
             ),
-            timeout=500,
+            timeout=200,
         )
-        self.pool_tokens = pool_tokens
 
     async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
         embedding = (
-            (
-                await self.client.models.embed_image(
-                    self.model, row["tile"], pool_tokens=self.pool_tokens
-                )
-            )
+            (await self.client.models.embed_image(self.model, row["tile"]))
             .reshape(-1)
             .tolist()
         )
@@ -76,7 +70,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ds = ds.drop_columns(["path", "level", "tile_extent_x", "tile_extent_y"])
         ds = ds.map(
             EmbedTiles,  # pyright: ignore[reportArgumentType]
-            fn_constructor_args=(config.model, config.concurrency, config.pool_tokens),
+            fn_constructor_args=(config.model, config.concurrency),
             compute=ray.data.ActorPoolStrategy(
                 max_size=4,
                 max_tasks_in_flight_per_actor=config.concurrency // 4,

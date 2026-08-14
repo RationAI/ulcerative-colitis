@@ -1,13 +1,16 @@
 # @package _global_
 
 model: virchow2
-output_dir: ${project_dir}/embeddings/${dataset.institution}
-concurrency: 512
+output_dir: ${project_dir}/embeddings_xai/${dataset.institution}
+concurrency: 128
 block_size: 128
-rows_per_file: 50000
+rows_per_file: 512
+pool_tokens: "false"
+slides_per_index: 100
+random_state: 42
 
 metadata:
-  run_name: "🔢 Embeddings: ${dataset.institution}"
+  run_name: "🔢 Embeddings XAI: ${dataset.institution}"
   description: Tile embeddings for ${dataset.institution} using model ${model}
   hyperparams:
     model: ${model}
