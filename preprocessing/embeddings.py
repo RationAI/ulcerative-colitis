@@ -24,7 +24,7 @@ class EmbedTiles:
             limits=httpx.Limits(
                 max_connections=concurrency, max_keepalive_connections=concurrency
             ),
-            timeout=200,
+            timeout=500,
         )
         self.pool_tokens = pool_tokens
 
