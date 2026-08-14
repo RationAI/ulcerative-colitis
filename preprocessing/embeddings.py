@@ -55,7 +55,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         slide_info = slides.set_index("id")[
             ["path", "level", "tile_extent_x", "tile_extent_y"]
         ]
-        tiles_enriched = tiles.join(slide_info, on="slide_id").head()
+        tiles_enriched = tiles.join(slide_info, on="slide_id")
 
         ds = ray.data.from_arrow(
             pa.Table.from_pandas(tiles_enriched, preserve_index=False)
