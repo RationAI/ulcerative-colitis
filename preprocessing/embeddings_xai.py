@@ -20,7 +20,7 @@ class EmbedTiles:
     def __init__(self, model: str, concurrency: int, pool_tokens: str) -> None:
         self.model = f"{model}/"
         self.client = AsyncClient(
-            models_base_url="http://rayservice-model-fix-serve-svc.rationai-jobs-ns.svc.cluster.local:8000",
+            # models_base_url="http://rayservice-model-fix-serve-svc.rationai-jobs-ns.svc.cluster.local:8000",
             limits=httpx.Limits(
                 max_connections=concurrency, max_keepalive_connections=concurrency
             ),
