@@ -1,0 +1,7 @@
+defaults:
+  - /dataset/tiled/ftn@_here_
+  - _self_
+
+mlflow_uris:
+  embeddings_xai:
+    train: mlflow-artifacts:/86/e6c797f635af49b88db4fa55786ff858/artifacts/train - ftn
