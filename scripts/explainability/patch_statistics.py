@@ -12,7 +12,7 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        "uv run -m explainability.patch_statistics",
+        "uv run --active python -m explainability.patch_statistics",
     ],
     storage=[storage.secure.PROJECTS],
 )

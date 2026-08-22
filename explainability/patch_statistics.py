@@ -33,9 +33,14 @@ def build_patch_sample(
     `random_sample` draws each tile independently at probability
     `tiles_fraction` in one streaming pass - no shuffle, no cross-node data
     movement - so the sampled count is only approximately
-    `tiles_fraction * len(dataset)`. The sample is `materialize()`d so that
-    count can be read back before the memmap is sized, and the write loop
-    below then replays those same cached blocks instead of re-sampling.
+    `tiles_fraction * len(dataset)`. The sample is deliberately left
+    un-`materialize()`d: at this fraction it can be tens of GB larger than a
+    job pod's RAM, so caching it in the object store risks the exact
+    out-of-memory problem the memmap exists to avoid. Getting an exact count
+    to size the memmap means running the same seeded draw twice - once via
+    `count()`, once via the `iter_batches` write loop below - which
+    reproduces the same tiles both times, just at the cost of reading the
+    source data an extra time.
 
     Args:
         dataset: Pooled `ray.data.Dataset` of tiles (e.g. from
@@ -52,7 +57,7 @@ def build_patch_sample(
         A tuple of the memmap of shape (n_patches, embed_dim) and a DataFrame
         with the metadata (slide_id, x, y, ...) of the tiles that were sampled.
     """
-    sampled = dataset.random_sample(tiles_fraction, seed=random_state).materialize()
+    sampled = dataset.random_sample(tiles_fraction, seed=random_state)
     n_tiles = sampled.count()
 
     patches_per_tile = tokens_per_tile - 1
@@ -70,12 +75,15 @@ def build_patch_sample(
         memmap_path, mode="w+", dtype=np.float32, shape=(n_patches, embed_dim), fortran_order=True
     )
 
-    offset = 0
     embedding_columns = sampled.columns()
     embedding_columns.remove("embedding")
-    for batch in sampled.select_columns(["embedding"]).iter_batches(
-        batch_size=batch_size, batch_format="numpy"
-    ):
+
+    offset = 0
+    metadata_chunks = []
+    # Reads embedding + metadata columns together so this is the only other
+    # pass over the sample besides the count() above (rather than a further,
+    # separate to_pandas() pass just for metadata).
+    for batch in sampled.iter_batches(batch_size=batch_size, batch_format="numpy"):
         # Arrow list columns come back as an object array of per-row 1D
         # arrays (all the same length here); stack before reshaping.
         tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
@@ -83,10 +91,12 @@ def build_patch_sample(
         tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
         patches[offset : offset + tokens.shape[0]] = tokens
         offset += tokens.shape[0]
+
+        metadata_chunks.append(pd.DataFrame({col: batch[col] for col in embedding_columns}))
     patches.flush()
     assert offset == n_patches
 
-    tile_metadata = sampled.select_columns(embedding_columns).to_pandas()
+    tile_metadata = pd.concat(metadata_chunks, ignore_index=True)
     return patches, tile_metadata
 
 
