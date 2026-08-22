@@ -18,7 +18,11 @@ sample:
   # ~0.45 of all tiles -> ~69k tiles -> ~17.8M non-CLS patches (~91GB as float32)
   tiles_fraction: 0.45
   random_state: 42
-  batch_size: 64
+  # Tiles read per write to the (Fortran-ordered) memmap. Larger means fewer,
+  # larger scattered writes (each of the 1280 columns gets one bigger
+  # contiguous run per batch instead of many small ones) at the cost of more
+  # RAM per batch (512 tiles -> ~671MB).
+  batch_size: 512
   overwrite: false
 
 percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0]

@@ -1,61 +1,19 @@
 import json
-import logging
 from pathlib import Path
 
-import datasets
 import hydra
 import numpy as np
 import pandas as pd
-from mlflow.artifacts import download_artifacts
+import ray
 from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
-
-log = logging.getLogger(__name__)
-
-
-def resolve_tile_globs(sources: DictConfig, local_embeddings_xai_dir: str | None) -> list[str]:
-    """Locate each institution's tiles and return one glob per institution.
-
-    Prefers the pre-existing local copy under `local_embeddings_xai_dir`
-    (matching `output_dir` in `configs/preprocessing/embeddings_xai.yaml`,
-    i.e. `<local_embeddings_xai_dir>/<institution>/train`) since it's the
-    same data `download_artifacts` would otherwise fetch, just without the
-    slow mlflow round-trip. Falls back to `download_artifacts` when no local
-    copy is found (e.g. on a fresh kube job that isn't on the project mount).
-
-    Args:
-        sources: Mapping of institution name to its embeddings_xai dataset
-            config (as produced by `configs/dataset/embeddings_xai/*.yaml`).
-        local_embeddings_xai_dir: Root directory to look for a local copy
-            under, or None to always go through `download_artifacts`.
-
-    Returns:
-        Glob patterns pointing at each institution's tile parquet directory,
-        ready to hand straight to `datasets.load_dataset`.
-    """
-    globs = []
-    for institution, source in sources.items():
-        tiles_dir = None
-        if local_embeddings_xai_dir is not None:
-            candidate = Path(local_embeddings_xai_dir) / source.institution / "train" / "tiles"
-            if candidate.is_dir():
-                log.info("Using local tiles for %s: %s", institution, candidate)
-                tiles_dir = candidate
-
-        if tiles_dir is None:
-            folder = Path(download_artifacts(source.mlflow_uris.embeddings_xai.train))
-            tiles_dir = folder / "tiles"
-            if not tiles_dir.is_dir():
-                raise FileNotFoundError(f"No tiles directory found for {institution} under {folder}")
-
-        globs.append(str(tiles_dir / "*.parquet"))
-    return globs
+from explainability.tiles import load_tiles_dataset, resolve_tile_dirs
 
 
 def build_patch_sample(
-    tile_globs: list[str],
+    dataset: ray.data.Dataset,
     memmap_path: Path,
     tiles_fraction: float,
     random_state: int,
@@ -72,11 +30,19 @@ def build_patch_sample(
     representativeness. The result is written directly into a memmap since
     the pooled sample is far larger than fits in memory.
 
+    `random_sample` draws each tile independently at probability
+    `tiles_fraction` in one streaming pass - no shuffle, no cross-node data
+    movement - so the sampled count is only approximately
+    `tiles_fraction * len(dataset)`. The sample is `materialize()`d so that
+    count can be read back before the memmap is sized, and the write loop
+    below then replays those same cached blocks instead of re-sampling.
+
     Args:
-        tile_globs: Per-institution glob patterns over tile parquet files.
+        dataset: Pooled `ray.data.Dataset` of tiles (e.g. from
+            `load_tiles_dataset`).
         memmap_path: Where to persist the sampled patch matrix.
         tiles_fraction: Fraction of all tiles to keep.
-        random_state: Seed for the tile shuffle, for reproducibility.
+        random_state: Seed for the tile sampling, for reproducibility.
         tokens_per_tile: Number of tokens per tile embedding (patches + CLS).
         cls_token_index: Index of the CLS/summary token to drop.
         embed_dim: Dimensionality of a single patch token.
@@ -86,26 +52,34 @@ def build_patch_sample(
         A tuple of the memmap of shape (n_patches, embed_dim) and a DataFrame
         with the metadata (slide_id, x, y, ...) of the tiles that were sampled.
     """
-    dataset = datasets.load_dataset("parquet", data_files=tile_globs, split="train")
-
-    n_tiles = round(len(dataset) * tiles_fraction)
-    sampled = dataset.shuffle(seed=random_state).select(range(n_tiles))
+    sampled = dataset.random_sample(tiles_fraction, seed=random_state).materialize()
+    n_tiles = sampled.count()
 
     patches_per_tile = tokens_per_tile - 1
     n_patches = n_tiles * patches_per_tile
 
     memmap_path.parent.mkdir(parents=True, exist_ok=True)
+    # Fortran order: compute_percentiles reads one dimension (column) at a
+    # time, 1280 times over. In C order a row (5120 bytes) spans more than
+    # one page, so a column read touches nearly the whole file on disk, once
+    # per dimension. In F order each column is one contiguous run, so the
+    # 1280 reads together add up to a single sequential pass over the file
+    # instead. Writing row-batches is somewhat less contiguous this way, but
+    # that happens once, unlike the 1280 reads.
     patches = np.lib.format.open_memmap(
-        memmap_path, mode="w+", dtype=np.float32, shape=(n_patches, embed_dim)
+        memmap_path, mode="w+", dtype=np.float32, shape=(n_patches, embed_dim), fortran_order=True
     )
 
     offset = 0
-    embedding_columns = sampled.column_names
+    embedding_columns = sampled.columns()
     embedding_columns.remove("embedding")
-    for batch in sampled.select_columns(["embedding"]).iter(batch_size=batch_size):
-        tokens = np.array(batch["embedding"], dtype=np.float32).reshape(
-            -1, tokens_per_tile, embed_dim
-        )
+    for batch in sampled.select_columns(["embedding"]).iter_batches(
+        batch_size=batch_size, batch_format="numpy"
+    ):
+        # Arrow list columns come back as an object array of per-row 1D
+        # arrays (all the same length here); stack before reshaping.
+        tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
+        tokens = tokens.reshape(-1, tokens_per_tile, embed_dim)
         tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
         patches[offset : offset + tokens.shape[0]] = tokens
         offset += tokens.shape[0]
@@ -119,12 +93,15 @@ def build_patch_sample(
 def compute_percentiles(patches: np.memmap, percentiles: list[float]) -> pd.DataFrame:
     """Compute per-dimension percentiles without loading the full sample.
 
-    Each dimension is pulled out of the memmap on its own (a single column of
-    even a ~90GB sample is only tens of MB), so this stays memory-light
-    regardless of how large the sample is.
+    Each dimension is pulled out of the memmap on its own, so this stays
+    memory-light regardless of how large the sample is (the result of one
+    such slice is only tens of MB even for a ~90GB sample). This relies on
+    `patches` being Fortran-ordered (see `build_patch_sample`) so that each
+    of those column reads is a contiguous, cheap disk read rather than a
+    scan touching most of the file.
 
     Args:
-        patches: Memmap of shape (n_patches, embed_dim).
+        patches: Fortran-ordered memmap of shape (n_patches, embed_dim).
         percentiles: Quantile levels in [0, 1] to compute for each dimension.
 
     Returns:
@@ -151,9 +128,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         patches = np.lib.format.open_memmap(memmap_path, mode="r")
         tile_metadata = pd.read_parquet(output_dir / "sampled_tiles.parquet")
     else:
-        tile_globs = resolve_tile_globs(config.sources, config.get("local_embeddings_xai_dir"))
+        tile_dirs = resolve_tile_dirs(config.sources, config.get("local_embeddings_xai_dir"))
+        dataset = load_tiles_dataset(tile_dirs)
         patches, tile_metadata = build_patch_sample(
-            tile_globs=tile_globs,
+            dataset=dataset,
             memmap_path=memmap_path,
             tiles_fraction=config.sample.tiles_fraction,
             random_state=config.sample.random_state,
@@ -190,4 +168,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    ctx = ray.data.DataContext.get_current()
+    ctx.enable_rich_progress_bars = True
+    ctx.use_ray_tqdm = False
+
+    with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
+        main()

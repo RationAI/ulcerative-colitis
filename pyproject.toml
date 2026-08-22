@@ -22,7 +22,7 @@ dependencies = [
     "torchmetrics>=1.8.2",
     "ratiopath>=1.1.2",
     "rich>=15.0.0",
-    "datasets>=4.0.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [dependency-groups]
