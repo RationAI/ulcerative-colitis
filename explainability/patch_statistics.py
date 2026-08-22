@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 import datasets
@@ -11,12 +12,24 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
 
-def resolve_tile_globs(sources: DictConfig) -> list[str]:
-    """Download each institution's tiles and return one glob per institution.
+log = logging.getLogger(__name__)
+
+
+def resolve_tile_globs(sources: DictConfig, local_embeddings_xai_dir: str | None) -> list[str]:
+    """Locate each institution's tiles and return one glob per institution.
+
+    Prefers the pre-existing local copy under `local_embeddings_xai_dir`
+    (matching `output_dir` in `configs/preprocessing/embeddings_xai.yaml`,
+    i.e. `<local_embeddings_xai_dir>/<institution>/train`) since it's the
+    same data `download_artifacts` would otherwise fetch, just without the
+    slow mlflow round-trip. Falls back to `download_artifacts` when no local
+    copy is found (e.g. on a fresh kube job that isn't on the project mount).
 
     Args:
         sources: Mapping of institution name to its embeddings_xai dataset
             config (as produced by `configs/dataset/embeddings_xai/*.yaml`).
+        local_embeddings_xai_dir: Root directory to look for a local copy
+            under, or None to always go through `download_artifacts`.
 
     Returns:
         Glob patterns pointing at each institution's tile parquet directory,
@@ -24,10 +37,19 @@ def resolve_tile_globs(sources: DictConfig) -> list[str]:
     """
     globs = []
     for institution, source in sources.items():
-        folder = Path(download_artifacts(source.mlflow_uris.embeddings_xai.train))
-        tiles_dir = folder / "tiles"
-        if not tiles_dir.is_dir():
-            raise FileNotFoundError(f"No tiles directory found for {institution} under {folder}")
+        tiles_dir = None
+        if local_embeddings_xai_dir is not None:
+            candidate = Path(local_embeddings_xai_dir) / source.institution / "train" / "tiles"
+            if candidate.is_dir():
+                log.info("Using local tiles for %s: %s", institution, candidate)
+                tiles_dir = candidate
+
+        if tiles_dir is None:
+            folder = Path(download_artifacts(source.mlflow_uris.embeddings_xai.train))
+            tiles_dir = folder / "tiles"
+            if not tiles_dir.is_dir():
+                raise FileNotFoundError(f"No tiles directory found for {institution} under {folder}")
+
         globs.append(str(tiles_dir / "*.parquet"))
     return globs
 
@@ -129,7 +151,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         patches = np.lib.format.open_memmap(memmap_path, mode="r")
         tile_metadata = pd.read_parquet(output_dir / "sampled_tiles.parquet")
     else:
-        tile_globs = resolve_tile_globs(config.sources)
+        tile_globs = resolve_tile_globs(config.sources, config.get("local_embeddings_xai_dir"))
         patches, tile_metadata = build_patch_sample(
             tile_globs=tile_globs,
             memmap_path=memmap_path,

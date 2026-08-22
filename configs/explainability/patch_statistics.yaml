@@ -5,6 +5,11 @@ defaults:
   - /dataset/embeddings_xai/ikem@sources.ikem
   - _self_
 
+# Preferred over mlflow's download_artifacts when present, since it's the
+# same data on the same mount without the slow round-trip. Set to null to
+# always go through mlflow (e.g. on a fresh node without the project mount).
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
 tokens_per_tile: 257
 cls_token_index: 0
 embed_dim: 1280
