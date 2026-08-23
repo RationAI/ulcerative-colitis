@@ -283,5 +283,14 @@ if __name__ == "__main__":
     ctx.enable_rich_progress_bars = True
     ctx.use_ray_tqdm = False
 
-    with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
+    # num_cpus set deliberately *low* - same fix, same root cause as
+    # explainability/patch_statistics.py (see that file's comment and
+    # explainability-status memory): every patch token parquet file is a
+    # single ~1.6GB row group, so even Ray's own automatic per-file metadata
+    # sampling has to materialize close to the whole file - measured at
+    # 2-5GB per file. With no cap, Ray schedules up to num_cpus of those
+    # concurrently on this single local Ray instance, which is what
+    # OOM-killed this job. Keep in sync with cpu= in
+    # scripts/explainability/nmf_fit.py.
+    with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
         main()

@@ -11,6 +11,11 @@ submit_job(
     job_name=f"ulcerative-colitis-nmf-fit-k{n_components}-...",
     username=...,
     public=False,
+    # Deliberately low - keep in sync with num_cpus in
+    # explainability/nmf_fit.py's ray.init(). Same root cause as
+    # scripts/explainability/patch_statistics.py's identical comment
+    # (oversized parquet row groups, not this script's own logic) - this job
+    # was OOM-killed once already before num_cpus was added.
     cpu=8,
     memory="64Gi",
     shm="16Gi",
