@@ -194,5 +194,13 @@ if __name__ == "__main__":
     ctx.enable_rich_progress_bars = True
     ctx.use_ray_tqdm = False
 
-    with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
+    # Without num_cpus, ray.init() auto-detects the CPU count from
+    # /sys/fs/cgroup - but falls back to the *node's* full core count
+    # (observed: 128) whenever no hard cgroup CPU limit is set, which is the
+    # case here (the kube job only sends a request, cpu=32 in
+    # scripts/explainability/patch_statistics.py - keep these in sync). Left
+    # unset, that mismatch overschedules concurrent tasks far beyond what the
+    # pod can actually run, which is what stalled this job pinned at its real
+    # CPU/RAM budget with ~zero throughput (see explainability-status memory).
+    with ray.init(num_cpus=32, runtime_env={"excludes": [".git", ".venv"]}):
         main()

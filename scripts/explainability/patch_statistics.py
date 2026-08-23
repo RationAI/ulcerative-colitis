@@ -5,7 +5,8 @@ submit_job(
     job_name="ulcerative-colitis-patch-statistics-...",
     username=...,
     public=False,
-    cpu=8,
+    # Keep in sync with num_cpus in explainability/patch_statistics.py's ray.init().
+    cpu=32,
     memory="64Gi",
     shm="16Gi",
     script=[
