@@ -27,20 +27,16 @@ def build_patch_sample(
     Tiles (not individual patches) are the sampling unit: at the target
     fraction the sample already covers roughly half of all patches, so
     per-patch reservoir sampling would add complexity for no real gain in
-    representativeness. The result is written directly into a memmap since
-    the pooled sample is far larger than fits in memory.
+    representativeness. The result ends up in a memmap since the pooled
+    sample is far larger than fits in memory.
 
-    `random_sample` draws each tile independently at probability
-    `tiles_fraction` in one streaming pass - no shuffle, no cross-node data
-    movement - so the sampled count is only approximately
-    `tiles_fraction * len(dataset)`. The sample is deliberately left
-    un-`materialize()`d: at this fraction it can be tens of GB larger than a
-    job pod's RAM, so caching it in the object store risks the exact
-    out-of-memory problem the memmap exists to avoid. Getting an exact count
-    to size the memmap means running the same seeded draw twice - once via
-    `count()`, once via the `iter_batches` write loop below - which
-    reproduces the same tiles both times, just at the cost of reading the
-    source data an extra time.
+    This makes exactly one pass over the sampled tiles (see the internal
+    `scratch_path` below for why one pass, rather than the two an
+    upfront-sized memmap would need). `random_sample` draws each tile
+    independently at probability `tiles_fraction` in one streaming pass - no
+    shuffle, no cross-node data movement - so the sampled count is only
+    approximately `tiles_fraction * len(dataset)` and isn't known until this
+    pass finishes.
 
     Args:
         dataset: Pooled `ray.data.Dataset` of tiles (e.g. from
@@ -58,45 +54,70 @@ def build_patch_sample(
         with the metadata (slide_id, x, y, ...) of the tiles that were sampled.
     """
     sampled = dataset.random_sample(tiles_fraction, seed=random_state)
-    n_tiles = sampled.count()
-
-    patches_per_tile = tokens_per_tile - 1
-    n_patches = n_tiles * patches_per_tile
+    embedding_columns = sampled.columns()
+    embedding_columns.remove("embedding")
 
     memmap_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # The final array must be Fortran-ordered (see compute_percentiles), which
+    # needs the row count fixed before a single element is written - but that
+    # count isn't known until sampling has run. The previous approach got it
+    # via `sampled.count()`, a *second* full pass that - like the one below -
+    # reads and decodes every sampled tile's `embedding` column (the ~200GB
+    # corpus at this tiles_fraction). In practice that pass alone stalled the
+    # job indefinitely (observed pinned at 8/8 CPU, 64/64GB with zero rows
+    # produced after 15+ minutes, per the 2026-08-22 19:01-19:16 job log,
+    # stuck in ray.data's AggregateNumRows step). A cheap count from a
+    # column-projected dataset isn't a safe substitute either: `random_sample`
+    # seeds its RNG per Ray *task index*, not per row, so dropping the huge
+    # `embedding` column changes the block/task boundaries and therefore
+    # samples a different set of tiles than the full read does.
+    #
+    # So instead: one pass, writing row-major into a growable scratch file
+    # (append-only, no upfront shape needed), then a second, purely local
+    # disk-to-disk pass that lays the now-exactly-sized data out into the
+    # final Fortran-order memmap. That local pass never touches ray or the
+    # source parquet again - it costs extra local disk I/O, but replaces a
+    # second full read of the *remote* embedding corpus (the thing that was
+    # actually stalling) with a cheap sequential local read.
+    scratch_path = memmap_path.with_suffix(".scratch")
+    offset = 0
+    metadata_chunks = []
+    with open(scratch_path, "wb") as scratch:
+        for batch in sampled.iter_batches(batch_size=batch_size, batch_format="numpy"):
+            # Arrow list columns come back as an object array of per-row 1D
+            # arrays (all the same length here); stack before reshaping.
+            tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
+            tokens = tokens.reshape(-1, tokens_per_tile, embed_dim)
+            tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
+            scratch.write(np.ascontiguousarray(tokens).tobytes())
+            offset += tokens.shape[0]
+
+            metadata_chunks.append(pd.DataFrame({col: batch[col] for col in embedding_columns}))
+    n_patches = offset
+    tile_metadata = pd.concat(metadata_chunks, ignore_index=True)
+
     # Fortran order: compute_percentiles reads one dimension (column) at a
     # time, 1280 times over. In C order a row (5120 bytes) spans more than
     # one page, so a column read touches nearly the whole file on disk, once
     # per dimension. In F order each column is one contiguous run, so the
     # 1280 reads together add up to a single sequential pass over the file
-    # instead. Writing row-batches is somewhat less contiguous this way, but
-    # that happens once, unlike the 1280 reads.
+    # instead.
     patches = np.lib.format.open_memmap(
         memmap_path, mode="w+", dtype=np.float32, shape=(n_patches, embed_dim), fortran_order=True
     )
-
-    embedding_columns = sampled.columns()
-    embedding_columns.remove("embedding")
-
-    offset = 0
-    metadata_chunks = []
-    # Reads embedding + metadata columns together so this is the only other
-    # pass over the sample besides the count() above (rather than a further,
-    # separate to_pandas() pass just for metadata).
-    for batch in sampled.iter_batches(batch_size=batch_size, batch_format="numpy"):
-        # Arrow list columns come back as an object array of per-row 1D
-        # arrays (all the same length here); stack before reshaping.
-        tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-        tokens = tokens.reshape(-1, tokens_per_tile, embed_dim)
-        tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
-        patches[offset : offset + tokens.shape[0]] = tokens
-        offset += tokens.shape[0]
-
-        metadata_chunks.append(pd.DataFrame({col: batch[col] for col in embedding_columns}))
+    scratch_patches = np.memmap(scratch_path, dtype=np.float32, mode="r", shape=(n_patches, embed_dim))
+    # Copy in row-chunks (sequential reads off the scratch file) rather than
+    # one `patches[:] = scratch_patches[:]`, so this step doesn't need to
+    # hold the whole sample in memory at once either.
+    chunk_rows = max(batch_size * (tokens_per_tile - 1), 1)
+    for start in range(0, n_patches, chunk_rows):
+        stop = min(start + chunk_rows, n_patches)
+        patches[start:stop] = scratch_patches[start:stop]
     patches.flush()
-    assert offset == n_patches
+    del scratch_patches
+    scratch_path.unlink()
 
-    tile_metadata = pd.concat(metadata_chunks, ignore_index=True)
     return patches, tile_metadata
 
 
