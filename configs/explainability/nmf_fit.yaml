@@ -20,7 +20,7 @@ shift:
   # e.g. "mlflow-artifacts:/86/<run_id>/artifacts/percentile_stats.parquet".
   # Must point at a run whose percentiles include p0.25/p0.75 (load_scale's
   # IQR columns) - older, pre-IQR runs won't have them.
-  mlflow_uri: ???
+  mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
   # The 1e-4 quantile column (see explainability/patch_statistics.py's column
   # naming): a light compromise between the true min (outlier-sensitive) and
   # a looser quantile (more clipping). Retune once the real table is inspected.
