@@ -12,6 +12,16 @@ local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 
 embed_dim: 1280
 
+# Each written patch parquet file is a single ~1.6GB (compressed) row group,
+# not several smaller ones - verified directly against the real files - so a
+# read task can't decode less than roughly one whole file at a time. Without
+# this, Ray schedules up to num_cpus such multi-GB decodes concurrently,
+# which is what pinned CPU/RAM with zero throughput even after bumping the
+# job to 64 CPU / 128GB. This tells Ray's scheduler the real per-task cost so
+# it throttles concurrency to what actually fits, instead. ~4GiB is a rough
+# margin above the ~2.1GB uncompressed row-group size (Arrow/decode overhead).
+read_task_memory: 4294967296 # 4 GiB
+
 sample:
   # ~0.45 of all patch tokens -> ~17.8M patches (~91GB as float32)
   patches_fraction: 0.45

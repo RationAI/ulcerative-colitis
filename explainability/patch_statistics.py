@@ -50,9 +50,15 @@ def build_patch_sample(
         A tuple of the memmap of shape (n_patches, embed_dim) and a DataFrame
         with the metadata (slide_id, x, y, patch_index) of the sampled patches.
     """
-    sampled = dataset.random_sample(patches_fraction, seed=random_state)
-    metadata_columns = sampled.columns()
+    # Column names come from the *unsampled* dataset - sampling doesn't change
+    # them, and this avoids a redundant execution of the random_sample plan
+    # just to peek at its schema (`sampled.columns()` would trigger its own
+    # separate mini-run of the same lazy pipeline `iter_batches` below runs
+    # again for real).
+    metadata_columns = dataset.columns()
     metadata_columns.remove("embedding")
+
+    sampled = dataset.random_sample(patches_fraction, seed=random_state)
 
     memmap_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -153,7 +159,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         token_dirs = resolve_token_dirs(
             config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
         )
-        dataset = load_tokens_dataset(token_dirs)
+        dataset = load_tokens_dataset(token_dirs, read_task_memory=config.read_task_memory)
         patches, patch_metadata = build_patch_sample(
             dataset=dataset,
             memmap_path=memmap_path,
@@ -203,21 +209,13 @@ if __name__ == "__main__":
     # pod can actually run, which is what stalled this job pinned at its real
     # CPU/RAM budget with ~zero throughput (see explainability-status memory).
     #
-    # object_store_memory needs the same treatment: ray.get_system_memory()
-    # (ray/_common/utils.py) does the identical /sys/fs/cgroup fallback - reads
-    # memory.max, and falls back to the *node's* total RAM (via
-    # psutil.virtual_memory().total) whenever no hard cgroup memory limit is
-    # set either. Left unset, Ray sizes its object store as a fraction of that
-    # inflated number and doesn't apply its own backpressure/spilling until
-    # far too late, so usage just grows until it slams into the pod's real
-    # 64Gi ceiling - same "pinned at the real limit, zero throughput" symptom,
-    # just for memory instead of CPU. Pin it against the real budget (64Gi in
-    # scripts/explainability/patch_statistics.py) instead: ~20GiB leaves
-    # headroom in the same pod for the Python-side batch processing (numpy
-    # stacking, scratch-file writes) that isn't itself part of the object store.
-    with ray.init(
-        num_cpus=32,
-        object_store_memory=20 * 1024**3,
-        runtime_env={"excludes": [".git", ".venv"]},
-    ):
+    # NOTE: an object_store_memory pin was tried here too (same cgroup-fallback
+    # theory, for memory instead of CPU) and reverted - it was a *fixed*
+    # literal, so it became an artificial ceiling independent of whatever pod
+    # memory is actually given, which is likely what caused the stall to
+    # persist even after bumping the pod to 64 CPU / 128GB RAM. Left unset for
+    # now so Ray's own (auto-detected, possibly node-wide) sizing applies
+    # instead - revisit only with a value that scales with the real pod size,
+    # not a hardcoded one.
+    with ray.init(num_cpus=32, runtime_env={"excludes": [".git", ".venv"]}):
         main()
