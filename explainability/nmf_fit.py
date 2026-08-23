@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import hydra
+import mlflow.artifacts
 import numpy as np
 import pandas as pd
 import ray
@@ -12,6 +13,27 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
 from explainability.tiles import load_tokens_dataset, resolve_token_dirs
+
+
+def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
+    """Download patch_statistics' percentile_stats.parquet from mlflow.
+
+    Unlike the patch/cls token parquet (huge - see `explainability.tiles.
+    resolve_token_dirs`'s local-mount-preferred fast path) or W/H (also
+    memmap-sized), this is a small per-dimension summary - a few hundred KB
+    at most - so there's no large-artifact exception here: it's always
+    fetched from mlflow, the one source of truth, rather than assuming a
+    particular pod happens to have a local copy sitting around.
+
+    Args:
+        mlflow_uri: mlflow artifact URI for a specific patch_statistics
+            run's percentile_stats.parquet, e.g.
+            "mlflow-artifacts:/86/<run_id>/artifacts/percentile_stats.parquet".
+
+    Returns:
+        Local filesystem path to the downloaded file (mlflow's own cache).
+    """
+    return Path(mlflow.artifacts.download_artifacts(mlflow_uri))
 
 
 def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarray:
@@ -127,23 +149,25 @@ def iter_patch_batches(
         yield patches, metadata
 
 
-def gauge_fix_dictionary(h: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
     """Fix the WH scale ambiguity: rescale H to unit rows.
 
     For any positive diagonal S, W @ H == (W @ S^-1) @ (S @ H), so component
-    magnitudes carry no meaning until this is fixed. The matching rescale of
-    W (multiplying column k by `norms[k]`) must be applied by the caller,
-    since W here is typically too large to hold in memory alongside H.
+    magnitudes carry no meaning until this is fixed. No corresponding W
+    correction is needed from the caller: `main` re-transforms every patch
+    against this gauge-fixed H directly (by pointing `model.components_` at
+    it before the transform pass) rather than computing W against the
+    pre-fix H and rescaling it after the fact.
 
     Args:
         h: Dictionary/components matrix, shape (n_components, n_features).
 
     Returns:
-        A tuple of (gauge-fixed H, the per-component norms used to fix it).
+        The gauge-fixed H (unit L2-norm rows).
     """
     norms = np.linalg.norm(h, axis=1)
     norms = np.where(norms == 0, 1.0, norms)
-    return h / norms[:, None], norms
+    return h / norms[:, None]
 
 
 @with_cli_args(["+explainability=nmf_fit"])
@@ -153,8 +177,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    shift = load_shift(Path(config.shift.percentile_stats_path), config.shift.percentile_column)
-    scale = load_scale(Path(config.shift.percentile_stats_path))
+    stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
+    shift = load_shift(stats_path, config.shift.percentile_column)
+    scale = load_scale(stats_path)
 
     token_dirs = resolve_token_dirs(
         config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
@@ -188,21 +213,24 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         ):
             model.partial_fit(patches)
 
-    h = model.components_
-    # Recover H_k = H~_k * d (concept_mil.tex eq 2.24) before gauge-fixing:
-    # the dictionary was fit on scaled patches, so each component's raw
-    # coefficients are per unit of (dimension j / scale[j]), not per unit of
-    # dimension j directly - this multiplies that back out, dimension by
-    # dimension, into the original (shifted-only) token space. Must happen
-    # *before* gauge-fixing, not after: gauge-fixing normalizes row norms,
+    # Recover H_k = H~_k * d (concept_mil.tex eq 2.24): the dictionary was
+    # fit on scaled patches, so its raw coefficients are per unit of
+    # (dimension j / scale[j]), not per unit of dimension j directly - this
+    # multiplies that back out into the original (shifted-only) token space.
+    # Must happen *before* gauge-fixing: gauge-fixing normalizes row norms,
     # and this recovery changes those norms (scaling each column by a
-    # different amount). W needs no equivalent correction - it comes out of
-    # the NMF fit already in the right space; only H does, since the scale
-    # is a per-dimension (column) transform, and only H has a dimension axis.
-    h = h * scale[None, :]
-    norms = None
+    # different amount).
+    h = model.components_ * scale[None, :]
     if config.nmf.gauge_fix:
-        h, norms = gauge_fix_dictionary(h)
+        h = gauge_fix_dictionary(h)
+
+    # Point the model at the final (recovered, possibly gauge-fixed) H and
+    # transform *shift-only* patches (scale=1 - h is no longer in the
+    # scaled-fit space, so the input mustn't be either) against it: W then
+    # comes out of transform() already correct, with no separate rescale
+    # needed the way leaving model.components_ unchanged would have required.
+    model.components_ = h
+    unscaled = np.ones_like(scale)
 
     # Transform: one clean pass with the now-final H to get every patch's W.
     w_path = output_dir / "w.f32.npy"
@@ -215,12 +243,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         patches_ds,
         config.nmf.batch_size,
         shift,
-        scale,
+        unscaled,
         with_metadata=True,
     ):
         w_batch = model.transform(patches)
-        if norms is not None:
-            w_batch = w_batch * norms[None, :]
         w[offset : offset + w_batch.shape[0]] = w_batch
         metadata_chunks.append(metadata)
         offset += w_batch.shape[0]
