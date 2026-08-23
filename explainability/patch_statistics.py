@@ -63,9 +63,13 @@ def compute_percentiles(
         # which leaves no handler attached anywhere (verified directly:
         # log.warning() is silently dropped, not just filtered by level), so
         # anything through `logging` never appears in job output at all.
+        # flush=True since stdout is fully-buffered (not line-buffered) once
+        # it's piped/redirected rather than a TTY - without it this could sit
+        # in Python's internal buffer for a long time before actually
+        # reaching whatever log the job's output is captured into.
         if now - last_log > 60:
             rate = n_patches / (now - start)
-            print(f"compute_percentiles: {n_patches} patches processed ({rate:.0f} patches/s)")
+            print(f"compute_percentiles: {n_patches} patches processed ({rate:.0f} patches/s)", flush=True)
             last_log = now
 
     if digests is None:
