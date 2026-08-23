@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 import hydra
 import mlflow.artifacts
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import ray
@@ -17,7 +18,19 @@ from ray.data.expressions import col
 
 
 class EmbedTiles:
-    def __init__(self, model: str, concurrency: int, pool_tokens: str) -> None:
+    """Embed one tile per call and explode its tokens into per-token rows.
+
+    Still exactly one model call per tile - the expensive, network-bound,
+    carefully concurrency-tuned part is unchanged. Only the *output shape*
+    changes: instead of one row per tile holding all tokens flattened into a
+    single large list (which forces every downstream consumer to decode and
+    reshape the whole thing just to reach individual patch tokens), this
+    yields one small row per token, tagged `kind` ("patch" or "cls") so
+    `main`'s single partitioned `write_parquet` call can split them into two
+    physically separate tables without a second pass over this step.
+    """
+
+    def __init__(self, model: str, concurrency: int, pool_tokens: str, cls_token_index: int) -> None:
         self.model = f"{model}/"
         self.client = AsyncClient(
             limits=httpx.Limits(
@@ -26,20 +39,54 @@ class EmbedTiles:
             timeout=500,
         )
         self.pool_tokens = pool_tokens
+        self.cls_token_index = cls_token_index
 
-    async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
+    async def __call__(self, row: dict[str, Any]) -> list[dict[str, Any]]:
         embedding = (
-            (
-                await self.client.models.embed_image(
-                    self.model, row["tile"], pool_tokens=self.pool_tokens
-                )
+            await self.client.models.embed_image(
+                self.model, row["tile"], pool_tokens=self.pool_tokens
             )
-            .reshape(-1)
-            .tolist()
+        ).astype(np.float32)
+        base = {k: v for k, v in row.items() if k != "tile"}
+        return explode_tokens(base, embedding, self.cls_token_index)
+
+
+def explode_tokens(
+    base: dict[str, Any], embedding: np.ndarray, cls_token_index: int
+) -> list[dict[str, Any]]:
+    """Turn one tile's token array into one output row per token.
+
+    Pulled out of `EmbedTiles.__call__` as a pure function so the row-shaping
+    logic (kind tagging, patch_index renumbering) is unit-testable without an
+    actual model server.
+
+    Args:
+        base: Per-tile metadata to copy onto every output row (slide_id, x,
+            y, ...) - anything except the tile image / raw embedding.
+        embedding: This tile's tokens, shape (n_tokens, embed_dim).
+        cls_token_index: Index of the CLS/summary token among `embedding`'s
+            rows; every other row becomes a "patch" row.
+
+    Returns:
+        One dict per token, each with `kind` ("patch" or "cls"),
+        `patch_index` (contiguous 0..n_tokens-2 for patch rows, None for the
+        CLS row), and `embedding` (that single token, as a list).
+    """
+    rows = []
+    for token_index, token in enumerate(embedding):
+        is_cls = token_index == cls_token_index
+        rows.append(
+            {
+                **base,
+                "kind": "cls" if is_cls else "patch",
+                # Position among the non-CLS tokens only (0..P-2), not the
+                # raw token index, so patches.parquet's patch_index is
+                # contiguous rather than having a CLS-shaped hole.
+                "patch_index": None if is_cls else token_index - (token_index > cls_token_index),
+                "embedding": token.tolist(),
+            }
         )
-        del row["tile"]
-        row["embedding"] = embedding
-        return row
+    return rows
 
 
 def subsample(
@@ -107,9 +154,14 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         memory=4 * 1024**3,
     )
     ds = ds.drop_columns(["path", "level", "tile_extent_x", "tile_extent_y"])
-    ds = ds.map(
+    ds = ds.flat_map(
         EmbedTiles,  # pyright: ignore[reportArgumentType]
-        fn_constructor_args=(config.model, config.concurrency, config.pool_tokens),
+        fn_constructor_args=(
+            config.model,
+            config.concurrency,
+            config.pool_tokens,
+            config.cls_token_index,
+        ),
         compute=ray.data.ActorPoolStrategy(
             max_size=4,
             max_tasks_in_flight_per_actor=config.concurrency // 4,
@@ -118,13 +170,27 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     )
 
     split_dir = Path(config.output_dir) / "train"
-    split_dir.mkdir(parents=True, exist_ok=True)
-    tiles_parquet_dir = split_dir / "tiles"
-    if tiles_parquet_dir.exists():
-        shutil.rmtree(tiles_parquet_dir)
+    # Wipe the whole split dir up front, not just the tokens subdir: every
+    # run rewrites all of it anyway (nothing here is incremental), and
+    # `logger.log_artifacts` below uploads everything still sitting under
+    # `split_dir` - a stale subdir from a previous run under a different
+    # output layout (e.g. this schema's predecessor, a flat "tiles/" dir)
+    # would otherwise get uploaded to mlflow right alongside the real output.
+    if split_dir.exists():
+        shutil.rmtree(split_dir)
+    split_dir.mkdir(parents=True)
+    tokens_parquet_dir = split_dir / "tokens"
 
     slides.to_parquet(split_dir / "slides.parquet", index=False)
-    ds.write_parquet(str(tiles_parquet_dir), min_rows_per_file=config.rows_per_file)
+    # partition_cols=["kind"] splits the single pass over EmbedTiles into two
+    # independently-readable tables - tokens/kind=patch/*.parquet and
+    # tokens/kind=cls/*.parquet - without re-running the embedding step or
+    # materializing the (~corpus-sized) dataset to derive two writes from it.
+    ds.write_parquet(
+        str(tokens_parquet_dir),
+        partition_cols=["kind"],
+        min_rows_per_file=config.rows_per_file,
+    )
 
     logger.log_artifacts(str(split_dir), f"train - {config.dataset.institution}")
 

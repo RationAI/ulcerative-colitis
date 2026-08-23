@@ -11,7 +11,7 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
-from explainability.tiles import load_tiles_dataset, resolve_tile_dirs
+from explainability.tiles import load_tokens_dataset, resolve_token_dirs
 
 
 def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarray:
@@ -31,11 +31,8 @@ def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarra
 
 
 def iter_patch_batches(
-    tiles: ray.data.Dataset,
-    tile_batch_size: int,
-    tokens_per_tile: int,
-    cls_token_index: int,
-    embed_dim: int,
+    patches_ds: ray.data.Dataset,
+    batch_size: int,
     shift: np.ndarray,
     with_metadata: bool = False,
     shuffle_seed: int | None = None,
@@ -43,18 +40,21 @@ def iter_patch_batches(
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
     """Yield shifted, non-negative patch batches with optional provenance.
 
+    `patches_ds` already holds one row per patch token (see
+    `preprocessing/embeddings_xai.py`, which explodes and Hive-partitions by
+    `kind` at write time), so this reads and shifts patches directly - no
+    per-tile reshaping or CLS stripping needed here any more.
+
     Args:
-        tiles: `ray.data.Dataset` of tiles, in whatever order the caller wants
-            read (see `shuffle_seed`).
-        tile_batch_size: Number of tiles to read per yielded batch.
-        tokens_per_tile: Number of tokens per tile embedding (patches + CLS).
-        cls_token_index: Index of the CLS/summary token to drop.
-        embed_dim: Dimensionality of a single patch token.
+        patches_ds: `ray.data.Dataset` of patch tokens (e.g. from
+            `explainability.tiles.load_tokens_dataset` with `kind="patch"`),
+            in whatever order the caller wants read (see `shuffle_seed`).
+        batch_size: Number of patches to read per yielded batch.
         shift: Per-dimension shift constant, shape (embed_dim,).
         with_metadata: If True, also yield a DataFrame of (slide_id, x, y,
             patch_index) rows aligned with the yielded patch batch, so each
             row of W can be traced back to the patch it came from.
-        shuffle_seed: If given, tiles are read in a locally-shuffled order
+        shuffle_seed: If given, patches are read in a locally-shuffled order
             (a cheap, per-worker approximate shuffle - see `Dataset.iter_batches`'s
             `local_shuffle_buffer_size`, no cross-node data movement) - used
             for the per-epoch NMF training passes. Leave as None (read order
@@ -65,34 +65,28 @@ def iter_patch_batches(
 
     Yields:
         Tuples of (patches, metadata), where patches has shape
-        (n_tiles_in_batch * (tokens_per_tile - 1), embed_dim) and metadata is
-        None unless `with_metadata` is set.
+        (n_rows_in_batch, embed_dim) and metadata is None unless
+        `with_metadata` is set.
     """
-    patches_per_tile = tokens_per_tile - 1
-    columns = ["slide_id", "x", "y", "embedding"] if with_metadata else ["embedding"]
+    columns = ["slide_id", "x", "y", "patch_index", "embedding"] if with_metadata else ["embedding"]
 
-    for batch in tiles.select_columns(columns).iter_batches(
-        batch_size=tile_batch_size,
+    for batch in patches_ds.select_columns(columns).iter_batches(
+        batch_size=batch_size,
         batch_format="numpy",
         local_shuffle_seed=shuffle_seed,
         local_shuffle_buffer_size=shuffle_buffer_size,
     ):
-        # Arrow list columns come back as an object array of per-row 1D
-        # arrays (all the same length here); stack before reshaping.
         tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-        tokens = tokens.reshape(-1, tokens_per_tile, embed_dim)
-        tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
         patches = np.maximum(tokens - shift, 0.0)
 
         metadata = None
         if with_metadata:
-            n_tiles = len(batch["slide_id"])
             metadata = pd.DataFrame(
                 {
-                    "slide_id": np.repeat(batch["slide_id"], patches_per_tile),
-                    "x": np.repeat(batch["x"], patches_per_tile),
-                    "y": np.repeat(batch["y"], patches_per_tile),
-                    "patch_index": np.tile(np.arange(patches_per_tile), n_tiles),
+                    "slide_id": batch["slide_id"],
+                    "x": batch["x"],
+                    "y": batch["y"],
+                    "patch_index": batch["patch_index"],
                 }
             )
         yield patches, metadata
@@ -126,9 +120,14 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     shift = load_shift(Path(config.shift.percentile_stats_path), config.shift.percentile_column)
 
-    tile_dirs = resolve_tile_dirs(config.sources, config.get("local_embeddings_xai_dir"))
-    tiles = load_tiles_dataset(tile_dirs)
-    n_patches = tiles.count() * (config.tokens_per_tile - 1)
+    token_dirs = resolve_token_dirs(
+        config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
+    )
+    patches_ds = load_tokens_dataset(token_dirs)
+    # A plain, unfiltered read_parquet count is metadata-only (row counts come
+    # from the parquet footers, no column data decoded) - unlike
+    # patch_statistics.py's sampled count, nothing here forces a full read.
+    n_patches = patches_ds.count()
 
     model = MiniBatchNMF(
         n_components=config.n_components,
@@ -144,11 +143,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # rather than the final dictionary.
     for epoch in range(config.nmf.epochs):
         for patches, _ in iter_patch_batches(
-            tiles,
-            config.nmf.tile_batch_size,
-            config.tokens_per_tile,
-            config.cls_token_index,
-            config.embed_dim,
+            patches_ds,
+            config.nmf.batch_size,
             shift,
             shuffle_seed=config.nmf.random_state + epoch,
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
@@ -168,11 +164,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     metadata_chunks = []
     offset = 0
     for patches, metadata in iter_patch_batches(
-        tiles,
-        config.nmf.tile_batch_size,
-        config.tokens_per_tile,
-        config.cls_token_index,
-        config.embed_dim,
+        patches_ds,
+        config.nmf.batch_size,
         shift,
         with_metadata=True,
     ):

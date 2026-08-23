@@ -7,10 +7,6 @@ defaults:
 
 local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 
-tokens_per_tile: 257
-cls_token_index: 0
-embed_dim: 1280
-
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
 
@@ -22,15 +18,15 @@ shift:
   percentile_column: p0.0001
 
 nmf:
-  # Tiles read per partial_fit/transform call (~100 tiles -> 25,600 patches).
-  tile_batch_size: 100
-  # Each epoch re-reads the full ~293GB raw corpus once - keep this bounded.
+  # Patches read per partial_fit/transform call.
+  batch_size: 25600
+  # Each epoch re-reads the full raw corpus once - keep this bounded.
   epochs: 1
   # Row buffer for ray.data's local (per-worker, no cross-node shuffle) read
   # order randomization during training - see iter_patch_batches' shuffle_seed.
-  # Bigger mixes more tiles per partial_fit call at the cost of more RAM
-  # (~1.3MB/tile at 257*1280 float32 -> 5000 tiles ~= 6.5GB in the buffer).
-  shuffle_buffer_size: 5000
+  # Bigger mixes more patches per partial_fit call at the cost of more RAM
+  # (~5KB/patch at 1280 float32 -> 1.28M patches ~= 6.5GB in the buffer).
+  shuffle_buffer_size: 1_280_000
   init: random
   beta_loss: frobenius
   random_state: 42
@@ -41,12 +37,12 @@ output_dir: ${project_dir}/explainability/nmf/k${n_components}
 metadata:
   run_name: "🧩 NMF Fit (k=${n_components})"
   description: >-
-    MiniBatchNMF over shifted non-CLS patch tokens (ftn + ikem full corpus),
+    MiniBatchNMF over shifted patch tokens (ftn + ikem full corpus),
     gauge-fixed W/H stored for downstream explainability.
   hyperparams:
     n_components: ${n_components}
     percentile_column: ${shift.percentile_column}
-    tile_batch_size: ${nmf.tile_batch_size}
+    batch_size: ${nmf.batch_size}
     epochs: ${nmf.epochs}
     shuffle_buffer_size: ${nmf.shuffle_buffer_size}
     random_state: ${nmf.random_state}

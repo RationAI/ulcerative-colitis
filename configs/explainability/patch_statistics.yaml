@@ -10,19 +10,17 @@ defaults:
 # always go through mlflow (e.g. on a fresh node without the project mount).
 local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 
-tokens_per_tile: 257
-cls_token_index: 0
 embed_dim: 1280
 
 sample:
-  # ~0.45 of all tiles -> ~69k tiles -> ~17.8M non-CLS patches (~91GB as float32)
-  tiles_fraction: 0.45
+  # ~0.45 of all patch tokens -> ~17.8M patches (~91GB as float32)
+  patches_fraction: 0.45
   random_state: 42
-  # Tiles read per write to the (Fortran-ordered) memmap. Larger means fewer,
-  # larger scattered writes (each of the 1280 columns gets one bigger
+  # Patches read per write to the (Fortran-ordered) memmap. Larger means
+  # fewer, larger scattered writes (each of the 1280 columns gets one bigger
   # contiguous run per batch instead of many small ones) at the cost of more
-  # RAM per batch (512 tiles -> ~671MB).
-  batch_size: 512
+  # RAM per batch (131072 patches -> ~671MB).
+  batch_size: 131072
   overwrite: false
 
 percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0]
@@ -33,8 +31,8 @@ metadata:
   run_name: "📊 Patch Statistics"
   description: >-
     Per-dimension percentile statistics over a pooled random sample of
-    non-CLS patch tokens (ftn + ikem), used to pick a shift for NMF.
+    patch tokens (ftn + ikem), used to pick a shift for NMF.
   hyperparams:
-    tiles_fraction: ${sample.tiles_fraction}
+    patches_fraction: ${sample.patches_fraction}
     random_state: ${sample.random_state}
     percentiles: ${percentiles}

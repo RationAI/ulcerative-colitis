@@ -9,93 +9,84 @@ from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
-from explainability.tiles import load_tiles_dataset, resolve_tile_dirs
+from explainability.tiles import load_tokens_dataset, resolve_token_dirs
 
 
 def build_patch_sample(
     dataset: ray.data.Dataset,
     memmap_path: Path,
-    tiles_fraction: float,
+    patches_fraction: float,
     random_state: int,
-    tokens_per_tile: int,
-    cls_token_index: int,
     embed_dim: int,
     batch_size: int,
 ) -> tuple[np.memmap, pd.DataFrame]:
-    """Randomly sample whole tiles and flatten their non-CLS patch tokens.
+    """Randomly sample patch tokens and write them into a memmap.
 
-    Tiles (not individual patches) are the sampling unit: at the target
-    fraction the sample already covers roughly half of all patches, so
-    per-patch reservoir sampling would add complexity for no real gain in
-    representativeness. The result ends up in a memmap since the pooled
-    sample is far larger than fits in memory.
+    `dataset` already holds one row per patch token (see
+    `preprocessing/embeddings_xai.py`, which explodes and Hive-partitions by
+    `kind` at write time), so this samples and writes patches directly - no
+    per-tile reshaping or CLS stripping needed here any more. The result ends
+    up in a memmap since the pooled sample is far larger than fits in memory.
 
-    This makes exactly one pass over the sampled tiles (see the internal
+    This makes exactly one pass over the sampled patches (see the internal
     `scratch_path` below for why one pass, rather than the two an
-    upfront-sized memmap would need). `random_sample` draws each tile
-    independently at probability `tiles_fraction` in one streaming pass - no
-    shuffle, no cross-node data movement - so the sampled count is only
-    approximately `tiles_fraction * len(dataset)` and isn't known until this
-    pass finishes.
+    upfront-sized memmap would need). `random_sample` draws each row
+    independently at probability `patches_fraction` in one streaming pass -
+    no shuffle, no cross-node data movement - so the sampled count is only
+    approximately `patches_fraction * len(dataset)` and isn't known until
+    this pass finishes.
 
     Args:
-        dataset: Pooled `ray.data.Dataset` of tiles (e.g. from
-            `load_tiles_dataset`).
+        dataset: Pooled `ray.data.Dataset` of patch tokens (e.g. from
+            `load_tokens_dataset` with `kind="patch"`).
         memmap_path: Where to persist the sampled patch matrix.
-        tiles_fraction: Fraction of all tiles to keep.
-        random_state: Seed for the tile sampling, for reproducibility.
-        tokens_per_tile: Number of tokens per tile embedding (patches + CLS).
-        cls_token_index: Index of the CLS/summary token to drop.
+        patches_fraction: Fraction of all patch tokens to keep.
+        random_state: Seed for the sampling, for reproducibility.
         embed_dim: Dimensionality of a single patch token.
-        batch_size: Number of tiles to read per batch while filling the memmap.
+        batch_size: Number of patches to read per batch while filling the
+            memmap.
 
     Returns:
         A tuple of the memmap of shape (n_patches, embed_dim) and a DataFrame
-        with the metadata (slide_id, x, y, ...) of the tiles that were sampled.
+        with the metadata (slide_id, x, y, patch_index) of the sampled patches.
     """
-    sampled = dataset.random_sample(tiles_fraction, seed=random_state)
-    embedding_columns = sampled.columns()
-    embedding_columns.remove("embedding")
+    sampled = dataset.random_sample(patches_fraction, seed=random_state)
+    metadata_columns = sampled.columns()
+    metadata_columns.remove("embedding")
 
     memmap_path.parent.mkdir(parents=True, exist_ok=True)
 
     # The final array must be Fortran-ordered (see compute_percentiles), which
     # needs the row count fixed before a single element is written - but that
-    # count isn't known until sampling has run. The previous approach got it
-    # via `sampled.count()`, a *second* full pass that - like the one below -
-    # reads and decodes every sampled tile's `embedding` column (the ~200GB
-    # corpus at this tiles_fraction). In practice that pass alone stalled the
-    # job indefinitely (observed pinned at 8/8 CPU, 64/64GB with zero rows
-    # produced after 15+ minutes, per the 2026-08-22 19:01-19:16 job log,
-    # stuck in ray.data's AggregateNumRows step). A cheap count from a
+    # count isn't known until sampling has run. Getting it via a separate
+    # `sampled.count()` pass would mean decoding the `embedding` column for
+    # the entire corpus a second time (in practice this stalled the job
+    # indefinitely - see the 2026-08-22 19:01-19:16 job log, stuck in
+    # ray.data's AggregateNumRows step). A cheap count from a
     # column-projected dataset isn't a safe substitute either: `random_sample`
-    # seeds its RNG per Ray *task index*, not per row, so dropping the huge
+    # seeds its RNG per Ray *task index*, not per row, so dropping the
     # `embedding` column changes the block/task boundaries and therefore
-    # samples a different set of tiles than the full read does.
+    # samples a different set of rows than the full read does.
     #
     # So instead: one pass, writing row-major into a growable scratch file
     # (append-only, no upfront shape needed), then a second, purely local
     # disk-to-disk pass that lays the now-exactly-sized data out into the
     # final Fortran-order memmap. That local pass never touches ray or the
     # source parquet again - it costs extra local disk I/O, but replaces a
-    # second full read of the *remote* embedding corpus (the thing that was
-    # actually stalling) with a cheap sequential local read.
+    # second full read of the *remote* embedding corpus with a cheap
+    # sequential local read.
     scratch_path = memmap_path.with_suffix(".scratch")
     offset = 0
     metadata_chunks = []
     with open(scratch_path, "wb") as scratch:
         for batch in sampled.iter_batches(batch_size=batch_size, batch_format="numpy"):
-            # Arrow list columns come back as an object array of per-row 1D
-            # arrays (all the same length here); stack before reshaping.
             tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-            tokens = tokens.reshape(-1, tokens_per_tile, embed_dim)
-            tokens = np.delete(tokens, cls_token_index, axis=1).reshape(-1, embed_dim)
             scratch.write(np.ascontiguousarray(tokens).tobytes())
             offset += tokens.shape[0]
 
-            metadata_chunks.append(pd.DataFrame({col: batch[col] for col in embedding_columns}))
+            metadata_chunks.append(pd.DataFrame({col: batch[col] for col in metadata_columns}))
     n_patches = offset
-    tile_metadata = pd.concat(metadata_chunks, ignore_index=True)
+    patch_metadata = pd.concat(metadata_chunks, ignore_index=True)
 
     # Fortran order: compute_percentiles reads one dimension (column) at a
     # time, 1280 times over. In C order a row (5120 bytes) spans more than
@@ -110,7 +101,7 @@ def build_patch_sample(
     # Copy in row-chunks (sequential reads off the scratch file) rather than
     # one `patches[:] = scratch_patches[:]`, so this step doesn't need to
     # hold the whole sample in memory at once either.
-    chunk_rows = max(batch_size * (tokens_per_tile - 1), 1)
+    chunk_rows = max(batch_size, 1)
     for start in range(0, n_patches, chunk_rows):
         stop = min(start + chunk_rows, n_patches)
         patches[start:stop] = scratch_patches[start:stop]
@@ -118,7 +109,7 @@ def build_patch_sample(
     del scratch_patches
     scratch_path.unlink()
 
-    return patches, tile_metadata
+    return patches, patch_metadata
 
 
 def compute_percentiles(patches: np.memmap, percentiles: list[float]) -> pd.DataFrame:
@@ -157,21 +148,21 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     if memmap_path.exists() and not config.sample.overwrite:
         patches = np.lib.format.open_memmap(memmap_path, mode="r")
-        tile_metadata = pd.read_parquet(output_dir / "sampled_tiles.parquet")
+        patch_metadata = pd.read_parquet(output_dir / "sampled_patches.parquet")
     else:
-        tile_dirs = resolve_tile_dirs(config.sources, config.get("local_embeddings_xai_dir"))
-        dataset = load_tiles_dataset(tile_dirs)
-        patches, tile_metadata = build_patch_sample(
+        token_dirs = resolve_token_dirs(
+            config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
+        )
+        dataset = load_tokens_dataset(token_dirs)
+        patches, patch_metadata = build_patch_sample(
             dataset=dataset,
             memmap_path=memmap_path,
-            tiles_fraction=config.sample.tiles_fraction,
+            patches_fraction=config.sample.patches_fraction,
             random_state=config.sample.random_state,
-            tokens_per_tile=config.tokens_per_tile,
-            cls_token_index=config.cls_token_index,
             embed_dim=config.embed_dim,
             batch_size=config.sample.batch_size,
         )
-        tile_metadata.to_parquet(output_dir / "sampled_tiles.parquet", index=False)
+        patch_metadata.to_parquet(output_dir / "sampled_patches.parquet", index=False)
 
     percentiles = OmegaConf.to_object(config.percentiles)
     stats = compute_percentiles(patches, percentiles)
@@ -183,8 +174,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             "shape": list(patches.shape),
             "dtype": str(patches.dtype),
         },
-        "n_tiles_sampled": len(tile_metadata),
-        "tiles_fraction": config.sample.tiles_fraction,
+        "n_patches_sampled": len(patch_metadata),
+        "patches_fraction": config.sample.patches_fraction,
         "random_state": config.sample.random_state,
         "percentiles": percentiles,
     }
@@ -193,7 +184,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     # The sample itself stays on the project mount (too large for mlflow);
     # only the lightweight derived artifacts are logged.
-    logger.log_artifact(str(output_dir / "sampled_tiles.parquet"))
+    logger.log_artifact(str(output_dir / "sampled_patches.parquet"))
     logger.log_artifact(str(output_dir / "percentile_stats.parquet"))
     logger.log_artifact(str(manifest_path))
 

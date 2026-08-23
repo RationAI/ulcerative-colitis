@@ -4,8 +4,18 @@ model: virchow2
 output_dir: ${project_dir}/embeddings_xai/${dataset.institution}
 concurrency: 128
 block_size: 128
-rows_per_file: 512
+# Now counts *token* rows (one row per patch/CLS token, not per tile) since
+# EmbedTiles explodes each tile into tokens_per_tile rows before writing -
+# retune once real corpus size is known (~5KB/row here vs ~1.3MB/tile-row
+# before, so this needs to be far larger than the old per-tile value to avoid
+# an explosion in file count).
+rows_per_file: 200_000
 pool_tokens: "false"
+# Index of the CLS/summary token among each tile's returned tokens; every
+# other token is written to the "patch" partition (kind=patch), this one to
+# "cls" (kind=cls). Downstream explainability configs no longer need their
+# own copy of this - the split already happened here, at write time.
+cls_token_index: 0
 slides_per_index: 100
 random_state: 42
 
