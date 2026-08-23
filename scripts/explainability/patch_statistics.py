@@ -5,11 +5,13 @@ submit_job(
     job_name="ulcerative-colitis-patch-statistics-...",
     username=...,
     public=False,
-    # ray.init() no longer pins num_cpus (dropped along with sampling/memmap -
-    # see explainability-status memory) - if this job stalls/OOMs again the
-    # way it did before (pinned CPU/RAM, zero throughput), that fix needs
-    # reinstating in explainability/patch_statistics.py's ray.init(), with
-    # cpu= here kept in sync with whatever value is chosen.
+    # Deliberately low - keep in sync with num_cpus in
+    # explainability/patch_statistics.py's ray.init(). Confirmed necessary
+    # (not just the earlier node-wide-CPU-autodetect issue): dropping it,
+    # even after also removing sampling/memmaps entirely, reintroduced the
+    # exact same stall. See that file's comment for the root cause (oversized
+    # parquet row groups, not anything about what patch_statistics.py does
+    # with the data downstream).
     cpu=8,
     memory="64Gi",
     shm="16Gi",

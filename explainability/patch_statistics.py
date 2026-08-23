@@ -92,5 +92,20 @@ if __name__ == "__main__":
     ctx.enable_rich_progress_bars = True
     ctx.use_ray_tqdm = False
 
-    with ray.init(runtime_env={"excludes": [".git", ".venv"]}):
+    # num_cpus is set deliberately *low*. Confirmed root cause (reproduced
+    # directly against the real files, see explainability-status memory):
+    # every patch token parquet file is a single ~1.6GB row group (Parquet
+    # compresses each column chunk as one continuous stream per row group),
+    # so even Ray's own automatic per-file metadata sampling
+    # (`_fetch_parquet_file_info`, runs before any read task) has to
+    # materialize close to the whole file - measured at 2-5GB per file just
+    # to sample 1024 rows. This is independent of sampling/memmaps (still
+    # true after dropping both - confirmed: removing num_cpus here
+    # reintroduced the exact same stall), so it isn't going away on its own.
+    # Ray's mitigation (SPREAD scheduling across cluster nodes) does nothing
+    # for a single local Ray instance (one pod, no cluster - every job log
+    # shows "Started a local Ray instance"), so num_cpus is what actually
+    # bounds how many ~2-5GB files get processed *concurrently on this one
+    # node*. Keep in sync with cpu= in scripts/explainability/patch_statistics.py.
+    with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
         main()
