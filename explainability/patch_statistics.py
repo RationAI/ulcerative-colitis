@@ -202,5 +202,22 @@ if __name__ == "__main__":
     # unset, that mismatch overschedules concurrent tasks far beyond what the
     # pod can actually run, which is what stalled this job pinned at its real
     # CPU/RAM budget with ~zero throughput (see explainability-status memory).
-    with ray.init(num_cpus=32, runtime_env={"excludes": [".git", ".venv"]}):
+    #
+    # object_store_memory needs the same treatment: ray.get_system_memory()
+    # (ray/_common/utils.py) does the identical /sys/fs/cgroup fallback - reads
+    # memory.max, and falls back to the *node's* total RAM (via
+    # psutil.virtual_memory().total) whenever no hard cgroup memory limit is
+    # set either. Left unset, Ray sizes its object store as a fraction of that
+    # inflated number and doesn't apply its own backpressure/spilling until
+    # far too late, so usage just grows until it slams into the pod's real
+    # 64Gi ceiling - same "pinned at the real limit, zero throughput" symptom,
+    # just for memory instead of CPU. Pin it against the real budget (64Gi in
+    # scripts/explainability/patch_statistics.py) instead: ~20GiB leaves
+    # headroom in the same pod for the Python-side batch processing (numpy
+    # stacking, scratch-file writes) that isn't itself part of the object store.
+    with ray.init(
+        num_cpus=32,
+        object_store_memory=20 * 1024**3,
+        runtime_env={"excludes": [".git", ".venv"]},
+    ):
         main()
