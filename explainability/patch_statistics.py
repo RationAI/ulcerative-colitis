@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import hydra
@@ -40,6 +41,9 @@ def compute_percentiles(
         A DataFrame indexed by dimension, one column per requested percentile.
     """
     digests: list[TDigest] | None = None
+    n_patches = 0
+    start = time.monotonic()
+    last_log = start
     for batch in dataset.select_columns(["embedding"]).iter_batches(
         batch_size=batch_size, batch_format="numpy"
     ):
@@ -48,6 +52,21 @@ def compute_percentiles(
             digests = [TDigest() for _ in range(tokens.shape[1])]
         for dim, digest in enumerate(digests):
             digest.update(tokens[:, dim])
+
+        n_patches += tokens.shape[0]
+        now = time.monotonic()
+        # Digest updates dominate wall-clock here (see docstring), so a
+        # simple elapsed-time-based log is the only progress signal - there's
+        # no file growing on disk to watch the way the earlier memmap-based
+        # version had (see explainability-status memory). Uses print(), not
+        # `logging` - configs/hydra/default.yaml sets job_logging: disabled,
+        # which leaves no handler attached anywhere (verified directly:
+        # log.warning() is silently dropped, not just filtered by level), so
+        # anything through `logging` never appears in job output at all.
+        if now - last_log > 60:
+            rate = n_patches / (now - start)
+            print(f"compute_percentiles: {n_patches} patches processed ({rate:.0f} patches/s)")
+            last_log = now
 
     if digests is None:
         raise ValueError("Dataset is empty - no patches to compute percentiles over.")
