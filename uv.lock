@@ -1907,6 +1907,16 @@ wheels = [
 ]
 
 [[package]]
+name = "pytdigest"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/af/6c94278db5800bb24366955426fd23b7f90576edb14dfd01dffd3fe8fcec/pytdigest-0.1.4.tar.gz", hash = "sha256:573dfee19bb0f26fc1f43d8a571b513f9d8f09ff1add98ce99826357e0070f0d", size = 18624, upload-time = "2023-02-03T21:57:20.842Z" }
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -2677,6 +2687,11 @@ dependencies = [
     { name = "torchmetrics" },
 ]
 
+[package.optional-dependencies]
+explainability = [
+    { name = "pytdigest" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
@@ -2695,6 +2710,7 @@ requires-dist = [
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.3.3" },
+    { name = "pytdigest", marker = "extra == 'explainability'", specifier = ">=0.1.4" },
     { name = "pyvips", specifier = "<3.1" },
     { name = "rationai-masks", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" },
     { name = "rationai-mlkit", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" },
@@ -2707,6 +2723,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.9.0" },
     { name = "torchmetrics", specifier = ">=1.8.2" },
 ]
+provides-extras = ["explainability"]
 
 [package.metadata.requires-dev]
 dev = [

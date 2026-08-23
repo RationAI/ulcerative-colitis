@@ -5,14 +5,28 @@ submit_job(
     job_name="ulcerative-colitis-patch-statistics-...",
     username=...,
     public=False,
-    # Keep in sync with num_cpus in explainability/patch_statistics.py's ray.init().
-    cpu=32,
+    # ray.init() no longer pins num_cpus (dropped along with sampling/memmap -
+    # see explainability-status memory) - if this job stalls/OOMs again the
+    # way it did before (pinned CPU/RAM, zero throughput), that fix needs
+    # reinstating in explainability/patch_statistics.py's ray.init(), with
+    # cpu= here kept in sync with whatever value is chosen.
+    cpu=8,
     memory="64Gi",
     shm="16Gi",
     script=[
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
-        "uv sync --frozen",
+        # --extra explainability pulls in pytdigest, which is *not* in the
+        # base dependencies (see pyproject.toml) specifically so other jobs'
+        # plain `uv sync --frozen` don't have to build it. It compiles a C
+        # extension from source (no prebuilt wheel for this platform) - the
+        # interpreter's baked-in CFLAGS include a clang-only flag
+        # (-fdebug-default-version=4) that this GCC-based toolchain rejects.
+        # Stripped here the same way it had to be stripped to install it
+        # locally; unverified whether this container's toolchain hits the
+        # identical issue - if `uv sync` still fails here, this is the first
+        # thing to check.
+        "CFLAGS='-fno-strict-overflow -Wsign-compare -Wunreachable-code -DNDEBUG -g -O3 -Wall -fPIC' uv sync --frozen --extra explainability",
         "uv run --active python -m explainability.patch_statistics",
     ],
     storage=[storage.secure.PROJECTS],

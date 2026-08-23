@@ -64,9 +64,7 @@ def resolve_token_dirs(
     return token_dirs
 
 
-def load_tokens_dataset(
-    token_dirs: list[str], read_task_memory: float | None = None
-) -> ray.data.Dataset:
+def load_tokens_dataset(token_dirs: list[str]) -> ray.data.Dataset:
     """Load and pool token parquet files (across institutions) into one dataset.
 
     Uses `ray.data.read_parquet` rather than HF `datasets`: it reads straight
@@ -76,22 +74,19 @@ def load_tokens_dataset(
     slow (tens of examples/s), and `ray.data` scales across the job's whole
     cluster rather than one node's cores.
 
+    Note: every written file here is a single parquet row group (~1.6GB
+    compressed - verified directly against the written files), which makes
+    even Ray's own automatic per-file metadata sampling (runs inside
+    `ParquetDatasource.__init__`, before any read task) memory-intensive - see
+    explainability-status memory for the full investigation. Concurrency
+    (`ray.init(num_cpus=...)`) is what bounds how many such files get
+    processed at once on a single-node Ray instance; callers reading from
+    `kind=patch` may need to keep that low.
+
     Args:
         token_dirs: Per-institution directories of token parquet files, as
             returned by `resolve_token_dirs`. A single `read_parquet` call
             pools all of them into one dataset.
-        read_task_memory: Heap memory (bytes) to reserve per parallel read
-            task, forwarded to `ray.data.read_parquet`'s `memory` arg. Each
-            written file here is a *single* parquet row group (~1.6GB
-            compressed / ~2.1GB uncompressed - verified directly against the
-            written files, see explainability-status memory) rather than
-            several smaller ones, so a read task can't decode less than
-            roughly a whole file's worth of data at once. Left unset by
-            default (Ray's own per-task scheduling applies, i.e. up to
-            `num_cpus` files decoding concurrently); pass a value close to
-            that per-file size to make Ray throttle concurrent read tasks to
-            what actually fits in memory, instead of launching as many
-            multi-GB decodes at once as there are CPUs.
 
     Returns:
         A single pooled, lazy `ray.data.Dataset` over all tokens.
@@ -101,4 +96,4 @@ def load_tokens_dataset(
     # away the way some writers do), even though it's already encoded in
     # which of these directories was resolved. Drop it here, once, so no
     # downstream consumer carries around a redundant constant column.
-    return ray.data.read_parquet(token_dirs, memory=read_task_memory).drop_columns(["kind"])
+    return ray.data.read_parquet(token_dirs).drop_columns(["kind"])

@@ -10,39 +10,22 @@ defaults:
 # always go through mlflow (e.g. on a fresh node without the project mount).
 local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 
-embed_dim: 1280
+# Patches read per streaming batch (also the digest-update batch size).
+batch_size: 131072
+overwrite: false
 
-# Each written patch parquet file is a single ~1.6GB (compressed) row group,
-# not several smaller ones - verified directly against the real files - so a
-# read task can't decode less than roughly one whole file at a time. Without
-# this, Ray schedules up to num_cpus such multi-GB decodes concurrently,
-# which is what pinned CPU/RAM with zero throughput even after bumping the
-# job to 64 CPU / 128GB. This tells Ray's scheduler the real per-task cost so
-# it throttles concurrency to what actually fits, instead. ~4GiB is a rough
-# margin above the ~2.1GB uncompressed row-group size (Arrow/decode overhead).
-read_task_memory: 4294967296 # 4 GiB
-
-sample:
-  # ~0.45 of all patch tokens -> ~17.8M patches (~91GB as float32)
-  patches_fraction: 0.45
-  random_state: 42
-  # Patches read per write to the (Fortran-ordered) memmap. Larger means
-  # fewer, larger scattered writes (each of the 1280 columns gets one bigger
-  # contiguous run per batch instead of many small ones) at the cost of more
-  # RAM per batch (131072 patches -> ~671MB).
-  batch_size: 131072
-  overwrite: false
-
-percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0]
+# 0.25/0.75 are for the IQR (p0.75 - p0.25), used by nmf_fit.py as a
+# per-dimension scale so a handful of outlier-magnitude channels (e.g.
+# dimension 1, observed ~-53..41 vs a typical ~-4..4) don't dominate NMF's
+# (unweighted, Frobenius) loss.
+percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 0.25, 0.75, 1e-1, 1.0]
 
 output_dir: ${project_dir}/explainability/patch_statistics
 
 metadata:
   run_name: "📊 Patch Statistics"
   description: >-
-    Per-dimension percentile statistics over a pooled random sample of
-    patch tokens (ftn + ikem), used to pick a shift for NMF.
+    Per-dimension percentile statistics (t-digest, full ftn + ikem corpus,
+    no sampling) used to pick a shift and IQR scale for NMF.
   hyperparams:
-    patches_fraction: ${sample.patches_fraction}
-    random_state: ${sample.random_state}
     percentiles: ${percentiles}

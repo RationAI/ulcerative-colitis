@@ -30,19 +30,51 @@ def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarra
     return stats[percentile_column].to_numpy(dtype=np.float32)
 
 
+def load_scale(
+    percentile_stats_path: Path, low_column: str = "p0.25", high_column: str = "p0.75"
+) -> np.ndarray:
+    """Load the per-dimension IQR scale (p0.75 - p0.25) from patch_statistics' output.
+
+    A handful of embedding dimensions carry far larger magnitude than the
+    rest (observed: dimension 1 spans roughly -53..41 vs. a typical ~-4..4 -
+    see explainability-status memory), and NMF's (unweighted, Frobenius) loss
+    would otherwise let those few dimensions dominate what the dictionary
+    fits. IQR is used rather than std since it's robust to exactly the
+    outliers being downweighted (std would itself be inflated by them), and
+    it comes for free from the same per-dimension percentiles already being
+    computed.
+
+    Args:
+        percentile_stats_path: Path to the percentile_stats.parquet produced by
+            `explainability.patch_statistics` (must include the `low_column`
+            and `high_column` percentiles).
+        low_column: Percentile column for the IQR's lower bound.
+        high_column: Percentile column for the IQR's upper bound.
+
+    Returns:
+        A 1D array of shape (embed_dim,), one scale value per dimension.
+        Dimensions with a zero (or negative, shouldn't happen) IQR fall back
+        to a scale of 1 rather than dividing by zero.
+    """
+    stats = pd.read_parquet(percentile_stats_path).sort_index()
+    iqr = (stats[high_column] - stats[low_column]).to_numpy(dtype=np.float32)
+    return np.where(iqr <= 0, 1.0, iqr)
+
+
 def iter_patch_batches(
     patches_ds: ray.data.Dataset,
     batch_size: int,
     shift: np.ndarray,
+    scale: np.ndarray,
     with_metadata: bool = False,
     shuffle_seed: int | None = None,
     shuffle_buffer_size: int | None = None,
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
-    """Yield shifted, non-negative patch batches with optional provenance.
+    """Yield shifted, scaled, non-negative patch batches with optional provenance.
 
     `patches_ds` already holds one row per patch token (see
     `preprocessing/embeddings_xai.py`, which explodes and Hive-partitions by
-    `kind` at write time), so this reads and shifts patches directly - no
+    `kind` at write time), so this reads and transforms patches directly - no
     per-tile reshaping or CLS stripping needed here any more.
 
     Args:
@@ -50,7 +82,10 @@ def iter_patch_batches(
             `explainability.tiles.load_tokens_dataset` with `kind="patch"`),
             in whatever order the caller wants read (see `shuffle_seed`).
         batch_size: Number of patches to read per yielded batch.
-        shift: Per-dimension shift constant, shape (embed_dim,).
+        shift: Per-dimension shift constant `c`, shape (embed_dim,).
+        scale: Per-dimension scale constant `d` (the IQR, see `load_scale`),
+            shape (embed_dim,) - matches concept_mil.tex's non-negativity
+            transform t~ = (t + c) / d (here `shift` plays the role of `-c`).
         with_metadata: If True, also yield a DataFrame of (slide_id, x, y,
             patch_index) rows aligned with the yielded patch batch, so each
             row of W can be traced back to the patch it came from.
@@ -77,7 +112,7 @@ def iter_patch_batches(
         local_shuffle_buffer_size=shuffle_buffer_size,
     ):
         tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-        patches = np.maximum(tokens - shift, 0.0)
+        patches = np.maximum((tokens - shift) / scale, 0.0)
 
         metadata = None
         if with_metadata:
@@ -119,6 +154,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     shift = load_shift(Path(config.shift.percentile_stats_path), config.shift.percentile_column)
+    scale = load_scale(Path(config.shift.percentile_stats_path))
 
     token_dirs = resolve_token_dirs(
         config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
@@ -146,12 +182,24 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             patches_ds,
             config.nmf.batch_size,
             shift,
+            scale,
             shuffle_seed=config.nmf.random_state + epoch,
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
         ):
             model.partial_fit(patches)
 
     h = model.components_
+    # Recover H_k = H~_k * d (concept_mil.tex eq 2.24) before gauge-fixing:
+    # the dictionary was fit on scaled patches, so each component's raw
+    # coefficients are per unit of (dimension j / scale[j]), not per unit of
+    # dimension j directly - this multiplies that back out, dimension by
+    # dimension, into the original (shifted-only) token space. Must happen
+    # *before* gauge-fixing, not after: gauge-fixing normalizes row norms,
+    # and this recovery changes those norms (scaling each column by a
+    # different amount). W needs no equivalent correction - it comes out of
+    # the NMF fit already in the right space; only H does, since the scale
+    # is a per-dimension (column) transform, and only H has a dimension axis.
+    h = h * scale[None, :]
     norms = None
     if config.nmf.gauge_fix:
         h, norms = gauge_fix_dictionary(h)
@@ -167,6 +215,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         patches_ds,
         config.nmf.batch_size,
         shift,
+        scale,
         with_metadata=True,
     ):
         w_batch = model.transform(patches)
@@ -189,6 +238,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
         "n_components": config.n_components,
         "percentile_column": config.shift.percentile_column,
+        "scale_columns": "p0.75 - p0.25 (IQR)",
         "gauge_fixed": config.nmf.gauge_fix,
         "epochs": config.nmf.epochs,
     }

@@ -25,6 +25,11 @@ dependencies = [
     "scikit-learn>=1.8.0",
 ]
 
+[project.optional-dependencies]
+explainability = [
+    "pytdigest>=0.1.4",
+]
+
 [dependency-groups]
 dev = ["mypy", "ruff", "ipykernel"]
 job = ["rationai-kube-jobs"]
