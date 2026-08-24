@@ -89,7 +89,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         config.dataset.labels,
         config.dataset.institution,
         re.compile(config.dataset.regex_pattern),
-        config.datset.drop_missing
+        config.dataset.drop_missing
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
