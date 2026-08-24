@@ -33,9 +33,31 @@ nmf:
   epochs: 1
   # Row buffer for ray.data's local (per-worker, no cross-node shuffle) read
   # order randomization during training - see iter_patch_batches' shuffle_seed.
-  # Bigger mixes more patches per partial_fit call at the cost of more RAM
-  # (~5KB/patch at 1280 float32 -> 1.28M patches ~= 6.5GB in the buffer).
-  shuffle_buffer_size: 1_280_000
+  # Bigger mixes more patches per partial_fit call at the cost of more RAM -
+  # AND at the cost of pyarrow offset-overflow risk (see below), so this
+  # can't just be raised freely.
+  #
+  # embeddings are stored as float64 (~10KB/patch at 1280 dims, not float32
+  # as an earlier version of this comment assumed - confirmed from the
+  # `list<element: double>` arrow dtype in a real crash's traceback). At
+  # 500_000 rows that's ~5GB in the buffer, matching this comment's original
+  # (float32-based) memory budget.
+  #
+  # Hard ceiling, not just a memory tradeoff: Ray's local shuffle
+  # concatenates the whole buffered `embedding` column into one contiguous
+  # pyarrow ListArray before shuffling it, and pyarrow's default ListArray
+  # uses int32 offsets - capped at 2^31-1 (~2.15B) elements in the
+  # flattened child array. 1_280_000 rows * 1280 dims = 1.638B elements,
+  # already 71% of that ceiling for the *target* size alone, before the
+  # batcher's normal overshoot (it keeps accreting blocks past the target
+  # before it shuffles) - confirmed this actually overflows in practice
+  # (`pyarrow.lib.ArrowInvalid: offset overflow while concatenating arrays`).
+  # 500_000 rows * 1280 dims = 640M elements, ~30% of the ceiling - safe
+  # margin even accounting for overshoot. Don't raise this back toward
+  # 1_280_000 without also addressing the offset ceiling itself (e.g.
+  # casting `embedding` to `large_list` at read time in
+  # `explainability/tiles.py`, per pyarrow's own suggested fix).
+  shuffle_buffer_size: 500_000
   init: random
   beta_loss: frobenius
   random_state: 42
