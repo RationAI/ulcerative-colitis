@@ -20,7 +20,7 @@ dependencies = [
     "ray[data]>=2.52.1",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
-    "ratiopath>=1.1.2",
+    "ratiopath>=1.4.2",
     "rich>=15.0.0",
     "scikit-learn>=1.8.0",
 ]

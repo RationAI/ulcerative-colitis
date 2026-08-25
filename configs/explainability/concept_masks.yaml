@@ -1,0 +1,66 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings_xai/ftn@sources.ftn
+  - /dataset/embeddings_xai/ikem@sources.ikem
+  - _self_
+
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
+# Which embeddings_xai split to build masks from. Not "train": that split is
+# subsampled + filtered to a non-overlapping 224 grid (see
+# configs/preprocessing/embeddings_xai.yaml's filter_tiles), so it never
+# exercises the overlapping-tile averaging this script exists for. No
+# default on purpose - pick one deliberately.
+split: ???
+
+# Must match the pixel size tiles were cut at (configs/preprocessing/
+# tiling.yaml's tile_extent) - not derived from that config, since this
+# config tree doesn't load it. 224 / 14 (Virchow2's ViT-H/14 patch size,
+# see explainability/concept_masks.py's PATCH_PIXELS) = a 16x16 token grid.
+tile_extent: 224
+
+batch_size: 25600
+
+# Number of NMF components (concepts) - must match config.h.mlflow_uri's H
+# exactly (checked at runtime); kept as an explicit value here (not just
+# derived from H's shape) so it's visible in the run's logged hyperparams
+# and output_dir, same convention as configs/explainability/nmf_fit.yaml.
+n_components: ???
+
+h:
+  # mlflow artifact URI for a specific nmf_fit run's h.parquet (the
+  # gauge-fixed, scale-recovered dictionary). No default on purpose - update
+  # after every nmf_fit.py run, same convention as this file's shift.mlflow_uri.
+  mlflow_uri: ???
+
+shift:
+  # Same percentile_stats.parquet the nmf_fit run at h.mlflow_uri was itself
+  # shifted with - must be the *same* patch_statistics run, or the recovered
+  # H and this script's patch transform disagree about the non-negativity
+  # shift. See configs/explainability/nmf_fit.yaml's shift block.
+  mlflow_uri: ???
+  percentile_column: p0.0001
+
+nmf:
+  # Only used by explainability/concept_masks.py's make_transform_model to
+  # satisfy sklearn's check_is_fitted before overwriting components_ with
+  # the loaded H - doesn't affect the loaded dictionary itself. Kept in sync
+  # with nmf_fit.yaml's values on principle, not because it matters here.
+  init: random
+  beta_loss: frobenius
+  random_state: 42
+
+output_dir: ${project_dir}/explainability/concept_masks/k${n_components}/${split}
+
+metadata:
+  run_name: "🎭 Concept Masks (k=${n_components}, ${split})"
+  description: >-
+    Per-slide NMF concept intensity + argmax masks, built from
+    h.mlflow_uri's dictionary over the ${split} embeddings_xai split.
+  hyperparams:
+    n_components: ${n_components}
+    split: ${split}
+    h_mlflow_uri: ${h.mlflow_uri}
+    shift_mlflow_uri: ${shift.mlflow_uri}
+    batch_size: ${batch_size}
