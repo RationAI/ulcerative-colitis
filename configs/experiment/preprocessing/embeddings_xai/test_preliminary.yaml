@@ -1,0 +1,5 @@
+# @package _global_
+
+split: test_preliminary
+slides_per_index: 1
+filter_tiles: false

@@ -90,7 +90,11 @@ def explode_tokens(
 
 
 def subsample(
-    slides: pd.DataFrame, tiles: pd.DataFrame, slides_per_index: int, random_state: int
+    slides: pd.DataFrame,
+    tiles: pd.DataFrame,
+    slides_per_index: int,
+    random_state: int,
+    filter_tiles: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Subsample slides and tiles to a maximum number of slides per index.
 
@@ -99,6 +103,7 @@ def subsample(
         tiles: DataFrame containing tile information.
         slides_per_index: Maximum number of slides to keep per index.
         random_state: Random seed for reproducibility.
+        filter_tiles: Whether to filter tiles after subsampling slides.
 
     Returns:
         A tuple containing the subsampled slides and tiles DataFrames.
@@ -109,6 +114,10 @@ def subsample(
         .apply(lambda x: x.sample(min(len(x), slides_per_index), random_state=random_state))
         .reset_index(drop=True)
     )
+
+    if not filter_tiles:
+        return sampled_slides, tiles
+
 
     # Filter tiles to only include those corresponding to the sampled slides
     sampled_tiles = tiles[tiles["slide_id"].isin(sampled_slides["id"])]
@@ -123,13 +132,13 @@ def subsample(
 @hydra.main(config_path="../configs", config_name="preprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    uri = config.dataset.mlflow_uris.tiling.train
+    uri = config.dataset.mlflow_uris.tiling[config.split]
     folder = Path(mlflow.artifacts.download_artifacts(uri))
     slides = pd.read_parquet(folder / "slides.parquet")
     tiles = pd.read_parquet(folder / "tiles.parquet")
 
     slides, tiles = subsample(
-        slides, tiles, config.slides_per_index, config.random_state
+        slides, tiles, config.slides_per_index, config.random_state, config.filter_tiles
     )
 
     slide_info = slides.set_index("id")[
@@ -169,7 +178,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         max_concurrency=config.concurrency,
     )
 
-    split_dir = Path(config.output_dir) / "train"
+    split_dir = Path(config.output_dir) / config.split
     # Wipe the whole split dir up front, not just the tokens subdir: every
     # run rewrites all of it anyway (nothing here is incremental), and
     # `logger.log_artifacts` below uploads everything still sitting under
@@ -192,7 +201,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         min_rows_per_file=config.rows_per_file,
     )
 
-    logger.log_artifacts(str(split_dir), f"train - {config.dataset.institution}")
+    logger.log_artifacts(str(split_dir), f"{config.split} - {config.dataset.institution}")
 
 
 if __name__ == "__main__":

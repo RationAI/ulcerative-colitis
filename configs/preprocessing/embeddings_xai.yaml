@@ -16,8 +16,10 @@ pool_tokens: "false"
 # "cls" (kind=cls). Downstream explainability configs no longer need their
 # own copy of this - the split already happened here, at write time.
 cls_token_index: 0
-slides_per_index: 100
 random_state: 42
+slides_per_index: ???
+split: ???
+filter_tiles: ???
 
 metadata:
   run_name: "🔢 Embeddings XAI: ${dataset.institution}"

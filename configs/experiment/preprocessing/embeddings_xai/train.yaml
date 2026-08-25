@@ -1,0 +1,5 @@
+# @package _global_
+
+split: train
+slides_per_index: 100
+filter_tiles: true
