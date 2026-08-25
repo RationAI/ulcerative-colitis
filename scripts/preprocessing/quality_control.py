@@ -13,5 +13,5 @@ submit_job(
         "uv sync --frozen",
         "uv run -m preprocessing.quality_control +dataset=processed/...",
     ],
-    storage=[storage.secure.DATA],
+    storage=[storage.secure.DATA, storage.secure.PROJECTS],
 )
