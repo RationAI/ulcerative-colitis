@@ -22,7 +22,7 @@ split: ???
 filter_tiles: ???
 
 metadata:
-  run_name: "🔢 Embeddings XAI: ${dataset.institution}"
+  run_name: "🔢 Embeddings XAI: ${dataset.institution} - ${split}"
   description: Tile embeddings for ${dataset.institution} using model ${model}
   hyperparams:
     model: ${model}
