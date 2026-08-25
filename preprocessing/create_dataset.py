@@ -59,7 +59,7 @@ def create_dataset(
     slides_df = get_slides(folder_path, pattern)
 
     # IKEM has only case-level labels (FTN has one slide per case)
-    on = "case_id" if institution == "ikem" else "slide_id"
+    on = "case_id" if institution.startswith("ikem") else "slide_id"
     dataset_df = slides_df.join(labels_df, on=on, how="outer")
     dataset_df.index.name = "slide_id"
 
