@@ -1,0 +1,6 @@
+defaults:
+  - /dataset/raw/ikem_validation@_here_
+  - _self_
+
+mlflow_uris:
+  dataset: mlflow-artifacts:/86/f91742d3b2d749deb7337ee8554fe8f0/artifacts/dataset.csv
