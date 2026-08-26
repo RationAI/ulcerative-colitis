@@ -3,6 +3,7 @@
 defaults:
   - /dataset/embeddings_xai/ftn@sources.ftn
   - /dataset/embeddings_xai/ikem@sources.ikem
+  - /dataset/embeddings_xai/knl_patos@sources.knl_patos
   - _self_
 
 local_embeddings_xai_dir: ${project_dir}/embeddings_xai
@@ -12,7 +13,7 @@ local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 # configs/preprocessing/embeddings_xai.yaml's filter_tiles), so it never
 # exercises the overlapping-tile averaging this script exists for. No
 # default on purpose - pick one deliberately.
-split: ???
+split: test_preliminary
 
 # Must match the pixel size tiles were cut at (configs/preprocessing/
 # tiling.yaml's tile_extent) - not derived from that config, since this
@@ -22,24 +23,43 @@ tile_extent: 224
 
 batch_size: 25600
 
-# Number of NMF components (concepts) - must match config.h.mlflow_uri's H
-# exactly (checked at runtime); kept as an explicit value here (not just
-# derived from H's shape) so it's visible in the run's logged hyperparams
-# and output_dir, same convention as configs/explainability/nmf_fit.yaml.
+# Number of NMF components (concepts) - picks which entry of `h` below to
+# use (config.h[str(n_components)]); also checked against that entry's H's
+# actual shape at runtime. Kept as an explicit value here (not just derived
+# from H's shape) so it's visible in the run's logged hyperparams and
+# output_dir, same convention as configs/explainability/nmf_fit.yaml.
 n_components: ???
 
+# Per-K mlflow artifact URIs for nmf_fit's h.parquet (the gauge-fixed,
+# scale-recovered dictionary), keyed by n_components *as a string* (YAML/
+# OmegaConf quirk - see explainability/concept_masks.py's main()). One entry
+# added here as each nmf_fit.py run actually finishes - not pre-declared as
+# placeholders for Ks that don't exist yet, same "no default, update after
+# every run" convention as configs/dataset/embeddings_xai/{ftn,ikem}.yaml's
+# mlflow_uris.embeddings_xai.<split> and this file's shift.mlflow_uri below.
+#
+# Example once K=6 has a finished nmf_fit run:
+#   h:
+#     "6":
+#       mlflow_uri: mlflow-artifacts:/86/<run_id>/artifacts/h.parquet
 h:
-  # mlflow artifact URI for a specific nmf_fit run's h.parquet (the
-  # gauge-fixed, scale-recovered dictionary). No default on purpose - update
-  # after every nmf_fit.py run, same convention as this file's shift.mlflow_uri.
-  mlflow_uri: ???
+  "4":
+    mlflow_uri: mlflow-artifacts:/86/face651400ed4c69a3b2559f7f273364/artifacts/h.parquet
+  "6":
+    mlflow_uri: mlflow-artifacts:/86/face651400ed4c69a3b2559f7f273364/artifacts/h.parquet
+  "8":
+    mlflow_uri: mlflow-artifacts:/86/92ccf7794cbb491382e87de804953e33/artifacts/h.parquet
+  "10":
+    mlflow_uri: mlflow-artifacts:/86/a7a699eb611844e59e82a193bfcdbc03/artifacts/h.parquet
+  "12":
+    mlflow_uri: mlflow-artifacts:/86/06234d55d95e4b8cb813f88de3771b7e/artifacts/h.parquet
 
 shift:
-  # Same percentile_stats.parquet the nmf_fit run at h.mlflow_uri was itself
-  # shifted with - must be the *same* patch_statistics run, or the recovered
-  # H and this script's patch transform disagree about the non-negativity
-  # shift. See configs/explainability/nmf_fit.yaml's shift block.
-  mlflow_uri: ???
+  # Same percentile_stats.parquet the nmf_fit run picked via `h` above was
+  # itself shifted with - must be the *same* patch_statistics run, or the
+  # recovered H and this script's patch transform disagree about the
+  # non-negativity shift. See configs/explainability/nmf_fit.yaml's shift block.
+  mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
   percentile_column: p0.0001
 
 nmf:
@@ -57,10 +77,10 @@ metadata:
   run_name: "🎭 Concept Masks (k=${n_components}, ${split})"
   description: >-
     Per-slide NMF concept intensity + argmax masks, built from
-    h.mlflow_uri's dictionary over the ${split} embeddings_xai split.
+    h.${n_components}.mlflow_uri's dictionary over the ${split} embeddings_xai split.
   hyperparams:
     n_components: ${n_components}
     split: ${split}
-    h_mlflow_uri: ${h.mlflow_uri}
+    h_mlflow_uri: ${oc.select:h.${n_components}.mlflow_uri}
     shift_mlflow_uri: ${shift.mlflow_uri}
     batch_size: ${batch_size}

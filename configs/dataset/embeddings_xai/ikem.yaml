@@ -5,3 +5,4 @@ defaults:
 mlflow_uris:
   embeddings_xai:
     train: mlflow-artifacts:/86/ac589415a4fa4f22b609425711f19955/artifacts/train - ikem
+    test_preliminary: mlflow-artifacts:/86/1551ba1ca5a44ebe9d34f9c1457a372f/artifacts/test_preliminary - ikem

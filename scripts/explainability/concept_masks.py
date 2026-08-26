@@ -3,10 +3,14 @@ from kube_jobs import storage, submit_job
 
 # Single-job template, same convention as scripts/explainability/nmf_fit.py -
 # edit these per submission rather than sweeping automatically.
-split = ...  # e.g. "test_preliminary" - the overlapping-tile split this script is for
-n_components = ...  # must match h_mlflow_uri's actual K
-h_mlflow_uri = ...  # a specific nmf_fit run's h.parquet artifact URI
-shift_mlflow_uri = ...  # the patch_statistics run h_mlflow_uri was itself shifted with
+#
+# Unlike h_mlflow_uri/shift_mlflow_uri in an earlier version of this script,
+# h.mlflow_uri isn't passed here at all: configs/explainability/
+# concept_masks.yaml's `h` is now keyed by n_components (one entry per K
+# that's actually been fit) and shift.mlflow_uri already has a real default
+# there too - both need to already be filled in before submitting, not
+# passed per-run.
+n_components = ...  # must have a configs/explainability/concept_masks.yaml h.<n_components> entry
 
 submit_job(
     job_name=f"ulcerative-colitis-concept-masks-k{n_components}-...",
@@ -23,9 +27,7 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        "uv run --active python -m explainability.concept_masks "
-        f"split={split} n_components={n_components} "
-        f"h.mlflow_uri={h_mlflow_uri} shift.mlflow_uri={shift_mlflow_uri}",
+        f"uv run --active python -m explainability.concept_masks n_components={n_components}",
     ],
     storage=[storage.secure.PROJECTS],
 )

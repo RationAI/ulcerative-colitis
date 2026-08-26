@@ -251,12 +251,24 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    h = load_h(config.h.mlflow_uri)
+    # config.h is keyed by n_components *as a string* - YAML/OmegaConf's own
+    # dotted-interpolation syntax (used for metadata.hyperparams.h_mlflow_uri
+    # below) can't index a mapping by an interpolated int key, only a string
+    # one - see configs/explainability/concept_masks.yaml's h comment.
+    n_components_key = str(config.n_components)
+    if n_components_key not in config.h:
+        raise ValueError(
+            f"No h.{n_components_key}.mlflow_uri configured for "
+            f"n_components={config.n_components} - add that entry to "
+            "configs/explainability/concept_masks.yaml once that K's nmf_fit run finishes."
+        )
+    h_mlflow_uri = config.h[n_components_key].mlflow_uri
+    h = load_h(h_mlflow_uri)
     n_components = h.shape[0]
     if n_components != config.n_components:
         raise ValueError(
             f"config.n_components={config.n_components} doesn't match "
-            f"config.h.mlflow_uri's actual {n_components} components"
+            f"h.{n_components_key}.mlflow_uri's actual {n_components} components"
         )
     model = make_transform_model(h, config)
 
@@ -339,7 +351,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     manifest = {
         "n_components": n_components,
-        "h_mlflow_uri": config.h.mlflow_uri,
+        "h_mlflow_uri": h_mlflow_uri,
         "shift_mlflow_uri": config.shift.mlflow_uri,
         "split": config.split,
         "n_slides": len(builders),

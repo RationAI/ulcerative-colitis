@@ -5,3 +5,4 @@ defaults:
 mlflow_uris:
   embeddings_xai:
     train: mlflow-artifacts:/86/e6c797f635af49b88db4fa55786ff858/artifacts/train - ftn
+    test_preliminary: mlflow-artifacts:/86/6f38e0d658384634aa76bad312c79f76/artifacts/test_preliminary - ftn
