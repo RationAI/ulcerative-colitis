@@ -68,11 +68,11 @@ def filter_dataset_by_qc_errors(
     failed_paths: set[str] = set()
     with open(download_artifacts(qc_errors_uri)) as log_file:
         for line in log_file:
-            line = line.strip()
+            line = line.rstrip("\n")
             if not line.startswith(prefix):
                 continue
-            wsi_path, _, _error = line[len(prefix) :].partition(": ")
-            failed_paths.add(wsi_path)
+            wsi_path, _, _error = line[len(prefix) :].partition(":")
+            failed_paths.add(wsi_path.strip())
 
     return dataset[dataset["path"].isin(failed_paths)].reset_index(drop=True)
 
