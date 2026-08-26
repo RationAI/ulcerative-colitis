@@ -49,6 +49,34 @@ def organize_masks(output_path: Path, subdir: str, mask_prefix: str) -> None:
         file.rename(destination)
 
 
+def filter_dataset_by_qc_errors(
+    dataset: pd.DataFrame, qc_errors_uri: str | None
+) -> pd.DataFrame:
+    """Keep only the rows of `dataset` whose slide failed QC.
+
+    `qc_errors_uri` is an MLflow artifact URI pointing to a `qc_errors.log`
+    file produced by `qc_main` (lines formatted as
+    "Failed to process {wsi_path}: {error}"), e.g.
+    "mlflow-artifacts:/86/433c941b3706450aa499f9bee4b17701/artifacts/qc_errors.log".
+    If `qc_errors_uri` is None, no QC run is available to filter by and the
+    whole dataset is returned unchanged.
+    """
+    if qc_errors_uri is None:
+        return dataset
+
+    prefix = "Failed to process "
+    failed_paths: set[str] = set()
+    with open(download_artifacts(qc_errors_uri)) as log_file:
+        for line in log_file:
+            line = line.strip()
+            if not line.startswith(prefix):
+                continue
+            wsi_path, _, _error = line[len(prefix) :].partition(": ")
+            failed_paths.add(wsi_path)
+
+    return dataset[dataset["path"].isin(failed_paths)].reset_index(drop=True)
+
+
 async def qc_main(
     output_path: Path,
     slides: list[str],
@@ -78,11 +106,13 @@ async def qc_main(
         for prefix, artifact_name in get_qc_masks(qc_parameters):
             organize_masks(Path(output_path), artifact_name, prefix)
 
-        # Merge generated csv files
-        csvs = list(Path(output_path).glob("*.csv"))
-        pd.concat([pd.read_csv(f) for f in csvs]).to_csv(
-            Path(output_path, "qc_metrics.csv"), index=False
-        )
+        # Merge generated csv files, appending to any pre-existing qc_metrics.csv
+        metrics_path = Path(output_path, "qc_metrics.csv")
+        csvs = [f for f in Path(output_path).glob("*.csv") if f != metrics_path]
+        new_metrics = [pd.read_csv(f) for f in csvs]
+        if metrics_path.exists():
+            new_metrics.insert(0, pd.read_csv(metrics_path))
+        pd.concat(new_metrics).to_csv(metrics_path, index=False)
 
         # Remove individual csv files
         for f in csvs:
@@ -96,6 +126,7 @@ async def qc_main(
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     dataset = pd.read_csv(download_artifacts(config.dataset.mlflow_uris.dataset))
+    dataset = filter_dataset_by_qc_errors(dataset, config.get("qc_errors_uri"))
 
     output_path = Path(config.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
