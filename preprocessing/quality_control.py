@@ -85,6 +85,10 @@ async def qc_main(
     max_concurrent: int,
     qc_parameters: QCParameters,
 ) -> None:
+    qc_errors_path = output_path / "qc_errors.log"
+    if qc_errors_path.exists():
+        qc_errors_path.unlink()
+
     async with rationai.AsyncClient() as client:  # type: ignore[attr-defined]
         async for result in tqdm(
             client.qc.check_slides(
@@ -97,7 +101,7 @@ async def qc_main(
             total=len(slides),
         ):
             if not result.success:
-                with open(output_path / "qc_errors.log", "a") as log_file:
+                with open(qc_errors_path, "a") as log_file:
                     log_file.write(
                         f"Failed to process {result.wsi_path}: {result.error}\n"
                     )
