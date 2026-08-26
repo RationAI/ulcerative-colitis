@@ -11,7 +11,9 @@ so each is written straight from `MaskBuilder.finalize()`'s own resolution,
 with `write_big_tiff`'s `mpp_x`/`mpp_y` scaled up by `PATCH_PIXELS` to match.
 
 Output layout is grouped by mask type first, then slide:
-`output_dir/concept_{k}/{slide_id}.tiff` and `output_dir/argmax/{slide_id}.tiff`.
+`output_dir/concept_{k}/{stem}.tiff` and `output_dir/argmax/{stem}.tiff`, where
+`stem` is the slide's own filename stem (`Path(row["path"]).stem`) - not
+`slide_id` (an opaque hash, see `preprocessing/tiling.py`'s `row_hash`).
 The whole `output_dir` (all masks + manifest.json) is logged to mlflow, not
 just kept on the project mount - unlike `nmf_fit.py`'s W or the patch/cls
 token tables, these are small enough (patch-grid resolution, not source
@@ -184,7 +186,7 @@ def to_vips_image(array: np.ndarray) -> pyvips.Image:
 
 
 def write_slide_masks(
-    slide_id: str,
+    stem: str,
     builder: MaskBuilder,
     n_components: int,
     output_dir: Path,
@@ -202,10 +204,13 @@ def write_slide_masks(
     matches whatever else gets loaded into xOpat.
 
     One file per (concept, slide), grouped by mask type first:
-    `output_dir/concept_{k}/{slide_id}.tiff`, `output_dir/argmax/{slide_id}.tiff`.
+    `output_dir/concept_{k}/{stem}.tiff`, `output_dir/argmax/{stem}.tiff`.
 
     Args:
-        slide_id: Slide identifier - also each output file's basename.
+        stem: The slide's filename stem (`Path(row["path"]).stem`, not the
+            opaque `slide_id` hash) - each output file's basename. Callers
+            sharing the same `path` stem across institutions would collide;
+            not currently guarded against.
         builder: This slide's MaskBuilder, already fed every one of its patches.
         n_components: K, the number of NMF components/concept masks.
         output_dir: Root output directory.
@@ -229,7 +234,7 @@ def write_slide_masks(
         concept_dir.mkdir(parents=True, exist_ok=True)
         write_big_tiff(
             to_vips_image(channel[None, :, :]),
-            concept_dir / f"{slide_id}.tiff",
+            concept_dir / f"{stem}.tiff",
             mask_mpp_x,
             mask_mpp_y,
         )
@@ -241,7 +246,7 @@ def write_slide_masks(
     levels[~covered] = 0
     argmax_dir = output_dir / "argmax"
     argmax_dir.mkdir(parents=True, exist_ok=True)
-    write_big_tiff(to_vips_image(levels[None, :, :]), argmax_dir / f"{slide_id}.tiff", mask_mpp_x, mask_mpp_y)
+    write_big_tiff(to_vips_image(levels[None, :, :]), argmax_dir / f"{stem}.tiff", mask_mpp_x, mask_mpp_y)
 
 
 @with_cli_args(["+explainability=concept_masks"])
@@ -344,8 +349,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     for slide_id, builder in builders.items():
         row = slides.loc[slide_id]
+        stem = Path(row["path"]).stem
         write_slide_masks(
-            slide_id, builder, n_components, output_dir, float(row["mpp_x"]), float(row["mpp_y"])
+            stem, builder, n_components, output_dir, float(row["mpp_x"]), float(row["mpp_y"])
         )
         builder.cleanup()
 
