@@ -46,7 +46,7 @@ h:
   "4":
     mlflow_uri: mlflow-artifacts:/86/face651400ed4c69a3b2559f7f273364/artifacts/h.parquet
   "6":
-    mlflow_uri: mlflow-artifacts:/86/face651400ed4c69a3b2559f7f273364/artifacts/h.parquet
+    mlflow_uri: mlflow-artifacts:/86/21b84b8c32a348daafb39b3877de72b5/artifacts/h.parquet
   "8":
     mlflow_uri: mlflow-artifacts:/86/92ccf7794cbb491382e87de804953e33/artifacts/h.parquet
   "10":
