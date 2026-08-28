@@ -4,6 +4,6 @@ defaults:
 
 mlflow_uris:
   tissue_mask: mlflow-artifacts:/86/bad4715238634f929f3787b4e757a683/artifacts/tissue_masks
-  qc_mask: TODO
+  qc_mask: mlflow-artifacts:/86/c54cdb4537fc4072a907899788133d0b/artifacts
   splits:
     predict: mlflow-artifacts:/86/f91742d3b2d749deb7337ee8554fe8f0/artifacts/dataset.csv
