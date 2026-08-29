@@ -28,7 +28,7 @@ test:
     blur: 0.25
     artifacts: 0.25
 predict:
-  _target_: ml.data.datasets.Bags
+  _target_: ml.data.datasets.BagsPredict
   uris: ???
   mode: ???
   thresholds:
