@@ -27,3 +27,10 @@ test:
   thresholds:
     blur_mean: 0.25
     artifacts_mean: 0.25
+predict:
+  _target_: ml.data.datasets.Bags
+  uris: ???
+  mode: ???
+  thresholds:
+    blur_mean: 0.25
+    artifacts_mean: 0.25

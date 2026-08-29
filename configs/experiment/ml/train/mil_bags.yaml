@@ -1,7 +1,9 @@
+# @package _global_
+
 defaults:
   - /ml/train
-  - /ml/model: mil
-  - /ml/data: bags
+  - /ml/model@model: mil
+  - /ml/data@data: bags
   - _self_
 
 metadata:

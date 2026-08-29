@@ -1,7 +1,9 @@
+# @package _global_
+
 defaults:
   - /ml/test
-  - /ml/model: classification
-  - /ml/data: embeddings
+  - /ml/model@model: classification
+  - /ml/data@data: embeddings
   - /ml/backbone@model.backbone: identity
   - _self_
 

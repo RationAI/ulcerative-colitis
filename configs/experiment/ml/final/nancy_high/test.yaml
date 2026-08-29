@@ -1,3 +1,5 @@
+# @package _global_
+
 defaults:
   - /experiment/ml/final/nancy_high/train
   - /ml/test

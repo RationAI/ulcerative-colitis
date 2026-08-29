@@ -12,7 +12,7 @@ OmegaConf.register_new_resolver(
 )
 
 
-@hydra.main(config_path="../configs", config_name="default", version_base=None)
+@hydra.main(config_path="../configs", config_name="ml", version_base=None)
 @autolog
 def main(config: DictConfig, logger: Logger | None) -> None:
     seed_everything(config.seed, workers=True)

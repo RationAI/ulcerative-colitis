@@ -1,10 +1,10 @@
 # @package _global_
 
 defaults:
-  - /ml/test
+  - /ml/predict
   - /ml/model@model: mil
   - /ml/data@data: bags
   - _self_
 
 metadata:
-  run_name: '📏 Testing: MIL Bags - ${data.test.mode} - fold ${val_fold}'
+  run_name: '🎯 Predicting: MIL Bags - ${data.test.mode} - fold ${val_fold}'

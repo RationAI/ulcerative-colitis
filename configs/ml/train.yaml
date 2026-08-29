@@ -1,5 +1,6 @@
+# @package _global_
+
 defaults:
-  - /ml
   - _self_
 
 mode: fit

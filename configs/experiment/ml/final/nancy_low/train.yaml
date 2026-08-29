@@ -1,3 +1,5 @@
+# @package _global_
+
 defaults:
   - /experiment/ml/train/mil_bags
   - /dataset/embeddings/ikem/2_virchow2@ikem
