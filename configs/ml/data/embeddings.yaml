@@ -9,8 +9,8 @@ train:
   val_fold: ${val_fold}
   is_val: false
   thresholds:
-    blur_mean: 0.25
-    artifacts_mean: 0.25
+    blur: 0.25
+    artifacts: 0.25
 val:
   _target_: ml.data.datasets.Embeddings
   uris: ???
@@ -18,12 +18,12 @@ val:
   val_fold: ${val_fold}
   is_val: true
   thresholds:
-    blur_mean: 0.25
-    artifacts_mean: 0.25
+    blur: 0.25
+    artifacts: 0.25
 test:
   _target_: ml.data.datasets.Embeddings
   uris: ???
   mode: ???
   thresholds:
-    blur_mean: 0.25
-    artifacts_mean: 0.25
+    blur: 0.25
+    artifacts: 0.25
