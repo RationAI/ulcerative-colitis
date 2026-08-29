@@ -42,7 +42,15 @@ def add_nancy_index(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
 
 
 def qc_agg(row: dict[str, Any], df: pd.DataFrame) -> dict[str, Any]:
-    qc_df = cast("pd.Series", df.loc[Path(row["path"]).stem])
+    stem = Path(row["path"]).stem
+
+    if stem not in df.index:
+        print(f"[tiling] WARNING: no QC row for slide '{stem}', filling NaN")
+        row["blur_mean"] = float("nan")
+        row["artifacts_mean"] = float("nan")
+        return row
+
+    qc_df = cast("pd.Series", df.loc[stem])
 
     row["blur_mean"] = qc_df[QC_BLUR_MEAN_COLUMN]
     row["artifacts_mean"] = qc_df[QC_ARTIFACTS_MEAN_COLUMN]
@@ -62,6 +70,17 @@ def add_mask_paths(
     row["tissue_mask_path"] = str(tissue_folder / f"{stem}.tiff")
     for key, subfolder in QC_SUBFOLDERS.items():
         row[f"{key}_mask_path"] = str(qc_folder / subfolder / f"{stem}.tiff")
+
+    # The tissue mask is always expected to exist; the QC masks (blur and
+    # artifacts) come from the same QC run and are either both present or
+    # both missing, e.g. when QC hasn't run on a slide yet.
+    missing = [
+        key for key in QC_SUBFOLDERS if not Path(row[f"{key}_mask_path"]).exists()
+    ]
+    if missing:
+        print(f"[tiling] WARNING: missing QC mask(s) {missing} for slide '{stem}'")
+    row["qc_masks_available"] = not missing
+
     return row
 
 
@@ -90,6 +109,7 @@ def tile(row: dict[str, Any]) -> list[dict[str, Any]]:
             "tissue_mask_path": row["tissue_mask_path"],
             "blur_mask_path": row["blur_mask_path"],
             "artifacts_mask_path": row["artifacts_mask_path"],
+            "qc_masks_available": row["qc_masks_available"],
         }
         for x, y in grid_tiles(
             slide_extent=(row["extent_x"], row["extent_y"]),
@@ -110,8 +130,28 @@ def extract_coverages(row: dict[str, Any], *cols: str) -> dict[str, Any]:
     return row
 
 
+def fill_nan_coverages(row: dict[str, Any], *cols: str) -> dict[str, Any]:
+    for c in cols:
+        row[c] = float("nan")
+    return row
+
+
+def drop_columns(row: dict[str, Any], *cols: str) -> dict[str, Any]:
+    for c in cols:
+        row.pop(c, None)
+    return row
+
+
 def filter_tissue(row: dict[str, Any], threshold: float) -> bool:
     return row["tissue"] >= threshold
+
+
+def filter_mask_available(row: dict[str, Any], key: str) -> bool:
+    return row[key]
+
+
+def filter_mask_missing(row: dict[str, Any], key: str) -> bool:
+    return not row[key]
 
 
 def select(row: dict[str, Any]) -> dict[str, Any]:
@@ -150,7 +190,7 @@ def tiling(
     tissue_roi = create_tissue_roi(tile_extent)
     qc_roi = create_qc_roi(tile_extent)
 
-    tiles = (
+    all_tiles = (
         slides.map(
             add_mask_paths,  # pyright: ignore[reportArgumentType]
             fn_args=(qc_folder, tissue_folder),
@@ -173,7 +213,22 @@ def tiling(
             **HI_MEM,
         )
         .map(extract_coverages, fn_args=("tissue",), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
+        .map(drop_columns, fn_args=("tissue_overlap",), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
         .filter(filter_tissue, fn_args=(tissue_threshold,), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
+    )
+
+    # blur and artifacts QC masks come from the same QC run, so they're
+    # either both present or both missing for a slide (e.g. QC hasn't run on
+    # it yet). Split off the tiles whose QC masks exist and compute the real
+    # coverages, fill NaN for the rest, then recombine so no tile is dropped
+    # just because QC hasn't run on its slide.
+    qc_tiles_available = (
+        all_tiles.filter(
+            filter_mask_available,  # pyright: ignore[reportArgumentType]
+            fn_args=("qc_masks_available",),
+            **LO_CPU,
+            **LO_MEM,
+        )
         .with_column(
             "blur_overlap",
             tile_overlay_overlap(
@@ -201,7 +256,23 @@ def tiling(
             **HI_MEM,
         )
         .map(extract_coverages, fn_args=("blur", "artifacts"), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
-        .map(select, **LO_CPU, **LO_MEM)
+        .map(
+            drop_columns,
+            fn_args=("blur_overlap", "artifacts_overlap"),
+            **LO_CPU,
+            **LO_MEM,
+        )  # pyright: ignore[reportArgumentType]
+    )
+
+    qc_tiles_missing = all_tiles.filter(
+        filter_mask_missing,  # pyright: ignore[reportArgumentType]
+        fn_args=("qc_masks_available",),
+        **LO_CPU,
+        **LO_MEM,
+    ).map(fill_nan_coverages, fn_args=("blur", "artifacts"), **LO_CPU, **LO_MEM)  # pyright: ignore[reportArgumentType]
+
+    tiles = qc_tiles_available.union(qc_tiles_missing).map(
+        select, **LO_CPU, **LO_MEM
     )
 
     return slides.to_pandas(), tiles.to_pandas()

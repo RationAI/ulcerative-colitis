@@ -2,6 +2,12 @@
 
 output_dir: ${project_dir}/quality_control/${dataset.institution}
 
+# Optional MLflow artifact URI to a previous run's qc_errors.log, e.g.
+# mlflow-artifacts:/86/433c941b3706450aa499f9bee4b17701/artifacts/qc_errors.log
+# When set, the dataset is filtered down to only the slides that failed QC
+# in that run. Leave as null to use the whole dataset.
+qc_errors_uri: null
+
 request_timeout: 18000
 max_concurrent: 5
 
