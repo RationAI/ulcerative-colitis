@@ -15,13 +15,17 @@ def load_label_map(dataset_uri: str) -> dict[str, int]:
     return {str(k): int(v) for k, v in dataset["nancy"].items()}
 
 
-def load_task_predictions(uri: str, label_map: dict[str, int]) -> pd.DataFrame:
+def load_task_predictions(
+    uri: str, label_map: dict[str, int] | None = None
+) -> pd.DataFrame:
     artifact_path = Path(mlflow.artifacts.download_artifacts(uri))
     if artifact_path.is_dir():
         (artifact_path,) = artifact_path.glob("*.json")
     with open(artifact_path) as f:
         d = json.load(f)
     df = pd.DataFrame(d["data"], columns=d["columns"])
+    if label_map is None:
+        return df.set_index("slide")
     df["nancy"] = df["slide"].map(label_map)
     df = df[df["nancy"].notna()].copy()
     df["nancy"] = df["nancy"].astype(int)
@@ -30,7 +34,7 @@ def load_task_predictions(uri: str, label_map: dict[str, int]) -> pd.DataFrame:
 
 def load_predictions(
     uris: Mapping[str, str],
-    label_map: dict[str, int],
+    label_map: dict[str, int] | None = None,
 ) -> dict[str, pd.DataFrame]:
     task_dfs = {task: load_task_predictions(uris[task], label_map) for task in TASKS}
     common = task_dfs[TASKS[0]].index

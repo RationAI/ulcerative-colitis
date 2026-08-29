@@ -35,7 +35,9 @@ This repository contains the machine learning pipeline developed for automated h
 │   └── split_dataset.py        # Train/val/test split assignment
 ├── postprocessing/             # Slide-level aggregation & confidence
 │   ├── ensembling.py           # Soft majority vote + hierarchical ensembling
-│   └── markov_chain_confidence.py  # Markov chain absorption confidence scores
+│   ├── markov_chain_confidence.py  # Markov chain absorption confidence scores
+│   ├── ensembling_predict.py   # Ensembling for unlabeled cohorts (no metrics)
+│   └── markov_chain_confidence_predict.py  # Confidence scores for unlabeled cohorts
 ├── scripts/                    # Kubernetes job submission scripts
 │   ├── ml/                     # train.py, test.py, neutrophils.py
 │   ├── preprocessing/          # Preprocessing job scripts
@@ -116,6 +118,15 @@ uv run -m postprocessing.ensembling +postprocessing=ensembling
 
 # Markov chain absorption confidence
 uv run -m postprocessing.markov_chain_confidence +postprocessing=markov_chain_confidence
+```
+
+For unlabeled cohorts (no ground-truth NHI grades, e.g. external validation), use the
+`_predict` variants, which skip label loading and metric computation and only emit
+predictions / confidence scores:
+
+```bash
+uv run -m postprocessing.ensembling_predict +postprocessing=ensembling_predict
+uv run -m postprocessing.markov_chain_confidence_predict +postprocessing=markov_chain_confidence_predict
 ```
 
 ---
