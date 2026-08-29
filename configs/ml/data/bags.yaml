@@ -1,0 +1,36 @@
+_target_: ml.data.BagsDataModule
+batch_size: 8
+num_workers: 4
+weighted_sampling: true
+train:
+  _target_: ml.data.datasets.Bags
+  uris: ???
+  mode: ???
+  val_fold: ${val_fold}
+  is_val: false
+  thresholds:
+    blur: 0.25
+    artifacts: 0.25
+val:
+  _target_: ml.data.datasets.Bags
+  uris: ???
+  mode: ???
+  val_fold: ${val_fold}
+  is_val: true
+  thresholds:
+    blur: 0.25
+    artifacts: 0.25
+test:
+  _target_: ml.data.datasets.Bags
+  uris: ???
+  mode: ???
+  thresholds:
+    blur: 0.25
+    artifacts: 0.25
+predict:
+  _target_: ml.data.datasets.BagsPredict
+  uris: ???
+  mode: ???
+  thresholds:
+    blur: 0.25
+    artifacts: 0.25

@@ -1,0 +1,5 @@
+# @package _global_
+
+metadata:
+  run_name: "🏋️‍♂️📏🎯 Neutrophils"
+  description: "Train and evaluate neutrophil detection model"

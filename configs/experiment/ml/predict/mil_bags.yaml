@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - /ml/predict
+  - /ml/model@model: mil
+  - /ml/data@data: bags
+  - _self_
+
+metadata:
+  run_name: '🎯 Predicting: MIL Bags - ${data.test.mode} - fold ${val_fold}'

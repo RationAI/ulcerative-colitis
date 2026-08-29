@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - /ml/test
+  - /ml/model@model: classification
+  - /ml/data@data: tiles
+  - /ml/backbone@model.backbone: vgg16
+  - _self_
+
+model:
+  decode_head:
+    _target_: ml.modeling.ClassificationHead
+
+metadata:
+  run_name: '📏 Testing: Classification Tiles - ${data.test.mode} - fold ${val_fold}'

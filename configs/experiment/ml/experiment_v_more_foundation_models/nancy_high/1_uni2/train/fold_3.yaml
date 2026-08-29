@@ -1,0 +1,16 @@
+defaults:
+  - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem/1_uni2@ikem
+  - _self_
+
+val_fold: 3
+data:
+  train:
+    uris: ${ikem.mlflow_uris.embeddings.train}
+    mode: nancy_high
+  val:
+    uris: ${ikem.mlflow_uris.embeddings.train}
+    mode: nancy_high
+model:
+  foundation: uni2
+  num_classes: 4

@@ -1,0 +1,9 @@
+defaults:
+  - /dataset/tiled/ftn/1_224@_here_
+  - _self_
+
+mlflow_uris:
+  embeddings:
+    train: ???
+    test_preliminary: ???
+    test_final: ???

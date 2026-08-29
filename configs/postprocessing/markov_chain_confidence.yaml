@@ -1,0 +1,9 @@
+# @package _global_
+
+confidence: ???  # options: entropy, herfindahl, std
+
+metadata:
+  run_name: "🔗 Markov Chain Confidence (${confidence}): ${dataset.institution}"
+  description: Markov chain absorption confidence scores for ${dataset.institution}
+  hyperparams:
+    confidence: ${confidence}

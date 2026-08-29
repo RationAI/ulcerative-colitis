@@ -1,0 +1,2 @@
+_target_: ml.modeling.backbone.vgg16
+weights: DEFAULT

@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 mlflow_uris:
-  dataset: mlflow-artifacts:/86/7c6e7cc142494d45b6513185318d4462/artifacts/dataset.csv
+  dataset: ???

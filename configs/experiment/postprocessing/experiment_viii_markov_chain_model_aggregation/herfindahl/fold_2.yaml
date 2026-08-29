@@ -1,0 +1,8 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem@dataset
+  - /predictions/ikem/fold_2@predictions
+  - _self_
+
+confidence: herfindahl

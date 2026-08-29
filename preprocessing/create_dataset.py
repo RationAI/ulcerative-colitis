@@ -48,14 +48,18 @@ def get_slides(folder_path: Path, pattern: re.Pattern[str]) -> pd.DataFrame:
 
 
 def create_dataset(
-    folder: str, labels: list[str], institution: str, pattern: re.Pattern[str]
+    folder: str,
+    labels: list[str],
+    institution: str,
+    pattern: re.Pattern[str],
+    drop_missing: bool = True,
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
     folder_path = Path(folder)
     labels_df = get_labels(folder_path, labels)
     slides_df = get_slides(folder_path, pattern)
 
     # IKEM has only case-level labels (FTN has one slide per case)
-    on = "case_id" if institution == "ikem" else "slide_id"
+    on = "case_id" if institution.startswith("ikem") else "slide_id"
     dataset_df = slides_df.join(labels_df, on=on, how="outer")
     dataset_df.index.name = "slide_id"
 
@@ -69,8 +73,9 @@ def create_dataset(
     missing_slides = dataset_df[dataset_df["path"].isna()][on].to_list()
 
     dataset_df = dataset_df[["case_id", "path", "nancy"]]
-    dataset_df = dataset_df.dropna()
-    dataset_df["nancy"] = dataset_df["nancy"].astype(int)
+    if drop_missing:
+        dataset_df = dataset_df.dropna()
+        dataset_df["nancy"] = dataset_df["nancy"].astype(int)
 
     return dataset_df, missing_slides, missing_labels
 
@@ -84,6 +89,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         config.dataset.labels,
         config.dataset.institution,
         re.compile(config.dataset.regex_pattern),
+        config.dataset.drop_missing
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:

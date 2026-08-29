@@ -1,8 +1,8 @@
 # @package _global_
 
-mpp: 1.55 # level 2
-tile_extent: 224
-stride: 112
+mpp: ???
+tile_extent: ???
+stride: ???
 tissue_threshold: 0.5
 
 metadata:

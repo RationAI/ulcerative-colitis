@@ -1,0 +1,16 @@
+defaults:
+  - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem/1_prov-gigapath@ikem
+  - _self_
+
+val_fold: 1
+data:
+  train:
+    uris: ${ikem.mlflow_uris.embeddings.train}
+    mode: nancy_low
+  val:
+    uris: ${ikem.mlflow_uris.embeddings.train}
+    mode: nancy_low
+model:
+  foundation: prov-gigapath
+  num_classes: 3

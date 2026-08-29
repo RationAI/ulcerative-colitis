@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_i_baseline_classification/train/fold_4
+  - /ml/test
+  - /checkpoints/experiment_i_baseline_classification/fold_4
+  - _self_
+
+data:
+  test:
+    uris: ${ikem.mlflow_uris.tiling.test_preliminary}
+    mode: all

@@ -1,0 +1,5 @@
+# @package _global_
+
+mpp: 1.54 # level 2
+tile_extent: 224
+stride: 112

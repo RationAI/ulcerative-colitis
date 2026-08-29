@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - /ml/train
+  - /ml/model@model: classification
+  - /ml/data@data: embeddings
+  - /ml/backbone@model.backbone: identity
+  - _self_
+
+model:
+  decode_head:
+    _target_: ml.modeling.LinearProbe
+
+metadata:
+  run_name: '🏋️‍♂️ Training: Classification Embeddings - ${data.train.mode} - fold ${val_fold}'

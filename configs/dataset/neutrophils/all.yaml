@@ -1,0 +1,5 @@
+defaults:
+  - /dataset/neutrophils@datasets.ftn: ftn
+  - /dataset/neutrophils@datasets.ikem: ikem
+  - /dataset/neutrophils@datasets.knl_patos: knl_patos
+  - _self_    

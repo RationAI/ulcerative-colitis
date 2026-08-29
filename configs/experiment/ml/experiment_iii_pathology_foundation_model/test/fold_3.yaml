@@ -1,0 +1,10 @@
+defaults:
+  - /experiment/ml/experiment_iii_pathology_foundation_model/train/fold_3
+  - /ml/test
+  - /checkpoints/experiment_iii_pathology_foundation_model/fold_3
+  - _self_
+
+data:
+  test:
+    uris: ${ikem.mlflow_uris.embeddings.test_preliminary}
+    mode: all
