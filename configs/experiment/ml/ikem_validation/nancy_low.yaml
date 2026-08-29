@@ -10,7 +10,6 @@ data:
   predict:
     uris:
       - ${ikem_validation.mlflow_uris.embeddings.predict}
-    mode: nancy_low
 
 model:
   foundation: virchow2
