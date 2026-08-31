@@ -7,8 +7,17 @@ from kube_jobs import storage, submit_job
 # per K), same as `username` below.
 n_components = ...
 
+# No default scale_power either - 1.0 (IQR, original), 0.5 (sqrt(IQR),
+# gentler), 0.0 (no scaling) are the three being compared, per
+# explainability-status memory's finding that |Theta_m|*IQR (each patch
+# dimension's actual contribution to the trained classifiers' logits) is
+# *positively* correlated with IQR, i.e. plain IQR scaling may be
+# suppressing exactly the dimensions that matter most. One job per
+# (n_components, scale_power) pair - edit both per submission.
+scale_power = ...
+
 submit_job(
-    job_name=f"ulcerative-colitis-nmf-fit-k{n_components}-...",
+    job_name=f"ulcerative-colitis-nmf-fit-k{n_components}-sp{scale_power}-...",
     username=...,
     public=False,
     # Deliberately low - keep in sync with num_cpus in
@@ -23,7 +32,8 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run --active python -m explainability.nmf_fit n_components={n_components}",
+        f"uv run --active python -m explainability.nmf_fit "
+        f"n_components={n_components} nmf.scale_power={scale_power}",
     ],
     storage=[storage.secure.PROJECTS],
 )

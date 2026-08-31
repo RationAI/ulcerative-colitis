@@ -179,7 +179,15 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
     shift = load_shift(stats_path, config.shift.percentile_column)
-    scale = load_scale(stats_path)
+    # scale_power=1 -> IQR (original), 0.5 -> sqrt(IQR) (gentler), 0 -> all
+    # ones (no scaling) - IQR is always >0 (load_scale's own zero/negative
+    # fallback), so **0 is exactly 1 for every dimension, not just close to
+    # it. See explainability-status memory for why this knob exists: raw
+    # |Theta_m| looked anti-correlated with IQR, but |Theta_m|*IQR (each
+    # dimension's actual contribution to the logit) is *positively*
+    # correlated - i.e. plain IQR scaling risks suppressing exactly the
+    # dimensions the trained classifiers rely on most.
+    scale = load_scale(stats_path) ** config.nmf.scale_power
 
     token_dirs = resolve_token_dirs(
         config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
