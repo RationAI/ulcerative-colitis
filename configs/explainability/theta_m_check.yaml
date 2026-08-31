@@ -1,0 +1,34 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+shift:
+  # Same mlflow artifact URI as configs/explainability/nmf_fit.yaml's
+  # shift.mlflow_uri - duplicated rather than shared (that file also can't
+  # be reused wholesale here, since its own n_components: ??? has no
+  # default). Update alongside that one after every patch_statistics.py run.
+  mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
+
+# Column split point in the classifier's 2*embed_dim-wide input: h_i =
+# [z_i; m_i] (concept_mil.tex notation) - columns [0, embed_dim) act on the
+# CLS token z_i, columns [embed_dim, 2*embed_dim) on the mean-pooled patch
+# tokens m_i. This ordering is *assumed* (matches the convention already
+# used elsewhere in explainability/), not verified against the model server
+# that produced these checkpoints' pooled embeddings - see
+# theta_m_check.py's module docstring.
+embed_dim: 1280
+
+output_dir: ${project_dir}/explainability/theta_m_check
+
+metadata:
+  run_name: "🔎 Theta_m vs IQR check"
+  description: >-
+    One-off diagnostic (not part of the numbered pipeline stages): for each
+    final checkpoint, correlates the classifier's |Theta_m| per patch-token
+    dimension against that dimension's IQR from patch_statistics, to check
+    whether nmf_fit.py's IQR-based scaling risks suppressing dimensions the
+    classifier actually relies on.
