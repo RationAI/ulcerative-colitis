@@ -1,0 +1,70 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml.
+embed_dim: 1280
+
+# Per (n_components, scale_power) mlflow artifact URIs for nmf_fit's
+# h.parquet - the fully recovered (scale multiplied back in) and
+# gauge-fixed dictionary, already in original token units, so this script
+# needs no shift/scale of its own (see explainability/sigma_table.py's
+# module docstring). Keyed by n_components then scale_power, both as
+# strings (OmegaConf nested-key quirk - see configs/explainability/
+# concept_masks.yaml's h dict for the same convention one level shallower).
+#
+# The "1.0" entries are nmf_fit runs from before scale_power existed as a
+# config knob at all (commit c3c7303 predates 251fc9a) - the code always
+# applied plain IQR scaling then, exactly equivalent to scale_power=1.0, and
+# these are the same run IDs already used for concept_masks.yaml's h dict.
+h:
+  "4":
+    "1.0":
+      mlflow_uri: mlflow-artifacts:/86/face651400ed4c69a3b2559f7f273364/artifacts/h.parquet
+    "0.5":
+      mlflow_uri: mlflow-artifacts:/86/0923e72c63f84514b75cb5c7d219b482/artifacts/h.parquet
+    "0.0":
+      mlflow_uri: mlflow-artifacts:/86/7453ff9fbbc34ac68ce634ef13dc1668/artifacts/h.parquet
+  "6":
+    "1.0":
+      mlflow_uri: mlflow-artifacts:/86/21b84b8c32a348daafb39b3877de72b5/artifacts/h.parquet
+    "0.5":
+      mlflow_uri: mlflow-artifacts:/86/088021717f054195843806165188c936/artifacts/h.parquet
+    "0.0":
+      mlflow_uri: mlflow-artifacts:/86/c8775520f35a4fba853cb3ac3727d917/artifacts/h.parquet
+  "8":
+    "1.0":
+      mlflow_uri: mlflow-artifacts:/86/92ccf7794cbb491382e87de804953e33/artifacts/h.parquet
+    "0.5":
+      mlflow_uri: mlflow-artifacts:/86/b14682c54259460c9b8e027c657698c4/artifacts/h.parquet
+    "0.0":
+      mlflow_uri: mlflow-artifacts:/86/a4dc8521168e47859cb478b4f9c72e81/artifacts/h.parquet
+  "10":
+    "1.0":
+      mlflow_uri: mlflow-artifacts:/86/a7a699eb611844e59e82a193bfcdbc03/artifacts/h.parquet
+    "0.5":
+      mlflow_uri: mlflow-artifacts:/86/21d13423ae0441dc918fefe6cbc2dee3/artifacts/h.parquet
+    "0.0":
+      mlflow_uri: mlflow-artifacts:/86/28f1175c4cd04088806c491b4b310ab3/artifacts/h.parquet
+  "12":
+    "1.0":
+      mlflow_uri: mlflow-artifacts:/86/06234d55d95e4b8cb813f88de3771b7e/artifacts/h.parquet
+    "0.5":
+      mlflow_uri: mlflow-artifacts:/86/e6fdab18eac14507bc48d1b115aaed99/artifacts/h.parquet
+    "0.0":
+      mlflow_uri: mlflow-artifacts:/86/c838c2c452614488b6f48884dba5fc6e/artifacts/h.parquet
+
+output_dir: ${project_dir}/explainability/sigma_table
+
+metadata:
+  run_name: "📐 Sigma Tables + Readout Coverage"
+  description: >-
+    sigma = H @ Theta_m^T (concept_mil.tex eq. 2.9) and readout coverage
+    (eq. 2.10) across the full n_components x scale_power sweep, for all
+    three task heads. Order-of-work step 1 - weights only, no patch data
+    read, no NMF re-run.
