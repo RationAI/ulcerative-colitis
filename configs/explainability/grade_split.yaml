@@ -1,0 +1,38 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings_xai/ftn@sources.ftn
+  - /dataset/embeddings_xai/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
+# Which embeddings_xai split to grade-split - "train" (the only split every
+# source currently has an mlflow_uris.embeddings_xai entry for; ftn/ikem also
+# have "test_preliminary" now, see explainability-status memory).
+split: train
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml (h_i =
+# [z_i; m_i], never directly verified against the model server that pooled
+# these checkpoints' own training embeddings).
+embed_dim: 1280
+
+output_dir: ${project_dir}/explainability/grade_split/${split}
+
+metadata:
+  run_name: "🏷️ Grade Split (${split})"
+  description: >-
+    Routes every tile's own classifier logits (computed directly from the
+    three final checkpoints' Theta/b - concept_mil.tex's c_psi - not
+    slide-level MIL predictions) through the thesis branch's soft-majority-
+    vote ensembling rule (postprocessing/ensembling_predict.py's
+    pred_ensembling) to assign each tile a predicted Nancy grade (0-4), then
+    splits patch+cls tokens into 5 grade-partitioned datasets for later
+    per-grade NMF.
+  hyperparams:
+    split: ${split}
+    embed_dim: ${embed_dim}

@@ -58,6 +58,41 @@ from scipy.stats import pearsonr, spearmanr
 from explainability.nmf_fit import load_scale, resolve_percentile_stats_path
 
 
+def load_classifier(checkpoint_uri: str, embed_dim: int) -> tuple[np.ndarray, np.ndarray]:
+    """Download a MIL checkpoint and pull out its full tile-level classifier weight + bias.
+
+    This is `c_psi` from concept_mil.tex (`s_i = Theta h_i + b`, `h_i = [z_i; m_i]`)
+    in full - both halves of `Theta` (acting on `z_i` and `m_i`) plus the bias -
+    unlike `load_theta_m` below, which keeps only the `m_i` half for the
+    sigma-table/IQR-correlation diagnostics that don't need `z_i` or `b` at all.
+
+    Args:
+        checkpoint_uri: mlflow artifact URI for a lightning `checkpoint.ckpt`
+            (e.g. from `configs/checkpoints/final/*.yaml`).
+        embed_dim: Width of `z_i`/`m_i` each (1280 for Virchow2 patch
+            tokens) - `classifier.weight` must be `(num_classes, 2*embed_dim)`.
+
+    Returns:
+        `(weight, bias)`: `weight` has shape `(num_classes, 2*embed_dim)`
+        (columns `[z_i; m_i]`, unsplit), `bias` has shape `(num_classes,)`.
+    """
+    checkpoint_path = mlflow.artifacts.download_artifacts(checkpoint_uri)
+    # weights_only=False: lightning checkpoints bundle optimizer/callback
+    # state alongside the tensors, so a strict weights-only unpickle can't
+    # load them - trusted source (our own mlflow-logged checkpoints).
+    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)[
+        "state_dict"
+    ]
+    weight = state_dict["classifier.weight"].numpy()
+    bias = state_dict["classifier.bias"].numpy()
+    if weight.shape[1] != 2 * embed_dim:
+        raise ValueError(
+            f"classifier.weight has {weight.shape[1]} input columns, expected "
+            f"2*embed_dim={2 * embed_dim}"
+        )
+    return weight, bias
+
+
 def load_theta_m(checkpoint_uri: str, embed_dim: int) -> np.ndarray:
     """Download a MIL checkpoint and pull out the mean-pooled-token classifier weight.
 
@@ -71,19 +106,7 @@ def load_theta_m(checkpoint_uri: str, embed_dim: int) -> np.ndarray:
         `Theta_m`, shape `(num_classes, embed_dim)`: the second half of
         `classifier.weight`'s columns, per `h_i = [z_i; m_i]`.
     """
-    checkpoint_path = mlflow.artifacts.download_artifacts(checkpoint_uri)
-    # weights_only=False: lightning checkpoints bundle optimizer/callback
-    # state alongside the tensors, so a strict weights-only unpickle can't
-    # load them - trusted source (our own mlflow-logged checkpoints).
-    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)[
-        "state_dict"
-    ]
-    weight = state_dict["classifier.weight"].numpy()
-    if weight.shape[1] != 2 * embed_dim:
-        raise ValueError(
-            f"classifier.weight has {weight.shape[1]} input columns, expected "
-            f"2*embed_dim={2 * embed_dim}"
-        )
+    weight, _ = load_classifier(checkpoint_uri, embed_dim)
     return weight[:, embed_dim:]
 
 
