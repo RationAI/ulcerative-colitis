@@ -1,0 +1,72 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml.
+embed_dim: 1280
+
+# Which explainability/grade_split.py grade partition to stream patches from,
+# and which nmf_fit.py (grade, n_components) run's h.parquet to check - must
+# match each other and the h.mlflow_uri below (this script checks one
+# specific nmf_fit run at a time, same "one job per combo" convention as
+# nmf_fit.py itself).
+grade: ???
+n_components: ???
+
+local_grade_split_dir: ${project_dir}/explainability/grade_split/${grade_split.split}
+grade_split:
+  split: train
+  # Same convention/default as configs/explainability/nmf_fit.yaml's
+  # grade_split.mlflow_uri - keep both in sync, update after every
+  # grade_split.py run.
+  mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
+
+h:
+  # mlflow artifact URI for the specific nmf_fit.py run's h.parquet to check
+  # (must have been fit on grade=${grade}, n_components=${n_components}) - no
+  # default on purpose, one job per (grade, n_components, scale_power) run,
+  # same convention as configs/explainability/sigma_table.yaml's h dict one
+  # level deeper (that one sweeps a whole grid at once; this checks one).
+  mlflow_uri: ???
+
+shift:
+  # Same mlflow artifact URI as configs/explainability/nmf_fit.yaml's
+  # shift.mlflow_uri - duplicated rather than shared (see
+  # configs/explainability/theta_m_check.yaml's identical note). Update
+  # alongside those after every patch_statistics.py run.
+  mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
+  percentile_column: p0.0001
+
+nmf:
+  # Patches read (and transformed against h) per batch.
+  batch_size: 25600
+  # init/beta_loss/random_state only seed a throwaway warmup fit
+  # (explainability.tile_r2_check.build_transform_model) - components_ is
+  # overwritten with the real h immediately after, so these don't change the
+  # result *except* beta_loss/init, which govern transform()'s own update
+  # rule and so should match whatever the h.mlflow_uri run was actually fit
+  # with (configs/explainability/nmf_fit.yaml's nmf.init/nmf.beta_loss) -
+  # both currently fixed across the whole sweep, so the defaults below match
+  # every existing nmf_fit.py run.
+  init: random
+  beta_loss: frobenius
+  random_state: 42
+
+output_dir: ${project_dir}/explainability/tile_r2_check/grade${grade}/k${n_components}
+
+metadata:
+  run_name: "📏 Tile R^2 Check (grade=${grade}, k=${n_components})"
+  description: >-
+    R^2 of varphi @ sigma (concept-routed) vs. m @ Theta_m^T (direct) - the
+    m-driven term of concept_mil.tex's eq:tilelogit, on real grade=${grade}
+    tiles. Order-of-work step 2: confirms on data what sigma_table.py's
+    readout coverage (step 1, weights only) only bounds from above.
+  hyperparams:
+    grade: ${grade}
+    n_components: ${n_components}
+    batch_size: ${nmf.batch_size}
