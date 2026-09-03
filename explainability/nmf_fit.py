@@ -12,7 +12,7 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
-from explainability.tiles import load_tokens_dataset, resolve_token_dirs
+from explainability.tiles import load_tokens_dataset, resolve_grade_token_dir
 
 
 def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
@@ -189,10 +189,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # dimensions the trained classifiers rely on most.
     scale = load_scale(stats_path) ** config.nmf.scale_power
 
-    token_dirs = resolve_token_dirs(
-        config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
+    token_dir = resolve_grade_token_dir(
+        config.get("local_grade_split_dir"), config.grade_split.mlflow_uri, kind="patch", grade=config.grade
     )
-    patches_ds = load_tokens_dataset(token_dirs)
+    patches_ds = load_tokens_dataset([token_dir])
     # A plain, unfiltered read_parquet count is metadata-only (row counts come
     # from the parquet footers, no column data decoded) - unlike
     # patch_statistics.py's sampled count, nothing here forces a full read.
@@ -270,6 +270,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
+        "grade": config.grade,
         "n_components": config.n_components,
         "percentile_column": config.shift.percentile_column,
         "scale_columns": "p0.75 - p0.25 (IQR)",
@@ -293,12 +294,16 @@ if __name__ == "__main__":
 
     # num_cpus set deliberately *low* - same fix, same root cause as
     # explainability/patch_statistics.py (see that file's comment and
-    # explainability-status memory): every patch token parquet file is a
-    # single ~1.6GB row group, so even Ray's own automatic per-file metadata
-    # sampling has to materialize close to the whole file - measured at
-    # 2-5GB per file. With no cap, Ray schedules up to num_cpus of those
-    # concurrently on this single local Ray instance, which is what
-    # OOM-killed this job. Keep in sync with cpu= in
-    # scripts/explainability/nmf_fit.py.
+    # explainability-status memory): the original (pre-grade_split) patch
+    # token parquet files were each a single ~1.6GB row group, so even Ray's
+    # own automatic per-file metadata sampling had to materialize close to
+    # the whole file - measured at 2-5GB per file. With no cap, Ray schedules
+    # up to num_cpus of those concurrently on this single local Ray instance,
+    # which is what OOM-killed this job. Now reading grade_split.py's output
+    # instead (resolve_grade_token_dir) - those files are far smaller
+    # (~16MB avg, observed directly), so this specific OOM mode likely no
+    # longer applies, but num_cpus=8 is left as-is (conservative, not yet
+    # re-benchmarked against the new input) rather than dropped without being
+    # asked. Keep in sync with cpu= in scripts/explainability/nmf_fit.py.
     with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
         main()

@@ -1,11 +1,29 @@
 # @package _global_
 
-defaults:
-  - /dataset/embeddings_xai/ftn@sources.ftn
-  - /dataset/embeddings_xai/ikem@sources.ikem
-  - _self_
+# Local explainability/grade_split.py output directory (matches that script's
+# own output_dir convention: ${project_dir}/explainability/grade_split/<split>).
+# Preferred over grade_split.mlflow_uri when present - same local-mount-
+# preferred / mlflow-fallback pattern explainability.tiles.resolve_token_dirs
+# already uses for the plain (ungraded) patch/cls token tables.
+local_grade_split_dir: ${project_dir}/explainability/grade_split/${grade_split.split}
 
-local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+grade_split:
+  # Which embeddings_xai split grade_split.py was run against - must match
+  # that run's own `split` (explainability/grade_split.py, default "train").
+  split: train
+  # mlflow artifact URI for the grade_split run's "tokens" directory (its
+  # kind=patch|cls/grade=0..4 partitions) - fallback when local_grade_split_dir
+  # isn't present (e.g. a kube job without the project mount). Update after
+  # every grade_split.py run, same convention as shift.mlflow_uri below.
+  # Points at run 97aa50e43e624920a44f29f0d624276f (2026-09-03, split=train,
+  # 154,327 tiles: grade counts 31661/25653/30716/30552/35745 for 0-4).
+  mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
+
+# Which predicted Nancy grade (0-4, explainability.grade_split's tile-level
+# classifier routing - concept_mil.tex's c_psi, not a slide-level MIL
+# prediction) to fit this NMF run on. No default on purpose: one job per
+# grade, same "one job per K" convention as n_components below.
+grade: ???
 
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
@@ -76,14 +94,17 @@ nmf:
   # that matter most.
   scale_power: 1.0
 
-output_dir: ${project_dir}/explainability/nmf/k${n_components}/scale_power_${nmf.scale_power}
+output_dir: ${project_dir}/explainability/nmf/grade${grade}/k${n_components}/scale_power_${nmf.scale_power}
 
 metadata:
-  run_name: "🧩 NMF Fit (k=${n_components}, scale_power=${nmf.scale_power})"
+  run_name: "🧩 NMF Fit (grade=${grade}, k=${n_components}, scale_power=${nmf.scale_power})"
   description: >-
-    MiniBatchNMF over shifted (and scale_power-scaled) patch tokens (ftn +
-    ikem full corpus), gauge-fixed W/H stored for downstream explainability.
+    MiniBatchNMF over shifted (and scale_power-scaled) patch tokens,
+    restricted to explainability.grade_split's grade=${grade} tile partition
+    (tile-level classifier-predicted Nancy grade, not slide-level MIL),
+    gauge-fixed W/H stored for downstream explainability.
   hyperparams:
+    grade: ${grade}
     n_components: ${n_components}
     percentile_column: ${shift.percentile_column}
     scale_power: ${nmf.scale_power}

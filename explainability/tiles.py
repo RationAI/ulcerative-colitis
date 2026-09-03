@@ -71,6 +71,48 @@ def resolve_token_dirs(
     return token_dirs
 
 
+def resolve_grade_token_dir(local_dir: str | None, mlflow_uri: str, kind: str, grade: int) -> str:
+    """Locate one `explainability.grade_split` token partition (`kind=<kind>/grade=<grade>`).
+
+    Same local-mount-preferred / mlflow-fallback resolution as
+    `resolve_token_dirs`, but for `grade_split.py`'s output layout: one
+    already-pooled `tokens/kind=<kind>/grade=<0..4>` directory (merged across
+    institutions by `grade_split.py` itself), not one directory per
+    institution.
+
+    The mlflow fallback downloads only the resolved `kind=<kind>/grade=<grade>`
+    subtree (via `download_artifacts` on the joined sub-URI), not the whole
+    `tokens` artifact - grade partitions are tens of GB each, so pulling every
+    kind/grade combination just to read one would be wasteful.
+
+    Args:
+        local_dir: Root `grade_split.py` output directory (its own
+            `output_dir`, e.g. `${project_dir}/explainability/grade_split/train`)
+            to look for a local copy under, or None to always go through
+            `download_artifacts`.
+        mlflow_uri: mlflow artifact URI for the grade_split run's `tokens`
+            directory (its `artifacts/tokens` folder), used when no local
+            copy is found.
+        kind: Which token partition to resolve - "patch" or "cls".
+        grade: Predicted Nancy grade (0-4, `explainability.grade_split`'s
+            tile-level routing) to resolve.
+
+    Returns:
+        Directory holding that grade's `kind` token parquet files, ready to
+        hand straight to `ray.data.read_parquet`.
+    """
+    if local_dir is not None:
+        candidate = Path(local_dir) / "tokens" / f"kind={kind}" / f"grade={grade}"
+        if candidate.is_dir():
+            log.info("Using local %s grade=%d tokens: %s", kind, grade, candidate)
+            return str(candidate)
+
+    token_dir = Path(download_artifacts(f"{mlflow_uri.rstrip('/')}/kind={kind}/grade={grade}"))
+    if not token_dir.is_dir():
+        raise FileNotFoundError(f"No {kind} grade={grade} tokens directory found under {token_dir}")
+    return str(token_dir)
+
+
 def load_slides(
     sources: DictConfig, local_embeddings_xai_dir: str | None, split: str = "train"
 ) -> pd.DataFrame:
