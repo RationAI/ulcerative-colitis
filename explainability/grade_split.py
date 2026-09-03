@@ -67,7 +67,7 @@ import ray.data
 from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
-from ray.data.aggregate import AggregateFn
+from ray.data.aggregate import AggregateFn, Count
 from scipy.special import expit, softmax
 
 from explainability.postprocessing import route_grade
@@ -85,6 +85,22 @@ def mean_pool_patches(patches_ds: ray.data.Dataset, embed_dim: int) -> ray.data.
     repo's installed ray (2.53.0) with a synthetic dataset before relying on
     it here.
 
+    Uses *two* single-purpose `AggregateFn`/`Count` aggregations (running sum,
+    row count) rather than one `AggregateFn` whose accumulator is a
+    `(sum_array, count)` tuple. The tuple version was tried first: during the
+    groupby's hash-shuffle, Ray has to materialize that *partial* accumulator
+    state as a column value and infer a pyarrow type for it, and a tuple
+    mixing a 1280-length array with a scalar int can't be one homogeneous
+    Arrow column (`ArrowInvalid: cannot mix list and non-list, non-null
+    values`) - Ray recovers by silently pickling the column instead, but that
+    fallback is expensive at this scale and was observed spiking shuffle
+    spill on a real run. Reproduced directly against a small synthetic
+    dataset and confirmed splitting the accumulator avoids it: each of `sum`
+    (`list<double>`) and `count()` (`int64`) is homogeneous on its own, so no
+    pyarrow inference ever has to look at a mixed-type value. The mean itself
+    (`sum / count`) is computed after `to_pandas()`, in plain Python - no
+    longer Ray's shuffle machinery doing type inference.
+
     Args:
         patches_ds: Patch token dataset (`kind="patch"`), as returned by
             `explainability.tiles.load_tokens_dataset`.
@@ -97,30 +113,33 @@ def mean_pool_patches(patches_ds: ray.data.Dataset, embed_dim: int) -> ray.data.
         this point that the caller materializes it eagerly).
     """
 
-    def init(_key: tuple[Any, ...]) -> tuple[np.ndarray, int]:
-        return np.zeros(embed_dim, dtype=np.float64), 0
+    def sum_init(_key: tuple[Any, ...]) -> np.ndarray:
+        return np.zeros(embed_dim, dtype=np.float64)
 
-    def accumulate_row(
-        acc: tuple[np.ndarray, int], row: dict[str, Any]
-    ) -> tuple[np.ndarray, int]:
-        total, count = acc
-        return total + np.asarray(row["embedding"], dtype=np.float64), count + 1
+    def sum_accumulate_row(acc: np.ndarray, row: dict[str, Any]) -> np.ndarray:
+        return acc + np.asarray(row["embedding"], dtype=np.float64)
 
-    def merge(
-        a: tuple[np.ndarray, int], b: tuple[np.ndarray, int]
-    ) -> tuple[np.ndarray, int]:
-        return a[0] + b[0], a[1] + b[1]
+    def sum_merge(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        return a + b
 
-    def finalize(acc: tuple[np.ndarray, int]) -> list[float]:
-        total, count = acc
-        return (total / count).tolist()
-
-    agg = AggregateFn(
-        init=init, accumulate_row=accumulate_row, merge=merge, finalize=finalize, name="m"
+    sum_agg = AggregateFn(
+        init=sum_init,
+        accumulate_row=sum_accumulate_row,
+        merge=sum_merge,
+        finalize=lambda acc: acc.tolist(),
+        name="sum",
     )
-    return patches_ds.select_columns(["slide_id", "x", "y", "embedding"]).groupby(
-        ["slide_id", "x", "y"]
-    ).aggregate(agg)
+    pooled = (
+        patches_ds.select_columns(["slide_id", "x", "y", "embedding"])
+        .groupby(["slide_id", "x", "y"])
+        .aggregate(sum_agg, Count(alias_name="count"))
+    )
+    df = pooled.to_pandas()
+    df["m"] = [
+        (np.asarray(s, dtype=np.float64) / c).tolist()
+        for s, c in zip(df.pop("sum"), df.pop("count"), strict=True)
+    ]
+    return ray.data.from_pandas(df)
 
 
 def build_tile_features(patch_means: ray.data.Dataset, cls_ds: ray.data.Dataset) -> pd.DataFrame:
