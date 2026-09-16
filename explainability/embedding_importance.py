@@ -73,6 +73,7 @@ import mlflow.artifacts
 import numpy as np
 import pandas as pd
 import ray
+import ray.data
 import torch
 from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
@@ -384,10 +385,14 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     embed_dim = config.embed_dim
     z, m = h[:, :embed_dim], h[:, embed_dim:]
 
+    # slides.parquet's slide-identifier column is "id", not "slide_id" (same
+    # mismatch explainability/concept_masks.py already works around via
+    # .set_index("id")) - tiling.py's per-tile rows are the only place this
+    # value is actually called "slide_id".
     slides = load_slides(config.sources, config.get("local_embeddings_xai_dir"), split=config.split)
     tile_features = tile_features.merge(
-        slides[["slide_id", "nancy_index"]], on="slide_id", how="inner"
-    )
+        slides[["id", "nancy_index"]], left_on="slide_id", right_on="id", how="inner"
+    ).drop(columns="id")
     if len(tile_features) != len(h):
         raise ValueError(
             f"{len(h) - len(tile_features)} tiles had no matching slide-level nancy_index "
@@ -466,6 +471,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
+    ctx = ray.data.DataContext.get_current()
+    ctx.enable_rich_progress_bars = True
+    ctx.use_ray_tqdm = False
+
     # num_cpus=8: same oversized-parquet-row-group root cause as
     # patch_statistics.py/nmf_fit.py/grade_split.py - mean_pool_patches reads
     # the full patch corpus. Keep in sync with cpu= in
