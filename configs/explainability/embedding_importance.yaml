@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings_xai/ftn@sources.ftn
+  - /dataset/embeddings_xai/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
+# Which embeddings_xai split to compute this over - "train" is the only
+# split every source currently has ground-truth nancy_index for via its
+# slides.parquet (see explainability/embedding_importance.py's module
+# docstring for why that column, not a separate labels join, is used).
+split: train
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml.
+embed_dim: 1280
+
+output_dir: ${project_dir}/explainability/embedding_importance/${split}
+
+metadata:
+  run_name: "🧬 CLS vs Patch Importance (${split})"
+  description: >-
+    Which half of h_i = [z_i; m_i] drives each head's predictions, and by
+    how much: (1) IQR-weighted classifier weight contribution, (2) variance
+    decomposition of the tile logit into z-term/m-term/covariance (pooled
+    and per predicted grade), (3) real counterfactual ablation - mean-impute
+    z or m at the attention step, the classifier step, or both, and re-run
+    the actual attention-pooled forward pass against real ground-truth
+    nancy_index labels. Answers whether patch-level concept explainability
+    is worth pursuing at all for a given head/class, independent of any
+    NMF/dictionary decision.
+  hyperparams:
+    split: ${split}
+    embed_dim: ${embed_dim}
