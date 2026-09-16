@@ -59,6 +59,26 @@ h:
     "0.0":
       mlflow_uri: mlflow-artifacts:/86/c838c2c452614488b6f48884dba5fc6e/artifacts/h.parquet
 
+# Grade-specific H's (explainability/nmf_fit.py's grade=N runs, output_dir
+# .../nmf/grade${grade}/k${n_components}/scale_power_${scale_power}) - a
+# separate dict from `h` above (which only ever holds the older non-grade-
+# specific fits) since these need an extra grade key level: grade ->
+# n_components -> scale_power. Populated incrementally per finished
+# grade-specific nmf_fit.py run - currently only grade=4, k=12 (all three
+# scale_power variants already fit; see tile_r2_check's grade=4/k=12/
+# scale_power=0.0 result in explainability-status memory for why this entry
+# was added - checking whether the weak tile_r2_check classes there are
+# ceiling-limited by coverage or not).
+grade_h:
+  "4":
+    "12":
+      "1.0":
+        mlflow_uri: mlflow-artifacts:/86/f02affa91ead416ebf8216ece20ce8f0/artifacts/h.parquet
+      "0.5":
+        mlflow_uri: mlflow-artifacts:/86/6edcde1978e74d69be97a0945e0664e3/artifacts/h.parquet
+      "0.0":
+        mlflow_uri: mlflow-artifacts:/86/81ab3b20a99e49ddbe043d6e9676b71f/artifacts/h.parquet
+
 output_dir: ${project_dir}/explainability/sigma_table
 
 metadata:

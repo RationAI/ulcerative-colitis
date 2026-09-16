@@ -1,5 +1,13 @@
 """Step 1 of concept_mil.tex's order-of-work table: sigma tables + readout coverage.
 
+**`grade_h`**: alongside `h` (the original non-grade-specific n_components x
+scale_power sweep), `config.grade_h` optionally holds grade-specific H's -
+one more key level (grade -> n_components -> scale_power), populated
+incrementally per finished `explainability.nmf_fit` grade=N run (see
+`configs/explainability/sigma_table.yaml`'s comment). Rows from `grade_h`
+carry a `grade` column (int); rows from the original `h` sweep get
+`grade=None` - same DataFrame, so both can be filtered/compared in one place.
+
 Both quantities are "weights only" (concept_mil.tex Sec. 4, step 1 of the
 order-of-work table in Sec. 8): they need only a fitted dictionary `H` and a
 trained classifier's `Theta_m`, no patch data read and no NMF re-run. This
@@ -122,6 +130,85 @@ def row_center(sigma: np.ndarray) -> np.ndarray:
     return sigma - sigma.mean(axis=1, keepdims=True)
 
 
+def sweep_combo(
+    n_components: int,
+    scale_power: float,
+    mlflow_uri: str,
+    theta_ms: dict[str, np.ndarray],
+    grade: int | None,
+    sigma_rows: list[dict[str, float | int | str | None]],
+    coverage_rows: list[dict[str, float | int | str | None]],
+) -> None:
+    """Load one H, compute its sigma/coverage rows against every head, append to the running lists.
+
+    Factored out of `main` so both the original (grade=None) `config.h`
+    sweep and the optional grade-specific `config.grade_h` sweep (see module
+    docstring) share one code path - `grade` is threaded through into every
+    row purely for filtering/comparison downstream, no other behavior
+    differs between the two.
+    """
+    h = load_h(mlflow_uri)
+    if h.shape[0] != n_components:
+        raise ValueError(
+            f"h.parquet at {mlflow_uri} has {h.shape[0]} rows, "
+            f"expected n_components={n_components}"
+        )
+    q, rank = orthonormal_basis(h)
+    if rank < n_components:
+        print(
+            f"WARNING grade={grade} k={n_components} scale_power={scale_power}: "
+            f"H's numerical rank is {rank} < {n_components} "
+            "(near-collinear concepts) - coverage below is computed "
+            "against the reduced span.",
+            flush=True,
+        )
+
+    combo_coverage: list[float] = []
+    for head, theta_m in theta_ms.items():
+        sigma = h @ theta_m.T  # eq. 2.9: (n_components, num_classes)
+        num_classes = theta_m.shape[0]
+        centered = row_center(sigma) if num_classes > 2 else None
+
+        for k in range(n_components):
+            for c in range(num_classes):
+                sigma_rows.append(
+                    {
+                        "grade": grade,
+                        "n_components": n_components,
+                        "scale_power": scale_power,
+                        "head": head,
+                        "concept": k,
+                        "class": c,
+                        "sigma": float(sigma[k, c]),
+                        "sigma_centered": (
+                            float(centered[k, c]) if centered is not None else None
+                        ),
+                    }
+                )
+
+        coverage = readout_coverage(theta_m, q)
+        combo_coverage.extend(coverage.tolist())
+        for c, cov in enumerate(coverage):
+            coverage_rows.append(
+                {
+                    "grade": grade,
+                    "n_components": n_components,
+                    "scale_power": scale_power,
+                    "head": head,
+                    "class": c,
+                    "coverage": float(cov),
+                    "h_rank": rank,
+                }
+            )
+
+    print(
+        f"grade={grade}  k={n_components:2d}  scale_power={scale_power:.1f}  "
+        f"mean coverage={np.mean(combo_coverage):.3f}  "
+        f"min coverage={np.min(combo_coverage):.3f}",
+        flush=True,
+    )
+
+
 @with_cli_args(["+explainability=sigma_table"])
 @hydra.main(config_path="../configs", config_name="explainability", version_base=None)
 @autolog
@@ -129,79 +216,31 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Theta_m per head - loaded once, reused across every (n_components,
+    # Theta_m per head - loaded once, reused across every (grade, n_components,
     # scale_power) combo in the sweep below (unlike H, it doesn't depend on
-    # either knob).
+    # any of those knobs).
     theta_ms = {
         name: load_theta_m(checkpoint_cfg.checkpoint, config.embed_dim)
         for name, checkpoint_cfg in config.checkpoints.items()
     }
 
     sigma_rows: list[dict[str, float | int | str | None]] = []
-    coverage_rows: list[dict[str, float | int | str]] = []
+    coverage_rows: list[dict[str, float | int | str | None]] = []
 
     for n_components_str, scale_powers in config.h.items():
-        n_components = int(n_components_str)
         for scale_power_str, entry in scale_powers.items():
-            scale_power = float(scale_power_str)
-            h = load_h(entry.mlflow_uri)
-            if h.shape[0] != n_components:
-                raise ValueError(
-                    f"h.parquet at {entry.mlflow_uri} has {h.shape[0]} rows, "
-                    f"expected n_components={n_components}"
-                )
-            q, rank = orthonormal_basis(h)
-            if rank < n_components:
-                print(
-                    f"WARNING k={n_components} scale_power={scale_power}: "
-                    f"H's numerical rank is {rank} < {n_components} "
-                    "(near-collinear concepts) - coverage below is computed "
-                    "against the reduced span.",
-                    flush=True,
-                )
-
-            combo_coverage: list[float] = []
-            for head, theta_m in theta_ms.items():
-                sigma = h @ theta_m.T  # eq. 2.9: (n_components, num_classes)
-                num_classes = theta_m.shape[0]
-                centered = row_center(sigma) if num_classes > 2 else None
-
-                for k in range(n_components):
-                    for c in range(num_classes):
-                        sigma_rows.append(
-                            {
-                                "n_components": n_components,
-                                "scale_power": scale_power,
-                                "head": head,
-                                "concept": k,
-                                "class": c,
-                                "sigma": float(sigma[k, c]),
-                                "sigma_centered": (
-                                    float(centered[k, c]) if centered is not None else None
-                                ),
-                            }
-                        )
-
-                coverage = readout_coverage(theta_m, q)
-                combo_coverage.extend(coverage.tolist())
-                for c, cov in enumerate(coverage):
-                    coverage_rows.append(
-                        {
-                            "n_components": n_components,
-                            "scale_power": scale_power,
-                            "head": head,
-                            "class": c,
-                            "coverage": float(cov),
-                            "h_rank": rank,
-                        }
-                    )
-
-            print(
-                f"k={n_components:2d}  scale_power={scale_power:.1f}  "
-                f"mean coverage={np.mean(combo_coverage):.3f}  "
-                f"min coverage={np.min(combo_coverage):.3f}",
-                flush=True,
+            sweep_combo(
+                int(n_components_str), float(scale_power_str), entry.mlflow_uri,
+                theta_ms, None, sigma_rows, coverage_rows,
             )
+
+    for grade_str, k_dict in config.get("grade_h", {}).items():
+        for n_components_str, scale_powers in k_dict.items():
+            for scale_power_str, entry in scale_powers.items():
+                sweep_combo(
+                    int(n_components_str), float(scale_power_str), entry.mlflow_uri,
+                    theta_ms, int(grade_str), sigma_rows, coverage_rows,
+                )
 
     sigma_df = pd.DataFrame(sigma_rows)
     coverage_df = pd.DataFrame(coverage_rows)
@@ -216,7 +255,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # low pooled coverage means the concept basis can't express what the
     # classifiers read, regardless of scale_power, and K should be raised.
     pooled = (
-        coverage_df.groupby(["n_components", "scale_power"])["coverage"]
+        coverage_df.groupby(["grade", "n_components", "scale_power"], dropna=False)["coverage"]
         .agg(["mean", "min"])
         .reset_index()
         .sort_values("mean", ascending=False)
@@ -236,7 +275,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     logger.log_artifact(str(coverage_path))
     logger.log_artifact(str(manifest_path))
     for row in pooled.to_dict(orient="records"):
-        tag = f"k{int(row['n_components'])}_sp{row['scale_power']:.1f}"
+        grade_prefix = f"grade{int(row['grade'])}_" if pd.notna(row["grade"]) else ""
+        tag = f"{grade_prefix}k{int(row['n_components'])}_sp{row['scale_power']:.1f}"
         logger.log_metrics(
             {f"coverage_mean/{tag}": row["mean"], f"coverage_min/{tag}": row["min"]}
         )
