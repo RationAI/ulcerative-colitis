@@ -1,0 +1,53 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml.
+embed_dim: 1280
+
+# Which tile_r2_check.py run to extend - must match that run's own
+# grade/n_components (both used only to build tile_features_path's default
+# below and to sanity-check h against n_components).
+grade: ???
+n_components: ???
+
+# Local tile_features.parquet from an already-finished tile_r2_check.py run
+# (its own output_dir convention) - no default override needed unless
+# reusing a run from a nonstandard location.
+tile_features_path: ${project_dir}/explainability/tile_r2_check/grade${grade}/k${n_components}/tile_features.parquet
+
+h:
+  # Must be the exact same h.mlflow_uri the tile_r2_check.py run at
+  # tile_features_path was itself checked against - no default on purpose,
+  # same convention as configs/explainability/tile_r2_check.yaml's h.mlflow_uri.
+  mlflow_uri: ???
+
+# Same grade_split resolution as configs/explainability/tile_r2_check.yaml,
+# duplicated rather than shared - only the CLS partition is read here (one
+# row per tile, not the patch corpus), so this is cheap even though the
+# config looks identical.
+local_grade_split_dir: ${project_dir}/explainability/grade_split/${grade_split.split}
+grade_split:
+  split: train
+  mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
+
+output_dir: ${project_dir}/explainability/tile_r2_ols_check/grade${grade}/k${n_components}
+
+metadata:
+  run_name: "📐📈 Tile R² OLS Gap + CLS Share (grade=${grade}, k=${n_components})"
+  description: >-
+    Extends tile_r2_check's plug-in R^2 (Theta_m . m_i target) with an
+    OLS-fitted R^2 on the same varphi (gap = K too small vs. residual
+    leakage, concept_mil.tex eq:ols) and both checked against the full tile
+    logit Theta . h_i (adding the exact CLS term) to see how much of the
+    tile logit's variance flows through the CLS pathway vs. the concept
+    pathway. Reuses an existing tile_r2_check run's tile_features.parquet -
+    no patch re-stream, only a light CLS-token read.
+  hyperparams:
+    grade: ${grade}
+    n_components: ${n_components}
