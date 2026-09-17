@@ -56,7 +56,7 @@ h:
 
 shift:
   # Same percentile_stats.parquet the nmf_fit run picked via `h` above was
-  # itself shifted with - must be the *same* patch_statistics run, or the
+  # itself shifted with - must be the *same* token_statistics.py (kind=patch) run, or the
   # recovered H and this script's patch transform disagree about the
   # non-negativity shift. See configs/explainability/nmf_fit.yaml's shift block.
   mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet

@@ -29,7 +29,7 @@ submit_job(
     # Deliberately low - keep in sync with num_cpus in
     # explainability/nmf_fit.py's ray.init(). Originally the oversized-
     # parquet-row-group root cause shared with scripts/explainability/
-    # patch_statistics.py; now reading explainability/grade_split.py's much
+    # token_statistics.py; now reading explainability/grade_split.py's much
     # smaller-file output instead, so this is a conservative carry-over, not
     # a re-confirmed requirement against the new input - see
     # explainability/nmf_fit.py's ray.init() comment.

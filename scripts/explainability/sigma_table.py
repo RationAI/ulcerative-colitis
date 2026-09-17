@@ -10,7 +10,7 @@ submit_job(
     username=...,
     public=False,
     # Modest on purpose: no ray, no patch-token parquet reads (the oversized-
-    # row-group OOM that forces cpu=8 in patch_statistics.py/nmf_fit.py/
+    # row-group OOM that forces cpu=8 in token_statistics.py/nmf_fit.py/
     # concept_masks.py doesn't apply here) - this job only downloads small
     # h.parquet files and three lightning checkpoints from mlflow and does
     # plain numpy/pandas linear algebra.

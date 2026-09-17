@@ -7,7 +7,7 @@ submit_job(
     public=False,
     # Deliberately low - keep in sync with num_cpus in
     # explainability/grade_split.py's ray.init(). Same root cause as
-    # scripts/explainability/patch_statistics.py/nmf_fit.py (oversized
+    # scripts/explainability/token_statistics.py/nmf_fit.py (oversized
     # parquet row groups) - mean_pool_patches reads the full patch corpus.
     cpu=8,
     memory="64Gi",

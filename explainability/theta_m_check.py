@@ -16,7 +16,7 @@ trained MIL classifier checkpoint, it splits `classifier.weight` (shape
 and `Theta_m` (acts on the mean-pooled patch tokens `m_i`) per
 concept_mil.tex's `h_i = [z_i; m_i]` notation, and correlates each patch
 dimension's *contribution to the logit* against that dimension's IQR from
-`patch_statistics.py`'s output. Contribution is `|Theta_m_j| * IQR_j`, not
+`token_statistics.py`'s output. Contribution is `|Theta_m_j| * IQR_j`, not
 raw `|Theta_m_j|` alone: a dimension's actual pull on the logit depends on
 both its weight and how much it varies across real patches (IQR is
 linear-equivariant, so this product is exactly the IQR of that dimension's
@@ -35,7 +35,7 @@ inverted or nonsensical, check this first.
 
 **Also approximate, not exact**: `Theta_m`'s classifiers were trained on
 embeddings from the `thesis` branch's own tiling/embedding run, not on this
-repo's `embeddings_xai.py` output that `patch_statistics.py`'s IQR was
+repo's `embeddings_xai.py` output that `token_statistics.py`'s IQR was
 computed from. Both use the same Virchow2 model over largely the same
 slides, so per-dimension IQR should transfer closely, but this is a quick
 diagnostic, not a from-first-principles guarantee.

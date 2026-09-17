@@ -16,7 +16,7 @@ from explainability.tiles import load_tokens_dataset, resolve_grade_token_dir
 
 
 def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
-    """Download patch_statistics' percentile_stats.parquet from mlflow.
+    """Download token_statistics' percentile_stats.parquet from mlflow.
 
     Unlike the patch/cls token parquet (huge - see `explainability.tiles.
     resolve_token_dirs`'s local-mount-preferred fast path) or W/H (also
@@ -26,7 +26,7 @@ def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
     particular pod happens to have a local copy sitting around.
 
     Args:
-        mlflow_uri: mlflow artifact URI for a specific patch_statistics
+        mlflow_uri: mlflow artifact URI for a specific token_statistics
             run's percentile_stats.parquet, e.g.
             "mlflow-artifacts:/86/<run_id>/artifacts/percentile_stats.parquet".
 
@@ -37,11 +37,11 @@ def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
 
 
 def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarray:
-    """Load the per-dimension shift constant picked from patch_statistics' output.
+    """Load the per-dimension shift constant picked from token_statistics' output.
 
     Args:
         percentile_stats_path: Path to the percentile_stats.parquet produced by
-            `explainability.patch_statistics`.
+            `explainability.token_statistics`.
         percentile_column: Which percentile column to use as the shift, e.g.
             "p0.0001" for the 1e-4 quantile.
 
@@ -55,7 +55,7 @@ def load_shift(percentile_stats_path: Path, percentile_column: str) -> np.ndarra
 def load_scale(
     percentile_stats_path: Path, low_column: str = "p0.25", high_column: str = "p0.75"
 ) -> np.ndarray:
-    """Load the per-dimension IQR scale (p0.75 - p0.25) from patch_statistics' output.
+    """Load the per-dimension IQR scale (p0.75 - p0.25) from token_statistics' output.
 
     A handful of embedding dimensions carry far larger magnitude than the
     rest (observed: dimension 1 spans roughly -53..41 vs. a typical ~-4..4 -
@@ -68,7 +68,7 @@ def load_scale(
 
     Args:
         percentile_stats_path: Path to the percentile_stats.parquet produced by
-            `explainability.patch_statistics` (must include the `low_column`
+            `explainability.token_statistics` (must include the `low_column`
             and `high_column` percentiles).
         low_column: Percentile column for the IQR's lower bound.
         high_column: Percentile column for the IQR's upper bound.
@@ -195,7 +195,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     patches_ds = load_tokens_dataset([token_dir])
     # A plain, unfiltered read_parquet count is metadata-only (row counts come
     # from the parquet footers, no column data decoded) - unlike
-    # patch_statistics.py's sampled count, nothing here forces a full read.
+    # token_statistics.py's sampled count, nothing here forces a full read.
     n_patches = patches_ds.count()
 
     model = MiniBatchNMF(
@@ -281,7 +281,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
     # W and its per-patch metadata stay on the project mount (too large for
-    # mlflow, same treatment as patch_sample.f32.npy in patch_statistics.py);
+    # mlflow, same treatment as patch_sample.f32.npy in token_statistics.py);
     # only H and the manifest are small enough to log directly.
     logger.log_artifact(str(output_dir / "h.parquet"))
     logger.log_artifact(str(manifest_path))
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     ctx.use_ray_tqdm = False
 
     # num_cpus set deliberately *low* - same fix, same root cause as
-    # explainability/patch_statistics.py (see that file's comment and
+    # explainability/token_statistics.py (see that file's comment and
     # explainability-status memory): the original (pre-grade_split) patch
     # token parquet files were each a single ~1.6GB row group, so even Ray's
     # own automatic per-file metadata sampling had to materialize close to

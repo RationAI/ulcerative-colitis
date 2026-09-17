@@ -10,7 +10,12 @@ defaults:
 # always go through mlflow (e.g. on a fresh node without the project mount).
 local_embeddings_xai_dir: ${project_dir}/embeddings_xai
 
-# Patches read per streaming batch (also the digest-update batch size).
+# "patch" or "cls" - which embeddings_xai token table to compute statistics
+# over. No default: pick explicitly per run, same convention as nmf_fit.yaml's
+# n_components - this changes both what's read and where output_dir points.
+kind: ???
+
+# Tokens read per streaming batch (also the digest-update batch size).
 batch_size: 131072
 overwrite: false
 
@@ -20,12 +25,14 @@ overwrite: false
 # (unweighted, Frobenius) loss.
 percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 0.25, 0.75, 1e-1, 1.0]
 
-output_dir: ${project_dir}/explainability/patch_statistics
+output_dir: ${project_dir}/explainability/token_statistics/${kind}
 
 metadata:
-  run_name: "📊 Patch Statistics"
+  run_name: "📊 Token Statistics (${kind})"
   description: >-
     Per-dimension percentile statistics (t-digest, full ftn + ikem corpus,
-    no sampling) used to pick a shift and IQR scale for NMF.
+    no sampling) over the ${kind} token table, used to pick a shift and IQR
+    scale for NMF.
   hyperparams:
+    kind: ${kind}
     percentiles: ${percentiles}

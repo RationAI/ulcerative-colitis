@@ -18,7 +18,7 @@ submit_job(
     public=False,
     # Deliberately low - keep in sync with num_cpus in
     # explainability/concept_masks.py's ray.init(). Same root cause as
-    # scripts/explainability/{patch_statistics,nmf_fit}.py's identical
+    # scripts/explainability/{token_statistics,nmf_fit}.py's identical
     # comment (oversized parquet row groups, not this script's own logic).
     cpu=8,
     memory="64Gi",

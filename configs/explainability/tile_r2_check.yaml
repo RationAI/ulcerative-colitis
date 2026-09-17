@@ -38,7 +38,7 @@ shift:
   # Same mlflow artifact URI as configs/explainability/nmf_fit.yaml's
   # shift.mlflow_uri - duplicated rather than shared (see
   # configs/explainability/theta_m_check.yaml's identical note). Update
-  # alongside those after every patch_statistics.py run.
+  # alongside those after every token_statistics.py (kind=patch) run.
   mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
   percentile_column: p0.0001
 

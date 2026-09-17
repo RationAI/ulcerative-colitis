@@ -36,7 +36,7 @@ def resolve_token_dirs(
         split: Which embeddings_xai split to resolve - "train",
             "test_preliminary", etc. (see `configs/preprocessing/
             embeddings_xai.yaml`'s `split`). Defaults to "train" to match
-            every existing caller (patch_statistics.py, nmf_fit.py), which
+            every existing caller (token_statistics.py, nmf_fit.py), which
             predate this split ever being anything else.
 
     Returns:

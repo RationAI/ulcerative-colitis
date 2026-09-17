@@ -29,17 +29,17 @@ grade: ???
 n_components: ???
 
 shift:
-  # mlflow artifact URI for a specific patch_statistics run's
+  # mlflow artifact URI for a specific token_statistics run's
   # percentile_stats.parquet (small artifact - always fetched from mlflow,
   # not a local mount, unlike the patch/cls token parquet or W/H memmaps -
   # see explainability.nmf_fit.resolve_percentile_stats_path). No default on
   # purpose: mirrors configs/dataset/embeddings_xai/{ftn,ikem}.yaml's
-  # mlflow_uris convention - update after every patch_statistics.py run,
+  # mlflow_uris convention - update after every token_statistics.py (kind=patch) run,
   # e.g. "mlflow-artifacts:/86/<run_id>/artifacts/percentile_stats.parquet".
   # Must point at a run whose percentiles include p0.25/p0.75 (load_scale's
   # IQR columns) - older, pre-IQR runs won't have them.
   mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
-  # The 1e-4 quantile column (see explainability/patch_statistics.py's column
+  # The 1e-4 quantile column (see explainability/token_statistics.py's column
   # naming): a light compromise between the true min (outlier-sensitive) and
   # a looser quantile (more clipping). Retune once the real table is inspected.
   percentile_column: p0.0001

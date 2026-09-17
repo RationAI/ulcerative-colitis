@@ -217,7 +217,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
 
 if __name__ == "__main__":
-    # No num_cpus pin (unlike tile_r2_check.py/nmf_fit.py/patch_statistics.py):
+    # No num_cpus pin (unlike tile_r2_check.py/nmf_fit.py/token_statistics.py):
     # this reads one grade's small CLS partition (one row per tile), not the
     # oversized-row-group patch tables that OOM without a concurrency cap -
     # only the working_dir upload exclusion is needed here, same as those.

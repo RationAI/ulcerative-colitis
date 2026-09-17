@@ -12,10 +12,10 @@ rigor, sharing one pass over the real corpus:
    redundancy accounting): `|Theta_j| * IQR_j` per dimension, summed per
    pathway. Correction vs. `theta_m_check.py`'s use of IQR: `Theta_m` acts on
    `m_i` (mean-pooled, tile-count-sized), not on raw patch tokens
-   (patch_statistics.py's IQR, patch-count-sized) - averaging shrinks
+   (token_statistics.py's IQR, patch-count-sized) - averaging shrinks
    variance, so this script computes its own IQR of `z_i`/`m_i` directly
    from the same tile-level features the other two methods use, rather than
-   reusing `patch_statistics.py`'s output. Cheap either way (tile-count, not
+   reusing `token_statistics.py`'s output. Cheap either way (tile-count, not
    patch-count, sized).
 2. **Variance decomposition** of the tile logit `Theta_z.z_i + Theta_m.m_i`
    into its two terms plus their covariance, on real tiles - the first
@@ -481,7 +481,7 @@ if __name__ == "__main__":
     ctx.use_ray_tqdm = False
 
     # num_cpus=8: same oversized-parquet-row-group root cause as
-    # patch_statistics.py/nmf_fit.py/grade_split.py - mean_pool_patches reads
+    # token_statistics.py/nmf_fit.py/grade_split.py - mean_pool_patches reads
     # the full patch corpus. Keep in sync with cpu= in
     # scripts/explainability/embedding_importance.py.
     with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):

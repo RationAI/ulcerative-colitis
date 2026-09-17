@@ -17,31 +17,33 @@ from explainability.tiles import load_tokens_dataset, resolve_token_dirs
 def compute_percentiles(
     dataset: ray.data.Dataset, percentiles: list[float], batch_size: int
 ) -> pd.DataFrame:
-    """Estimate per-dimension percentiles by streaming t-digests over every patch.
+    """Estimate per-dimension percentiles by streaming t-digests over every token.
 
-    Reads every patch token exactly once, with no `.random_sample()` step:
+    Reads every token exactly once, with no `.random_sample()` step:
     sampling doesn't actually save the expensive part here, since Ray has no
     pushdown for it and has to decode every row to filter it anyway - so it
     only ever saved *downstream* storage/compute, which this streaming
     approach no longer has (no memmap, no scratch file, no O(n log n)
     transpose). One `TDigest` per embedding dimension is updated batch by
-    batch; digest updates are the dominant cost here (~100 min for the full
-    ftn+ikem corpus, single-threaded on the driver, measured locally) and
-    could be parallelized across a ray actor pool if that ever becomes the
-    bottleneck - not done here since it currently overlaps reasonably with
-    the ray-side read/decode happening concurrently in separate processes.
+    batch; digest updates are the dominant cost here for the patch corpus
+    (~100 min for the full ftn+ikem patch corpus, single-threaded on the
+    driver, measured locally; the cls corpus is ~256x fewer rows and
+    correspondingly cheaper) and could be parallelized across a ray actor
+    pool if that ever becomes the bottleneck - not done here since it
+    currently overlaps reasonably with the ray-side read/decode happening
+    concurrently in separate processes.
 
     Args:
-        dataset: Pooled `ray.data.Dataset` of patch tokens (e.g. from
-            `load_tokens_dataset` with `kind="patch"`).
+        dataset: Pooled `ray.data.Dataset` of tokens (e.g. from
+            `load_tokens_dataset` with `kind="patch"` or `kind="cls"`).
         percentiles: Quantile levels in [0, 1] to estimate for each dimension.
-        batch_size: Number of patches to read per batch.
+        batch_size: Number of tokens to read per batch.
 
     Returns:
         A DataFrame indexed by dimension, one column per requested percentile.
     """
     digests: list[TDigest] | None = None
-    n_patches = 0
+    n_tokens = 0
     start = time.monotonic()
     last_log = start
     for batch in dataset.select_columns(["embedding"]).iter_batches(
@@ -53,7 +55,7 @@ def compute_percentiles(
         for dim, digest in enumerate(digests):
             digest.update(tokens[:, dim])
 
-        n_patches += tokens.shape[0]
+        n_tokens += tokens.shape[0]
         now = time.monotonic()
         # Digest updates dominate wall-clock here (see docstring), so a
         # simple elapsed-time-based log is the only progress signal - there's
@@ -68,19 +70,19 @@ def compute_percentiles(
         # in Python's internal buffer for a long time before actually
         # reaching whatever log the job's output is captured into.
         if now - last_log > 60:
-            rate = n_patches / (now - start)
-            print(f"compute_percentiles: {n_patches} patches processed ({rate:.0f} patches/s)", flush=True)
+            rate = n_tokens / (now - start)
+            print(f"compute_percentiles: {n_tokens} tokens processed ({rate:.0f} tokens/s)", flush=True)
             last_log = now
 
     if digests is None:
-        raise ValueError("Dataset is empty - no patches to compute percentiles over.")
+        raise ValueError("Dataset is empty - no tokens to compute percentiles over.")
 
     stats = np.array([[digest.inverse_cdf(p) for p in percentiles] for digest in digests])
     columns = [f"p{p:g}" for p in percentiles]
     return pd.DataFrame(stats, columns=columns).rename_axis("dimension")
 
 
-@with_cli_args(["+explainability=patch_statistics"])
+@with_cli_args(["+explainability=token_statistics"])
 @hydra.main(config_path="../configs", config_name="explainability", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
@@ -92,7 +94,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         stats = pd.read_parquet(stats_path)
     else:
         token_dirs = resolve_token_dirs(
-            config.sources, config.get("local_embeddings_xai_dir"), kind="patch"
+            config.sources, config.get("local_embeddings_xai_dir"), kind=config.kind
         )
         dataset = load_tokens_dataset(token_dirs)
         percentiles = OmegaConf.to_object(config.percentiles)
@@ -129,6 +131,8 @@ if __name__ == "__main__":
     # for a single local Ray instance (one pod, no cluster - every job log
     # shows "Started a local Ray instance"), so num_cpus is what actually
     # bounds how many ~2-5GB files get processed *concurrently on this one
-    # node*. Keep in sync with cpu= in scripts/explainability/patch_statistics.py.
+    # node*. The cls corpus is ~256x fewer rows and unlikely to hit this at
+    # all, but the same low cap is kept as the safe default for either kind.
+    # Keep in sync with cpu= in scripts/explainability/token_statistics.py.
     with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
         main()

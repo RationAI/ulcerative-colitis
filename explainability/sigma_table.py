@@ -21,7 +21,7 @@ weights - no regression, no labels, no data. `H` here is already the fully
 recovered (scale multiplied back in) and gauge-fixed dictionary `nmf_fit.py`
 writes to `h.parquet` - i.e. exactly the `H_k` of eq. 2.24, not the
 scaled-fit `H~_k`. That means sigma_table needs neither `shift` nor `scale`
-(patch_statistics' output) itself: the non-negativity transform's `-c` term
+(token_statistics' output) itself: the non-negativity transform's `-c` term
 was already absorbed into the classifier bias per eq. 2.24, which doesn't
 appear in sigma at all.
 

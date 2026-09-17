@@ -32,7 +32,7 @@ distribution).
 **Pipeline:**
 1. Stream every patch token once, mean-pooling by tile (`slide_id, x, y`)
    via a custom `ray.data` `AggregateFn` - the same oversized-row-group OOM
-   risk as `patch_statistics.py`/`nmf_fit.py` applies here (this reads the
+   risk as `token_statistics.py`/`nmf_fit.py` applies here (this reads the
    full patch corpus), so `ray.init(num_cpus=8, ...)` is used the same way.
 2. Load cls tokens (one row per tile already - no aggregation needed) and
    merge them against the per-tile patch means on `(slide_id, x, y)` with a
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     ctx.use_ray_tqdm = False
 
     # num_cpus=8: same oversized-parquet-row-group root cause as
-    # patch_statistics.py/nmf_fit.py (see their comments + explainability-
+    # token_statistics.py/nmf_fit.py (see their comments + explainability-
     # status memory) - mean_pool_patches reads the full patch corpus, so the
     # same fix applies. Keep in sync with cpu= in
     # scripts/explainability/grade_split.py.

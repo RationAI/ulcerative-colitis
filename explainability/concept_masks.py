@@ -379,7 +379,7 @@ if __name__ == "__main__":
     ctx.use_ray_tqdm = False
 
     # num_cpus deliberately low - same oversized-parquet-row-group root cause
-    # as patch_statistics.py/nmf_fit.py (see explainability-status memory).
+    # as token_statistics.py/nmf_fit.py (see explainability-status memory).
     # Keep in sync with cpu= in scripts/explainability/concept_masks.py.
     with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
         main()

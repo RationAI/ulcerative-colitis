@@ -10,7 +10,7 @@ shift:
   # Same mlflow artifact URI as configs/explainability/nmf_fit.yaml's
   # shift.mlflow_uri - duplicated rather than shared (that file also can't
   # be reused wholesale here, since its own n_components: ??? has no
-  # default). Update alongside that one after every patch_statistics.py run.
+  # default). Update alongside that one after every token_statistics.py (kind=patch) run.
   mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
 
 # Column split point in the classifier's 2*embed_dim-wide input: h_i =
@@ -29,6 +29,6 @@ metadata:
   description: >-
     One-off diagnostic (not part of the numbered pipeline stages): for each
     final checkpoint, correlates the classifier's |Theta_m| per patch-token
-    dimension against that dimension's IQR from patch_statistics, to check
+    dimension against that dimension's IQR from token_statistics, to check
     whether nmf_fit.py's IQR-based scaling risks suppressing dimensions the
     classifier actually relies on.
