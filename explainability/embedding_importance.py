@@ -273,7 +273,7 @@ def run_ablation(
     z: np.ndarray,
     m: np.ndarray,
     models: dict[str, ModelWeights],
-    targets: dict[str, np.ndarray],
+    nancy_index_by_slide: pd.Series,
     z_bar: np.ndarray,
     m_bar: np.ndarray,
 ) -> pd.DataFrame:
@@ -285,6 +285,14 @@ def run_ablation(
     `ray.data.groupby`, since the per-slide data is small by this point).
     """
     slide_codes, slide_ids = pd.factorize(tile_features["slide_id"])
+    # Targets must be derived from this same slide_ids order (factorize's
+    # first-appearance order), not a separately-sorted one - slide_id is an
+    # opaque row_hash, so a `groupby(...).first()`'s default sort=True order
+    # silently disagrees with it, scrambling predictions against the wrong
+    # slide's label and flattening AUC to chance.
+    targets = {
+        head: nancy_to_target(nancy_index_by_slide.loc[slide_ids].to_numpy(), head) for head in models
+    }
     predictions: dict[tuple[str, str], list[np.ndarray]] = {}
     for head in models:
         for condition in CONDITIONS:
@@ -427,12 +435,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     # Method 3
     print("Method 3: real counterfactual ablation...", flush=True)
-    targets = {
-        head: nancy_to_target(tile_features.groupby("slide_id")["nancy_index"].first().to_numpy(), head)
-        for head in models
-    }
+    nancy_index_by_slide = tile_features.drop_duplicates("slide_id").set_index("slide_id")["nancy_index"]
     z_bar, m_bar = z.mean(axis=0), m.mean(axis=0)
-    ablation_df = run_ablation(tile_features, z, m, models, targets, z_bar, m_bar)
+    ablation_df = run_ablation(tile_features, z, m, models, nancy_index_by_slide, z_bar, m_bar)
     summary_df = summarize_ablation(ablation_df)
     print(summary_df.to_string(index=False), flush=True)
 
