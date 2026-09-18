@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -13,6 +14,47 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
 from explainability.tiles import load_tokens_dataset, resolve_grade_token_dir
+
+
+_MLFLOW_RUN_ID_RE = re.compile(r"^mlflow-artifacts:/[^/]+/(?P<run_id>[0-9a-f]{32})/artifacts/")
+
+
+def check_shift_kind(mlflow_uri: str, expected_kind: str) -> None:
+    """Guard against `shift.mlflow_uri` pointing at a token_statistics run of the wrong kind.
+
+    Confirmed real failure (2026-09-18): a kind=cls nmf_fit run was submitted
+    with only `kind`/`grade`/`n_components`/`nmf.scale_power` overridden on
+    the CLI, leaving `shift.mlflow_uri` at nmf_fit.yaml's kind=patch default.
+    The fit completed without error - wrong shift/scale silently produces a
+    valid-looking, non-crashing, wrong result, not an exception - but applying
+    patch-distribution shift constants to cls tokens spuriously clipped up to
+    ~78% of one dimension's real values to zero (that dimension's patch-based
+    shift sat far above cls's own true minimum for it; 22.5% of dimensions
+    lost >1% of their mass this way, vs. the ~0.01% the p0.0001 shift column
+    is designed for). Cheap enough to check outright rather than document as
+    a footgun: every token_statistics run logs its own `kind` param, so a
+    mismatch against this run's `config.kind` is detected directly.
+
+    Args:
+        mlflow_uri: `config.shift[config.kind].mlflow_uri` - expected to be a
+            standard "mlflow-artifacts:/<experiment_id>/<run_id>/artifacts/..."
+            URI (true for every token_statistics.py run so far).
+        expected_kind: This nmf_fit run's own `config.kind`.
+
+    Raises:
+        ValueError: If the token_statistics run's logged `kind` param exists
+            and disagrees with `expected_kind`.
+    """
+    match = _MLFLOW_RUN_ID_RE.match(mlflow_uri)
+    if match is None:
+        return  # Not a standard mlflow-artifacts run URI - can't check, skip rather than guess.
+    run_kind = mlflow.get_run(match.group("run_id")).data.params.get("kind")
+    if run_kind is not None and run_kind != expected_kind:
+        raise ValueError(
+            f"shift.mlflow_uri ({mlflow_uri}) is a token_statistics run with kind={run_kind!r}, "
+            f"but this nmf_fit run has kind={expected_kind!r} - update shift.mlflow_uri to a "
+            f"token_statistics run of the matching kind."
+        )
 
 
 def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
@@ -180,8 +222,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
-    shift = load_shift(stats_path, config.shift.percentile_column)
+    shift_config = config.shift[config.kind]
+    check_shift_kind(shift_config.mlflow_uri, config.kind)
+    stats_path = resolve_percentile_stats_path(shift_config.mlflow_uri)
+    shift = load_shift(stats_path, shift_config.percentile_column)
     # scale_power=1 -> IQR (original), 0.5 -> sqrt(IQR) (gentler), 0 -> all
     # ones (no scaling) - IQR is always >0 (load_scale's own zero/negative
     # fallback), so **0 is exactly 1 for every dimension, not just close to
@@ -284,7 +328,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "kind": config.kind,
         "grade": config.grade,
         "n_components": config.n_components,
-        "percentile_column": config.shift.percentile_column,
+        "percentile_column": shift_config.percentile_column,
         "scale_columns": "p0.75 - p0.25 (IQR)",
         "gauge_fixed": config.nmf.gauge_fix,
         "epochs": config.nmf.epochs,

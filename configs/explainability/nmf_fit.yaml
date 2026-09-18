@@ -22,11 +22,11 @@ grade_split:
 # "patch" or "cls" - which embeddings_xai token table to fit NMF over. No
 # default on purpose: picked explicitly per run, same convention as
 # token_statistics.yaml's kind field - this changes both what's read
-# (resolve_grade_token_dir's kind=) and which shift.mlflow_uri applies
-# (must be a token_statistics run of the *same* kind). For kind="cls",
-# W's rows are already tile-level phi_ik directly (one CLS token per tile,
-# no per-patch averaging needed) - see explainability/nmf_fit.py's comment
-# at the transform pass.
+# (resolve_grade_token_dir's kind=) and which shift entry below applies
+# (shift[kind], selected automatically - see that block's comment). For
+# kind="cls", W's rows are already tile-level phi_ik directly (one CLS token
+# per tile, no per-patch averaging needed) - see explainability/nmf_fit.py's
+# comment at the transform pass.
 kind: ???
 
 # Which predicted Nancy grade (0-4, explainability.grade_split's tile-level
@@ -38,25 +38,47 @@ grade: ???
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
 
+# Keyed by kind ("patch"/"cls"), not a single shift.mlflow_uri overwritten
+# per run - deliberately mirrors concept_masks.yaml's `h` dict-of-variants
+# convention. Confirmed real failure this prevents (2026-09-18): a kind=cls
+# nmf_fit run was submitted with only kind/grade/n_components/scale_power
+# overridden on the CLI, silently falling back to a flat shift.mlflow_uri
+# default meant for kind=patch - applying patch-distribution shift constants
+# to cls tokens spuriously clipped up to ~78% of one dimension's real values
+# to zero. Keying by `kind` makes that specific mistake structurally
+# impossible: main() selects shift[config.kind] directly, there's no separate
+# field to forget to override. explainability/nmf_fit.py's check_shift_kind
+# is a secondary runtime guard (checks the resolved run's own logged `kind`
+# param) for the remaining case of a manual mlflow_uri copy-paste error
+# within the right key.
 shift:
-  # mlflow artifact URI for a specific token_statistics run's
+  # Each entry's percentile_column is the 1e-4 quantile column (see
+  # explainability/token_statistics.py's column naming): a light compromise
+  # between the true min (outlier-sensitive) and a looser quantile (more
+  # clipping). Retune once the real table is inspected.
+  #
+  # mlflow artifact URI for a specific token_statistics.py (kind=patch) run's
   # percentile_stats.parquet (small artifact - always fetched from mlflow,
   # not a local mount, unlike the patch/cls token parquet or W/H memmaps -
-  # see explainability.nmf_fit.resolve_percentile_stats_path). No default on
-  # purpose: mirrors configs/dataset/embeddings_xai/{ftn,ikem}.yaml's
-  # mlflow_uris convention - update after every token_statistics.py run,
-  # e.g. "mlflow-artifacts:/86/<run_id>/artifacts/percentile_stats.parquet".
-  # Must point at a run of the *same* kind as `kind` above, whose percentiles
-  # include p0.25/p0.75 (load_scale's IQR columns) - older, pre-IQR runs
-  # won't have them. Default below is a kind=patch run
-  # (45bdcedf6f0c4f9fa39d43d1a8cbe020) - for kind=cls, use
-  # mlflow-artifacts:/86/eb03d6040d9b401fbb9ac289726cc896/artifacts/percentile_stats.parquet
-  # instead (2026-09-18 token_statistics kind=cls run).
-  mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
-  # The 1e-4 quantile column (see explainability/token_statistics.py's column
-  # naming): a light compromise between the true min (outlier-sensitive) and
-  # a looser quantile (more clipping). Retune once the real table is inspected.
-  percentile_column: p0.0001
+  # see explainability.nmf_fit.resolve_percentile_stats_path). Update after
+  # every token_statistics.py (kind=patch) run, same convention as
+  # configs/dataset/embeddings_xai/{ftn,ikem}.yaml's mlflow_uris. Must point
+  # at a run whose percentiles include p0.25/p0.75 (load_scale's IQR
+  # columns) - older, pre-IQR runs won't have them. This default predates
+  # the kind param existing at all (run from before patch_statistics.py was
+  # generalized into token_statistics.py), so check_shift_kind can't verify
+  # it against its own logged metadata - correct as of 2026-09-18 by
+  # inspection, not by the runtime guard.
+  patch:
+    mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
+    percentile_column: p0.0001
+  # mlflow artifact URI for a specific token_statistics.py (kind=cls) run's
+  # percentile_stats.parquet. Update after every such run, same convention as
+  # the patch entry above. Points at run eb03d6040d9b401fbb9ac289726cc896
+  # (2026-09-18, the first token_statistics kind=cls run).
+  cls:
+    mlflow_uri: mlflow-artifacts:/86/eb03d6040d9b401fbb9ac289726cc896/artifacts/percentile_stats.parquet
+    percentile_column: p0.0001
 
 nmf:
   # Patches read per partial_fit/transform call.
@@ -121,7 +143,7 @@ metadata:
     kind: ${kind}
     grade: ${grade}
     n_components: ${n_components}
-    percentile_column: ${shift.percentile_column}
+    percentile_column: ${shift.${kind}.percentile_column}
     scale_power: ${nmf.scale_power}
     batch_size: ${nmf.batch_size}
     epochs: ${nmf.epochs}
