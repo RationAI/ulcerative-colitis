@@ -83,8 +83,8 @@ def load_scale(
     return np.where(iqr <= 0, 1.0, iqr)
 
 
-def iter_patch_batches(
-    patches_ds: ray.data.Dataset,
+def iter_token_batches(
+    tokens_ds: ray.data.Dataset,
     batch_size: int,
     shift: np.ndarray,
     scale: np.ndarray,
@@ -92,26 +92,29 @@ def iter_patch_batches(
     shuffle_seed: int | None = None,
     shuffle_buffer_size: int | None = None,
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
-    """Yield shifted, scaled, non-negative patch batches with optional provenance.
+    """Yield shifted, scaled, non-negative token batches with optional provenance.
 
-    `patches_ds` already holds one row per patch token (see
+    `tokens_ds` already holds one row per token (see
     `preprocessing/embeddings_xai.py`, which explodes and Hive-partitions by
-    `kind` at write time), so this reads and transforms patches directly - no
-    per-tile reshaping or CLS stripping needed here any more.
+    `kind` at write time), so this reads and transforms tokens directly - no
+    per-tile reshaping or CLS stripping needed here any more. Works for
+    either `kind="patch"` (many rows per tile, `patch_index` 0..P-2) or
+    `kind="cls"` (exactly one row per tile, `patch_index` always null) -
+    the transform itself doesn't care which.
 
     Args:
-        patches_ds: `ray.data.Dataset` of patch tokens (e.g. from
-            `explainability.tiles.load_tokens_dataset` with `kind="patch"`),
-            in whatever order the caller wants read (see `shuffle_seed`).
-        batch_size: Number of patches to read per yielded batch.
+        tokens_ds: `ray.data.Dataset` of tokens (e.g. from
+            `explainability.tiles.load_tokens_dataset`), in whatever order
+            the caller wants read (see `shuffle_seed`).
+        batch_size: Number of tokens to read per yielded batch.
         shift: Per-dimension shift constant `c`, shape (embed_dim,).
         scale: Per-dimension scale constant `d` (the IQR, see `load_scale`),
             shape (embed_dim,) - matches concept_mil.tex's non-negativity
             transform t~ = (t + c) / d (here `shift` plays the role of `-c`).
         with_metadata: If True, also yield a DataFrame of (slide_id, x, y,
-            patch_index) rows aligned with the yielded patch batch, so each
-            row of W can be traced back to the patch it came from.
-        shuffle_seed: If given, patches are read in a locally-shuffled order
+            patch_index) rows aligned with the yielded token batch, so each
+            row of W can be traced back to the token it came from.
+        shuffle_seed: If given, tokens are read in a locally-shuffled order
             (a cheap, per-worker approximate shuffle - see `Dataset.iter_batches`'s
             `local_shuffle_buffer_size`, no cross-node data movement) - used
             for the per-epoch NMF training passes. Leave as None (read order
@@ -121,20 +124,20 @@ def iter_patch_batches(
             together with `shuffle_seed`, ignored otherwise.
 
     Yields:
-        Tuples of (patches, metadata), where patches has shape
+        Tuples of (tokens, metadata), where tokens has shape
         (n_rows_in_batch, embed_dim) and metadata is None unless
         `with_metadata` is set.
     """
     columns = ["slide_id", "x", "y", "patch_index", "embedding"] if with_metadata else ["embedding"]
 
-    for batch in patches_ds.select_columns(columns).iter_batches(
+    for batch in tokens_ds.select_columns(columns).iter_batches(
         batch_size=batch_size,
         batch_format="numpy",
         local_shuffle_seed=shuffle_seed,
         local_shuffle_buffer_size=shuffle_buffer_size,
     ):
-        tokens = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-        patches = np.maximum((tokens - shift) / scale, 0.0)
+        raw = np.stack(batch["embedding"]).astype(np.float32, copy=False)
+        tokens = np.maximum((raw - shift) / scale, 0.0)
 
         metadata = None
         if with_metadata:
@@ -146,7 +149,7 @@ def iter_patch_batches(
                     "patch_index": batch["patch_index"],
                 }
             )
-        yield patches, metadata
+        yield tokens, metadata
 
 
 def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
@@ -154,7 +157,7 @@ def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
 
     For any positive diagonal S, W @ H == (W @ S^-1) @ (S @ H), so component
     magnitudes carry no meaning until this is fixed. No corresponding W
-    correction is needed from the caller: `main` re-transforms every patch
+    correction is needed from the caller: `main` re-transforms every token
     against this gauge-fixed H directly (by pointing `model.components_` at
     it before the transform pass) rather than computing W against the
     pre-fix H and rescaling it after the fact.
@@ -186,17 +189,22 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # |Theta_m| looked anti-correlated with IQR, but |Theta_m|*IQR (each
     # dimension's actual contribution to the logit) is *positively*
     # correlated - i.e. plain IQR scaling risks suppressing exactly the
-    # dimensions the trained classifiers rely on most.
+    # dimensions the trained classifiers rely on most. (theta_z_check.py
+    # found a similar, weaker effect for z_i/Theta_z - this knob applies the
+    # same way regardless of config.kind.)
     scale = load_scale(stats_path) ** config.nmf.scale_power
 
     token_dir = resolve_grade_token_dir(
-        config.get("local_grade_split_dir"), config.grade_split.mlflow_uri, kind="patch", grade=config.grade
+        config.get("local_grade_split_dir"),
+        config.grade_split.mlflow_uri,
+        kind=config.kind,
+        grade=config.grade,
     )
-    patches_ds = load_tokens_dataset([token_dir])
+    tokens_ds = load_tokens_dataset([token_dir])
     # A plain, unfiltered read_parquet count is metadata-only (row counts come
     # from the parquet footers, no column data decoded) - unlike
     # token_statistics.py's sampled count, nothing here forces a full read.
-    n_patches = patches_ds.count()
+    n_tokens = tokens_ds.count()
 
     model = MiniBatchNMF(
         n_components=config.n_components,
@@ -211,18 +219,18 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # with, so W from mid-training batches would reflect a moving target
     # rather than the final dictionary.
     for epoch in range(config.nmf.epochs):
-        for patches, _ in iter_patch_batches(
-            patches_ds,
+        for tokens, _ in iter_token_batches(
+            tokens_ds,
             config.nmf.batch_size,
             shift,
             scale,
             shuffle_seed=config.nmf.random_state + epoch,
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
         ):
-            model.partial_fit(patches)
+            model.partial_fit(tokens)
 
     # Recover H_k = H~_k * d (concept_mil.tex eq 2.24): the dictionary was
-    # fit on scaled patches, so its raw coefficients are per unit of
+    # fit on scaled tokens, so its raw coefficients are per unit of
     # (dimension j / scale[j]), not per unit of dimension j directly - this
     # multiplies that back out into the original (shifted-only) token space.
     # Must happen *before* gauge-fixing: gauge-fixing normalizes row norms,
@@ -233,33 +241,36 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         h = gauge_fix_dictionary(h)
 
     # Point the model at the final (recovered, possibly gauge-fixed) H and
-    # transform *shift-only* patches (scale=1 - h is no longer in the
+    # transform *shift-only* tokens (scale=1 - h is no longer in the
     # scaled-fit space, so the input mustn't be either) against it: W then
     # comes out of transform() already correct, with no separate rescale
     # needed the way leaving model.components_ unchanged would have required.
     model.components_ = h
     unscaled = np.ones_like(scale)
 
-    # Transform: one clean pass with the now-final H to get every patch's W.
+    # Transform: one clean pass with the now-final H to get every token's W.
+    # For kind="cls" (exactly one token per tile), W's rows are already the
+    # tile-level phi_ik concept_mil.tex needs directly - no per-tile
+    # averaging over patches required the way kind="patch" needs downstream.
     w_path = output_dir / "w.f32.npy"
     w = np.lib.format.open_memmap(
-        w_path, mode="w+", dtype=np.float32, shape=(n_patches, config.n_components)
+        w_path, mode="w+", dtype=np.float32, shape=(n_tokens, config.n_components)
     )
     metadata_chunks = []
     offset = 0
-    for patches, metadata in iter_patch_batches(
-        patches_ds,
+    for tokens, metadata in iter_token_batches(
+        tokens_ds,
         config.nmf.batch_size,
         shift,
         unscaled,
         with_metadata=True,
     ):
-        w_batch = model.transform(patches)
+        w_batch = model.transform(tokens)
         w[offset : offset + w_batch.shape[0]] = w_batch
         metadata_chunks.append(metadata)
         offset += w_batch.shape[0]
     w.flush()
-    assert offset == n_patches
+    assert offset == n_tokens
 
     pd.concat(metadata_chunks, ignore_index=True).to_parquet(
         output_dir / "w_metadata.parquet", index=False
@@ -270,6 +281,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
+        "kind": config.kind,
         "grade": config.grade,
         "n_components": config.n_components,
         "percentile_column": config.shift.percentile_column,
@@ -280,7 +292,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
-    # W and its per-patch metadata stay on the project mount (too large for
+    # W and its per-token metadata stay on the project mount (too large for
     # mlflow, same treatment as patch_sample.f32.npy in token_statistics.py);
     # only H and the manifest are small enough to log directly.
     logger.log_artifact(str(output_dir / "h.parquet"))

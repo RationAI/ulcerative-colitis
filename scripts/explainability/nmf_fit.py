@@ -1,6 +1,12 @@
 from kube_jobs import storage, submit_job
 
 
+# No default kind in configs/explainability/nmf_fit.yaml on purpose -
+# "patch" or "cls", picked explicitly per submission (also determines
+# shift.mlflow_uri's required kind and output_dir via ${kind} interpolation),
+# same convention as token_statistics.yaml's kind field.
+kind = ...
+
 # No default grade in configs/explainability/nmf_fit.yaml on purpose -
 # explainability/grade_split.py's tile-level predicted Nancy grade (0-4).
 # One job per grade, same convention as n_components/scale_power below - edit
@@ -23,7 +29,7 @@ n_components = ...
 scale_power = ...
 
 submit_job(
-    job_name=f"ulcerative-colitis-nmf-fit-grade{grade}-k{n_components}-sp{scale_power}-...",
+    job_name=f"ulcerative-colitis-nmf-fit-{kind}-grade{grade}-k{n_components}-sp{scale_power}-...",
     username=...,
     public=False,
     # Deliberately low - keep in sync with num_cpus in
@@ -41,7 +47,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_fit "
-        f"grade={grade} n_components={n_components} nmf.scale_power={scale_power}",
+        f"kind={kind} grade={grade} n_components={n_components} nmf.scale_power={scale_power}",
     ],
     storage=[storage.secure.PROJECTS],
 )

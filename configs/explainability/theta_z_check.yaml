@@ -1,0 +1,36 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+shift:
+  # Unlike theta_m_check.yaml, this points at a token_statistics.py
+  # (kind=cls) run, not (kind=patch) - z_i's own IQR, not m_i's. Update
+  # alongside a re-run of that job. Run 2026-09-17, mlflow-artifacts:/86/
+  # eb03d6040d9b401fbb9ac289726cc896 ("Token Statistics (cls)").
+  mlflow_uri: mlflow-artifacts:/86/eb03d6040d9b401fbb9ac289726cc896/artifacts/percentile_stats.parquet
+
+# Column split point in the classifier's 2*embed_dim-wide input: h_i =
+# [z_i; m_i] (concept_mil.tex notation) - columns [0, embed_dim) act on the
+# CLS token z_i, columns [embed_dim, 2*embed_dim) on the mean-pooled patch
+# tokens m_i. This ordering is *assumed* (matches the convention already
+# used elsewhere in explainability/), not verified against the model server
+# that produced these checkpoints' pooled embeddings - see
+# theta_m_check.py's module docstring.
+embed_dim: 1280
+
+output_dir: ${project_dir}/explainability/theta_z_check
+
+metadata:
+  run_name: "🔎 Theta_z vs IQR check"
+  description: >-
+    One-off diagnostic (not part of the numbered pipeline stages): for each
+    final checkpoint, correlates the classifier's |Theta_z| per CLS-token
+    dimension against that dimension's IQR from token_statistics (kind=cls),
+    to check whether z_i's classifier-relevant dimensions concentrate in its
+    high-IQR dimensions - the z_i analogue of theta_m_check.py's question
+    for m_i, motivated by embedding_importance.py's finding that z_i
+    dominates most heads/classes.

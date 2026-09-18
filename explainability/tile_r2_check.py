@@ -25,7 +25,7 @@ concept_mil.tex's own order-of-work table) is what actually confirms it once
 coverage looks promising enough to bother.
 
 **Single streaming pass, driver-side aggregation, not `ray.data.groupby`**:
-`iter_patch_batches` (from `explainability.nmf_fit`) is reused exactly as
+`iter_token_batches` (from `explainability.nmf_fit`) is reused exactly as
 `nmf_fit.py`'s own fit/transform passes use it - read a batch, transform it
 against the fixed H under test (`model.transform`, the same call
 `nmf_fit.py`'s own final pass and `concept_masks.py` use), then reduce that
@@ -68,7 +68,7 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
 from explainability.nmf_fit import (
-    iter_patch_batches,
+    iter_token_batches,
     load_shift,
     resolve_percentile_stats_path,
 )
@@ -155,7 +155,7 @@ def mean_pool_tile_features(
         shift: Per-dimension shift constant `c`, shape (embed_dim,).
         embed_dim: Width of one patch token's `embedding`.
         n_components: `model`'s `n_components` (`h.shape[0]`).
-        batch_size: Patches read per batch (see `iter_patch_batches`).
+        batch_size: Patches read per batch (see `iter_token_batches`).
 
     Returns:
         One row per tile: `slide_id`, `x`, `y`, `n_patches`, `m` (list of
@@ -166,7 +166,7 @@ def mean_pool_tile_features(
     sum_w: dict[tuple[str, int, int], np.ndarray] = {}
     counts: dict[tuple[str, int, int], int] = {}
 
-    for patches, metadata in iter_patch_batches(
+    for patches, metadata in iter_token_batches(
         patches_ds, batch_size, shift, unscaled, with_metadata=True
     ):
         w = model.transform(patches)
