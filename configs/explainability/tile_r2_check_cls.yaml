@@ -1,0 +1,70 @@
+# @package _global_
+
+defaults:
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_z_check.yaml.
+embed_dim: 1280
+
+# Which nmf_fit.py (kind=cls, grade, n_components, scale_power) run to check -
+# all three needed to build w_dir below (nmf_fit.yaml's output_dir
+# convention). No default on purpose, one job per run, same convention as
+# tile_r2_check.yaml.
+grade: ???
+n_components: ???
+scale_power: ???
+
+# Local nmf_fit.py (kind=cls) output dir - holds w.f32.npy/w_metadata.parquet
+# (project-mount only, too large for mlflow - same large-artifact treatment
+# as everywhere else in this pipeline). Must match grade/n_components/
+# scale_power above; no separate mlflow fallback the way local_grade_split_dir
+# has one, since nmf_fit.py never logs these to mlflow at all.
+w_dir: ${project_dir}/explainability/nmf/cls/grade${grade}/k${n_components}/scale_power_${scale_power}
+
+h:
+  # mlflow artifact URI for the specific nmf_fit.py (kind=cls) run's
+  # h.parquet to check (must have been fit on grade=${grade},
+  # n_components=${n_components}, scale_power=${scale_power}) - no default on
+  # purpose, same convention as tile_r2_check.yaml's h.mlflow_uri.
+  mlflow_uri: ???
+
+# Same grade_split resolution as tile_r2_ols_check.yaml, duplicated rather
+# than shared - only the CLS partition is read here (one row per tile, not
+# the patch corpus), so this is cheap even though the config looks identical.
+local_grade_split_dir: ${project_dir}/explainability/grade_split/${grade_split.split}
+grade_split:
+  split: train
+  mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
+
+# Local kind=patch tile_r2_check.py run's tile_features.parquet, reused only
+# for its `m` column (patch-side mean, shift-space) - the exact, never-
+# approximated side of the m-only baseline / pathway-share check. Independent
+# of this script's own n_components/scale_power (those are cls-side; `m`
+# doesn't depend on the cls dictionary at all) - NOT auto-interpolated from
+# grade/n_components above, since the patch run's own n_components can differ
+# and there's no principled reason to assume it matches. Must be updated by
+# hand if grade above changes. Default below is the one existing patch
+# tile_r2_check run, grade=4/k=12 (2026-09-04, 35,743 tiles).
+m_features_path: ${project_dir}/explainability/tile_r2_check/grade4/k12/tile_features.parquet
+
+output_dir: ${project_dir}/explainability/tile_r2_check_cls/grade${grade}/k${n_components}/scale_power_${scale_power}
+
+metadata:
+  run_name: "📏 Tile R^2 Check CLS (grade=${grade}, k=${n_components}, scale_power=${scale_power})"
+  description: >-
+    z_i analogue of tile_r2_check.py's plug-in R^2, plus tile_r2_ols_check.py's
+    OLS gap and pathway-share analysis, roles swapped: R^2 of varphi @ sigma_z
+    (concept-routed) vs. z @ Theta_z^T (direct), the OLS-fit gap on the same
+    varphi, and how much of the full tile logit an m-only baseline (ignoring
+    the z-concept pathway entirely) already explains. Reuses nmf_fit.py's
+    already-saved per-tile varphi directly (kind=cls has exactly one CLS
+    token per tile, so no patch streaming/pooling needed) and an existing
+    kind=patch tile_r2_check.py run's `m` column (see m_features_path).
+  hyperparams:
+    grade: ${grade}
+    n_components: ${n_components}
+    scale_power: ${scale_power}
