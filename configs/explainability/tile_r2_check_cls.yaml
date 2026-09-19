@@ -52,16 +52,22 @@ grade_split:
   split: train
   mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
 
-# Local kind=patch tile_r2_check.py run's tile_features.parquet, reused only
-# for its `m` column (patch-side mean, shift-space) - the exact, never-
-# approximated side of the m-only baseline / pathway-share check. Independent
-# of this script's own n_components/scale_power (those are cls-side; `m`
-# doesn't depend on the cls dictionary at all) - NOT auto-interpolated from
-# grade/n_components above, since the patch run's own n_components can differ
-# and there's no principled reason to assume it matches. Must be updated by
-# hand if grade above changes. Default below is the one existing patch
-# tile_r2_check run, grade=4/k=12 (2026-09-04, 35,743 tiles).
-m_features_path: ${project_dir}/explainability/tile_r2_check/grade4/k12/tile_features.parquet
+# Optional. Local kind=patch tile_r2_check.py run's tile_features.parquet,
+# reused only for its `m` column (patch-side mean, shift-space) - the exact,
+# never-approximated side of the m-only baseline / pathway-share check.
+# Defaults to null (unset): m is being dropped from this line of work
+# entirely (2026-09-19 decision, explainability-status memory - "everything
+# through the bottleneck", z-only), and tile_r2_check_cls.py skips the whole
+# m-pathway/full-target metric set when this is null, computing only the
+# z-only metrics (r2_plugin_vs_z, r2_ols_vs_z, ols_gap_vs_z). Only set this
+# if you specifically want those extra diagnostics AND a patch-side
+# tile_r2_check.py run exists for the *same* grade as this run's `grade`
+# above - m_features_path's population is grade-specific (so far only
+# grade=4/k=12, 2026-09-04, 35,743 tiles, exists), and
+# explainability.grade_split routes each tile into exactly one grade
+# partition, so a grade mismatch here silently inner-joins to zero rows
+# rather than erroring.
+m_features_path: null
 
 output_dir: ${project_dir}/explainability/tile_r2_check_cls/grade${grade}/dictgrade${dict_grade}/k${n_components}/scale_power_${scale_power}
 

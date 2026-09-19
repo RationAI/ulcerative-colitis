@@ -184,50 +184,47 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     cls_df = load_cls_features(cls_dir)
     print(f"Loaded {len(cls_df)} grade={config.grade} CLS tokens from {cls_dir}", flush=True)
 
-    m_df = load_m_features(config.m_features_path)
-    print(f"Loaded {len(m_df)} tiles' m from {config.m_features_path}", flush=True)
-
+    # m_features_path is optional (defaults to unset) - the m-pathway/full-
+    # target metrics below were an m-vs-z pathway-share diagnostic, useful
+    # only when comparing against the exact m term. Per user decision
+    # (2026-09-19, explainability-status memory), m is being dropped from
+    # this line of work entirely - and even if it weren't, m_features_path's
+    # only existing population (an existing kind=patch tile_r2_check.py run)
+    # is grade-specific (so far only grade=4 exists), so it has zero
+    # (slide_id, x, y) overlap with any other grade's evaluation - pointing
+    # a grade!=4 run at it would silently inner-join to nothing. have_m below
+    # makes it possible to still supply one (e.g. for a grade whose own
+    # patch-side check exists) without forcing every run to have one.
+    have_m = config.get("m_features_path") is not None
     merged = merge_or_warn(varphi_df, cls_df, "CLS tokens")
-    merged = merge_or_warn(merged, m_df, "m features")
+    if have_m:
+        m_df = load_m_features(config.m_features_path)
+        print(f"Loaded {len(m_df)} tiles' m from {config.m_features_path}", flush=True)
+        merged = merge_or_warn(merged, m_df, "m features")
+    else:
+        print("No m_features_path given - z-only run, skipping m-pathway metrics.", flush=True)
 
     varphi = np.stack(merged["varphi"].to_numpy())
     z = np.stack(merged["z"].to_numpy())
-    m = np.stack(merged["m"].to_numpy())
+    m = np.stack(merged["m"].to_numpy()) if have_m else None
 
     rows = []
     for head, checkpoint_cfg in config.checkpoints.items():
         weight, _bias = load_classifier(checkpoint_cfg.checkpoint, config.embed_dim)
         theta_z = weight[:, : config.embed_dim]
-        theta_m = weight[:, config.embed_dim :]
         sigma_z = h @ theta_z.T  # z_i-side analogue of eq. 2.9
 
         z_target = z @ theta_z.T  # (n, C) - the term this script's NMF approximates
-        m_target = m @ theta_m.T  # (n, C) - exact, never approximated here
-        full_target = z_target + m_target
         plugin_pred = varphi @ sigma_z
+
+        if have_m:
+            theta_m = weight[:, config.embed_dim :]
+            m_target = m @ theta_m.T  # (n, C) - exact, never approximated here
+            full_target = z_target + m_target
 
         num_classes = theta_z.shape[0]
         for c in range(num_classes):
             ols_pred_c = ols_fit(varphi, z_target[:, c])
-            mean_m_c = m_target[:, c].mean()
-            # m-only baseline: predicts the full target using only the exact
-            # m term, plus mean(z_target) standing in for the unknown
-            # z-concept contribution - the fair "I know nothing about which
-            # concepts this tile has" stand-in, symmetric to
-            # tile_r2_ols_check.py's clsonly_pred.
-            monly_pred_c = m_target[:, c] + z_target[:, c].mean()
-            # "Concept-only" predictions: mean(m_target) is a single constant
-            # over the whole sample, carrying zero per-tile information, so
-            # nothing about m leaks through it - what's left in each residual
-            # is exactly (a) how wrong the z-side prediction is, and (b) how
-            # much m naturally varies that a concept-only model has no way to
-            # know, which is exactly "how good is the model if everything
-            # flows through concepts". zonly (exact z) is the ceiling any
-            # concept-only approach could reach; plugin/ols measure how close
-            # the actual K-concept bottleneck / OLS fit get to it.
-            zonly_pred_c = z_target[:, c] + mean_m_c
-            plugin_conceptonly_pred_c = plugin_pred[:, c] + mean_m_c
-            ols_conceptonly_pred_c = ols_pred_c + mean_m_c
             true_c, pred_c = z_target[:, c], plugin_pred[:, c]
             ss_tot = float(np.sum((true_c - true_c.mean()) ** 2))
             pearson_r_plugin = (
@@ -240,19 +237,45 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
                 "r2_plugin_vs_z": r2_score(z_target[:, c], plugin_pred[:, c]),
                 "pearson_r_plugin_vs_z": pearson_r_plugin,
                 "r2_ols_vs_z": r2_score(z_target[:, c], ols_pred_c),
-                "r2_monly_vs_full": r2_score(full_target[:, c], monly_pred_c),
-                "r2_plugin_vs_full": r2_score(full_target[:, c], m_target[:, c] + plugin_pred[:, c]),
-                "r2_ols_vs_full": r2_score(full_target[:, c], m_target[:, c] + ols_pred_c),
-                "r2_zonly_vs_full": r2_score(full_target[:, c], zonly_pred_c),
-                "r2_plugin_conceptonly_vs_full": r2_score(
-                    full_target[:, c], plugin_conceptonly_pred_c
-                ),
-                "r2_ols_conceptonly_vs_full": r2_score(full_target[:, c], ols_conceptonly_pred_c),
             }
             row["ols_gap_vs_z"] = row["r2_ols_vs_z"] - row["r2_plugin_vs_z"]
-            row["conceptonly_gap_vs_full"] = (
-                row["r2_zonly_vs_full"] - row["r2_plugin_conceptonly_vs_full"]
-            )
+
+            if have_m:
+                mean_m_c = m_target[:, c].mean()
+                # m-only baseline: predicts the full target using only the
+                # exact m term, plus mean(z_target) standing in for the
+                # unknown z-concept contribution - the fair "I know nothing
+                # about which concepts this tile has" stand-in, symmetric to
+                # tile_r2_ols_check.py's clsonly_pred.
+                monly_pred_c = m_target[:, c] + z_target[:, c].mean()
+                # "Concept-only" predictions: mean(m_target) is a single
+                # constant over the whole sample, carrying zero per-tile
+                # information, so nothing about m leaks through it - what's
+                # left in each residual is exactly (a) how wrong the z-side
+                # prediction is, and (b) how much m naturally varies that a
+                # concept-only model has no way to know, which is exactly
+                # "how good is the model if everything flows through
+                # concepts". zonly (exact z) is the ceiling any concept-only
+                # approach could reach; plugin/ols measure how close the
+                # actual K-concept bottleneck / OLS fit get to it.
+                zonly_pred_c = z_target[:, c] + mean_m_c
+                plugin_conceptonly_pred_c = plugin_pred[:, c] + mean_m_c
+                ols_conceptonly_pred_c = ols_pred_c + mean_m_c
+                row["r2_monly_vs_full"] = r2_score(full_target[:, c], monly_pred_c)
+                row["r2_plugin_vs_full"] = r2_score(
+                    full_target[:, c], m_target[:, c] + plugin_pred[:, c]
+                )
+                row["r2_ols_vs_full"] = r2_score(full_target[:, c], m_target[:, c] + ols_pred_c)
+                row["r2_zonly_vs_full"] = r2_score(full_target[:, c], zonly_pred_c)
+                row["r2_plugin_conceptonly_vs_full"] = r2_score(
+                    full_target[:, c], plugin_conceptonly_pred_c
+                )
+                row["r2_ols_conceptonly_vs_full"] = r2_score(
+                    full_target[:, c], ols_conceptonly_pred_c
+                )
+                row["conceptonly_gap_vs_full"] = (
+                    row["r2_zonly_vs_full"] - row["r2_plugin_conceptonly_vs_full"]
+                )
             rows.append(row)
 
         print(f"=== {head} ===", flush=True)
@@ -286,21 +309,25 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     logger.log_artifact(str(manifest_path))
     for row in rows:
         tag = f"{row['head']}_class{row['class']}"
-        logger.log_metrics(
-            {
-                f"r2_plugin_vs_z/{tag}": row["r2_plugin_vs_z"],
-                f"pearson_r_plugin_vs_z/{tag}": row["pearson_r_plugin_vs_z"],
-                f"r2_ols_vs_z/{tag}": row["r2_ols_vs_z"],
-                f"ols_gap_vs_z/{tag}": row["ols_gap_vs_z"],
-                f"r2_monly_vs_full/{tag}": row["r2_monly_vs_full"],
-                f"r2_plugin_vs_full/{tag}": row["r2_plugin_vs_full"],
-                f"r2_ols_vs_full/{tag}": row["r2_ols_vs_full"],
-                f"r2_zonly_vs_full/{tag}": row["r2_zonly_vs_full"],
-                f"r2_plugin_conceptonly_vs_full/{tag}": row["r2_plugin_conceptonly_vs_full"],
-                f"r2_ols_conceptonly_vs_full/{tag}": row["r2_ols_conceptonly_vs_full"],
-                f"conceptonly_gap_vs_full/{tag}": row["conceptonly_gap_vs_full"],
-            }
-        )
+        metrics = {
+            f"r2_plugin_vs_z/{tag}": row["r2_plugin_vs_z"],
+            f"pearson_r_plugin_vs_z/{tag}": row["pearson_r_plugin_vs_z"],
+            f"r2_ols_vs_z/{tag}": row["r2_ols_vs_z"],
+            f"ols_gap_vs_z/{tag}": row["ols_gap_vs_z"],
+        }
+        if "r2_monly_vs_full" in row:
+            metrics.update(
+                {
+                    f"r2_monly_vs_full/{tag}": row["r2_monly_vs_full"],
+                    f"r2_plugin_vs_full/{tag}": row["r2_plugin_vs_full"],
+                    f"r2_ols_vs_full/{tag}": row["r2_ols_vs_full"],
+                    f"r2_zonly_vs_full/{tag}": row["r2_zonly_vs_full"],
+                    f"r2_plugin_conceptonly_vs_full/{tag}": row["r2_plugin_conceptonly_vs_full"],
+                    f"r2_ols_conceptonly_vs_full/{tag}": row["r2_ols_conceptonly_vs_full"],
+                    f"conceptonly_gap_vs_full/{tag}": row["conceptonly_gap_vs_full"],
+                }
+            )
+        logger.log_metrics(metrics)
 
 
 if __name__ == "__main__":
