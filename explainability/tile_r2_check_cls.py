@@ -272,6 +272,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     manifest = {
         "grade": config.grade,
+        "dict_grade": config.dict_grade,
         "n_components": config.n_components,
         "n_tiles": len(merged),
         "r2_by_head_class": result_df.to_dict(orient="records"),

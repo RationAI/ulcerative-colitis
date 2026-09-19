@@ -10,20 +10,32 @@ defaults:
 # convention/caveat as configs/explainability/theta_z_check.yaml.
 embed_dim: 1280
 
-# Which nmf_fit.py (kind=cls, grade, n_components, scale_power) run to check -
-# all three needed to build w_dir below (nmf_fit.yaml's output_dir
-# convention). No default on purpose, one job per run, same convention as
+# Which grade's *tiles* to evaluate against - always an int 0-4 (there's no
+# "all" CLS token partition to read; explainability.grade_split only ever
+# writes grade=0..4). Drives cls_dir/m_features_path's population, same as
+# before dict_grade existed. No default, one job per run, same convention as
 # tile_r2_check.yaml.
 grade: ???
 n_components: ???
 scale_power: ???
 
+# Which nmf_fit.py (kind=cls) run's *dictionary* (w.f32.npy/h.parquet) to
+# check - defaults to the same value as `grade` (the original convention: a
+# grade-specific fit checked against its own grade's tiles), but can be
+# overridden independently, e.g. dict_grade="all" to check the flat
+# (no-grade-filter) fit against `grade`'s tile population instead - the
+# direct flat-vs-grade-specific comparison from explainability-status
+# memory's 2026-09-19 entry ("why grades were split"). Split out from `grade`
+# specifically to make that comparison possible without conflating "which
+# tiles" with "which dictionary".
+dict_grade: ${grade}
+
 # Local nmf_fit.py (kind=cls) output dir - holds w.f32.npy/w_metadata.parquet
 # (project-mount only, too large for mlflow - same large-artifact treatment
-# as everywhere else in this pipeline). Must match grade/n_components/
+# as everywhere else in this pipeline). Must match dict_grade/n_components/
 # scale_power above; no separate mlflow fallback the way local_grade_split_dir
 # has one, since nmf_fit.py never logs these to mlflow at all.
-w_dir: ${project_dir}/explainability/nmf/cls/grade${grade}/k${n_components}/scale_power_${scale_power}
+w_dir: ${project_dir}/explainability/nmf/cls/grade${dict_grade}/k${n_components}/scale_power_${scale_power}
 
 h:
   # mlflow artifact URI for the specific nmf_fit.py (kind=cls) run's
@@ -51,10 +63,10 @@ grade_split:
 # tile_r2_check run, grade=4/k=12 (2026-09-04, 35,743 tiles).
 m_features_path: ${project_dir}/explainability/tile_r2_check/grade4/k12/tile_features.parquet
 
-output_dir: ${project_dir}/explainability/tile_r2_check_cls/grade${grade}/k${n_components}/scale_power_${scale_power}
+output_dir: ${project_dir}/explainability/tile_r2_check_cls/grade${grade}/dictgrade${dict_grade}/k${n_components}/scale_power_${scale_power}
 
 metadata:
-  run_name: "📏 Tile R^2 Check CLS (grade=${grade}, k=${n_components}, scale_power=${scale_power})"
+  run_name: "📏 Tile R^2 Check CLS (grade=${grade}, dict_grade=${dict_grade}, k=${n_components}, scale_power=${scale_power})"
   description: >-
     z_i analogue of tile_r2_check.py's plug-in R^2, plus tile_r2_ols_check.py's
     OLS gap and pathway-share analysis, roles swapped: R^2 of varphi @ sigma_z
@@ -64,7 +76,10 @@ metadata:
     already-saved per-tile varphi directly (kind=cls has exactly one CLS
     token per tile, so no patch streaming/pooling needed) and an existing
     kind=patch tile_r2_check.py run's `m` column (see m_features_path).
+    dict_grade may differ from grade (e.g. dict_grade=all) to check one
+    dictionary's fidelity against another grade's tile population.
   hyperparams:
     grade: ${grade}
+    dict_grade: ${dict_grade}
     n_components: ${n_components}
     scale_power: ${scale_power}
