@@ -1,0 +1,49 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings_xai/ftn@sources.ftn
+  - /dataset/embeddings_xai/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
+# Which embeddings_xai split to compute this over - same reasoning as
+# embedding_importance.yaml: "train" is the only split with ground-truth
+# nancy_index via slides.parquet.
+split: train
+
+# Column split point in the classifier's 2*embed_dim-wide input - same
+# convention/caveat as configs/explainability/theta_m_check.yaml.
+embed_dim: 1280
+
+# The shared (grade-unsplit) kind=cls k=12 NMF fit - the dictionary decided
+# on after two independent grades (0 and 4) both showed no benefit from
+# grade-splitting (explainability-status memory, 2026-09-19). Unlike
+# tile_r2_check_cls.yaml's per-run grade/dict_grade/n_components/scale_power
+# (one job per sweep point), this isn't swept here - it's the one dictionary
+# this script checks against. Update w_dir/n_components by hand if a new flat
+# fit ever supersedes this one.
+n_components: 12
+w_dir: ${project_dir}/explainability/nmf/cls/gradeall/k12/scale_power_0.0
+
+output_dir: ${project_dir}/explainability/slide_auc_check_cls/${split}
+
+metadata:
+  run_name: "🎯 Slide AUC Check CLS (${split})"
+  description: >-
+    Slide-level AUC of a fully concept-native surrogate (both the classifier
+    readout and the MIL attention score fitted from the shared k=12 z_i
+    dictionary via OLS - no m_i, no raw z_i, everything through the
+    bottleneck) against ground-truth nancy_index and the real model's own
+    predicted label. The slide-level extension of tile_r2_check_cls.py's
+    r2_ols_vs_z, now possible because the shared dictionary gives every tile
+    in every slide a concept representation - a grade-specific dictionary
+    could not, since MIL attention pools over the whole bag.
+  hyperparams:
+    split: ${split}
+    embed_dim: ${embed_dim}
+    n_components: ${n_components}
+    w_dir: ${w_dir}
