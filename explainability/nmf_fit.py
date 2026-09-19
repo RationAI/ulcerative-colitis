@@ -13,7 +13,11 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
-from explainability.tiles import load_tokens_dataset, resolve_grade_token_dir
+from explainability.tiles import (
+    load_tokens_dataset,
+    resolve_grade_token_dir,
+    resolve_token_dirs,
+)
 
 
 _MLFLOW_RUN_ID_RE = re.compile(r"^mlflow-artifacts:/[^/]+/(?P<run_id>[0-9a-f]{32})/artifacts/")
@@ -238,13 +242,27 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # same way regardless of config.kind.)
     scale = load_scale(stats_path) ** config.nmf.scale_power
 
-    token_dir = resolve_grade_token_dir(
-        config.get("local_grade_split_dir"),
-        config.grade_split.mlflow_uri,
-        kind=config.kind,
-        grade=config.grade,
-    )
-    tokens_ds = load_tokens_dataset([token_dir])
+    # grade="all" fits the whole pooled corpus (every grade, both
+    # institutions) via the flat pre-grade_split loader - concept_mil.tex's
+    # own described design (a single dictionary fit on a sample "balanced
+    # across centre and grade"), as opposed to every grade-specific run so
+    # far, which reads one of explainability.grade_split's per-grade
+    # partitions instead. See configs/explainability/nmf_fit.yaml's `grade`
+    # comment for why this option exists.
+    if config.grade == "all":
+        token_dirs = resolve_token_dirs(
+            config.sources, config.get("local_embeddings_xai_dir"), kind=config.kind
+        )
+    else:
+        token_dirs = [
+            resolve_grade_token_dir(
+                config.get("local_grade_split_dir"),
+                config.grade_split.mlflow_uri,
+                kind=config.kind,
+                grade=config.grade,
+            )
+        ]
+    tokens_ds = load_tokens_dataset(token_dirs)
     # A plain, unfiltered read_parquet count is metadata-only (row counts come
     # from the parquet footers, no column data decoded) - unlike
     # token_statistics.py's sampled count, nothing here forces a full read.

@@ -1,5 +1,16 @@
 # @package _global_
 
+defaults:
+  - /dataset/embeddings_xai/ftn@sources.ftn
+  - /dataset/embeddings_xai/ikem@sources.ikem
+  - _self_
+
+# Used only when grade == "all" (resolve_token_dirs, same flat loader
+# token_statistics.yaml uses for its own full-corpus pass) - preferred over
+# mlflow's download_artifacts when present, same local-mount-preferred
+# pattern as local_grade_split_dir below.
+local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+
 # Local explainability/grade_split.py output directory (matches that script's
 # own output_dir convention: ${project_dir}/explainability/grade_split/<split>).
 # Preferred over grade_split.mlflow_uri when present - same local-mount-
@@ -31,8 +42,18 @@ kind: ???
 
 # Which predicted Nancy grade (0-4, explainability.grade_split's tile-level
 # classifier routing - concept_mil.tex's c_psi, not a slide-level MIL
-# prediction) to fit this NMF run on. No default on purpose: one job per
-# grade, same "one job per K" convention as n_components below.
+# prediction) to fit this NMF run on, or the literal string "all" to fit the
+# whole pooled corpus (every grade, both institutions - explainability.tiles.
+# resolve_token_dirs, the flat pre-grade_split loader still used by
+# token_statistics.py) with no grade filtering at all. "all" restores what
+# the original (pre-grade-split) nmf/k4..k12 flat sweeps did - concept_mil.tex
+# itself (line ~190) describes fitting on a sample "balanced across centre and
+# grade", i.e. one shared dictionary, not the grade-specific approach
+# everything since has actually used; "all" is the way to test that directly
+# against a grade-specific fit (e.g. via tile_r2_check_cls.py's r2_ols_vs_z)
+# rather than assuming grade-splitting is necessary. No default on purpose:
+# one job per grade (or "all"), same "one job per K" convention as
+# n_components below.
 grade: ???
 
 # Number of NMF components (concepts) - no default on purpose, pick one per run.

@@ -8,9 +8,11 @@ from kube_jobs import storage, submit_job
 kind = ...
 
 # No default grade in configs/explainability/nmf_fit.yaml on purpose -
-# explainability/grade_split.py's tile-level predicted Nancy grade (0-4).
-# One job per grade, same convention as n_components/scale_power below - edit
-# this per submission.
+# explainability/grade_split.py's tile-level predicted Nancy grade (0-4), or
+# the literal string "all" to fit the whole pooled corpus with no grade
+# filtering (see nmf_fit.yaml's `grade` comment). One job per grade (or
+# "all"), same convention as n_components/scale_power below - edit this per
+# submission.
 grade = ...
 
 # No default n_components in configs/explainability/nmf_fit.yaml on purpose -
