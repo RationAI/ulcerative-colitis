@@ -1,0 +1,7 @@
+defaults:
+  - /dataset/tiled/ikem_validation@_here_
+  - _self_
+
+mlflow_uris:
+  embeddings:
+    predict: mlflow-artifacts:/86/12b0609fdc36429f9b7a13e581ed4cd4/artifacts/predict - ikem_validation

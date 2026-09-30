@@ -12,7 +12,7 @@ class LabelMode(Enum):
     NANCY_LOW = "nancy_low"
 
 
-def process_slides(slides: HFDataset, mode: LabelMode) -> HFDataset:
+def process_slides(slides: HFDataset, mode: LabelMode | None) -> HFDataset:
     match mode:
         case LabelMode.NEUTROPHILS:
             slides = slides.map(lambda x: {"neutrophils": x["nancy_index"] >= 2})

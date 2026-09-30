@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import _collate_fn_t
 
 from ml.data.samplers import AutoWeightedRandomSampler
-from ml.typing import BagsInput, BagsSample
+from ml.typing import BagsInput, BagsPredictInput, BagsPredictSample, BagsSample
 
 
 class DataModule(LightningDataModule):
@@ -18,6 +18,7 @@ class DataModule(LightningDataModule):
         num_workers: int = 0,
         weighted_sampling: bool = True,
         collate_fn: _collate_fn_t[BagsSample] | None = None,
+        collate_fn_predict: _collate_fn_t[BagsPredictSample] | None = None,
         **datasets: DictConfig,
     ) -> None:
         super().__init__()
@@ -25,6 +26,7 @@ class DataModule(LightningDataModule):
         self.num_workers = num_workers
         self.weighted_sampling = weighted_sampling
         self.collate_fn = collate_fn
+        self.collate_fn_predict = collate_fn_predict
         self.datasets = datasets
 
     def setup(self, stage: str) -> None:
@@ -36,6 +38,8 @@ class DataModule(LightningDataModule):
                 self.val = instantiate(self.datasets["val"])
             case "test":
                 self.test = instantiate(self.datasets["test"])
+            case "predict":
+                self.predict = instantiate(self.datasets["predict"])
 
     def train_dataloader(self) -> DataLoader[BagsInput]:
         sampler = (
@@ -69,12 +73,27 @@ class DataModule(LightningDataModule):
             collate_fn=self.collate_fn,
         )
 
+    def predict_dataloader(self) -> DataLoader[BagsPredictInput]:
+        return DataLoader(
+            self.predict,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            collate_fn=self.collate_fn_predict,
+        )
+
 
 class BagsDataModule(DataModule):
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(collate_fn=collate_fn, **kwargs)
+        super().__init__(
+            collate_fn=collate_fn, collate_fn_predict=collate_fn_predict, **kwargs
+        )
 
 
 def collate_fn(batch: list[BagsSample]) -> BagsInput:
     inputs, labels, metadatas = zip(*batch, strict=True)
     return torch.stack(list(inputs)), torch.stack(list(labels)), list(metadatas)
+
+
+def collate_fn_predict(batch: list[BagsPredictSample]) -> BagsPredictInput:
+    inputs, metadatas = zip(*batch, strict=True)
+    return torch.stack(list(inputs)), list(metadatas)

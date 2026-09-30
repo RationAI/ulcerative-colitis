@@ -1,26 +1,32 @@
 from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, Generic, TypeVar
 
 import torch
 import torch.nn.functional as F
+from datasets import Dataset as HFDataset
 from rationai.mlkit.data.datasets import SlidesTilesLoader
+from torch import Tensor
 from torch.utils.data import Dataset
 
 from ml.data.datasets.labels import LabelMode, get_label, process_slides
 from ml.data.datasets.utils import filter_tiles
-from ml.typing import BagsSample, MetadataBags
+from ml.typing import BagsPredictSample, BagsSample, MetadataBags
 
 
-class Bags(Dataset[BagsSample]):
+T = TypeVar("T", BagsSample, BagsPredictSample)
+
+
+class _Bags(Dataset[T], Generic[T]):
     def __init__(
         self,
         uris: Iterable[str] | str,
-        mode: LabelMode | str,
+        mode: LabelMode | None,
         padding: bool = True,
         thresholds: dict[str, float] | None = None,
     ) -> None:
-        self.mode = LabelMode(mode)
+        self.mode = mode
         self.thresholds = thresholds or {}
 
         self._meta = SlidesTilesLoader(uris=[uris] if isinstance(uris, str) else uris)
@@ -40,16 +46,11 @@ class Bags(Dataset[BagsSample]):
         self.padding = padding
         self.max_embeddings = max(Counter(self.tiles["slide_id"]).values())
 
-    @property
-    def labels(self) -> list[int]:
-        return [int(get_label(dict(slide), self.mode).item()) for slide in self.slides]
-
     def __len__(self) -> int:
         return len(self.slides)
 
-    def __getitem__(self, idx: int) -> BagsSample:
-        slide_metadata = self.slides[idx]
-        tiles = self._meta.filter_tiles_by_slide(slide_metadata["id"])
+    def _bag(self, slide_metadata: dict[str, Any]) -> tuple[Tensor, MetadataBags]:
+        tiles: HFDataset = self._meta.filter_tiles_by_slide(slide_metadata["id"])
         embeddings = torch.tensor(tiles["embedding"])
 
         pad_amount = self.max_embeddings - embeddings.shape[0]
@@ -66,5 +67,39 @@ class Bags(Dataset[BagsSample]):
             x=torch.tensor(tiles["x"]),
             y=torch.tensor(tiles["y"]),
         )
+        return embeddings, metadata
 
+
+class Bags(_Bags[BagsSample]):
+    mode: LabelMode
+
+    def __init__(
+        self,
+        uris: Iterable[str] | str,
+        mode: LabelMode | str,
+        padding: bool = True,
+        thresholds: dict[str, float] | None = None,
+    ) -> None:
+        super().__init__(uris, LabelMode(mode), padding, thresholds)
+
+    @property
+    def labels(self) -> list[int]:
+        return [int(get_label(dict(slide), self.mode).item()) for slide in self.slides]
+
+    def __getitem__(self, idx: int) -> BagsSample:
+        slide_metadata = self.slides[idx]
+        embeddings, metadata = self._bag(slide_metadata)
         return embeddings, get_label(slide_metadata, self.mode), metadata
+
+
+class BagsPredict(_Bags[BagsPredictSample]):
+    def __init__(
+        self,
+        uris: Iterable[str] | str,
+        padding: bool = True,
+        thresholds: dict[str, float] | None = None,
+    ) -> None:
+        super().__init__(uris, None, padding, thresholds)
+
+    def __getitem__(self, idx: int) -> BagsPredictSample:
+        return self._bag(self.slides[idx])

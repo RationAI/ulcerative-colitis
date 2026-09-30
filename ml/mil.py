@@ -17,7 +17,7 @@ from torchmetrics.classification import (
 )
 
 from ml.modeling import sigmoid_normalization
-from ml.typing import BagsInput, Output
+from ml.typing import BagsInput, BagsPredictInput, Output
 
 
 class MIL(LightningModule):
@@ -108,6 +108,9 @@ class MIL(LightningModule):
         )
 
         return probabilities
+
+    def predict_step(self, batch: BagsPredictInput) -> Output:
+        return self.activation(self(batch[0]))
 
     def configure_optimizers(self) -> Optimizer:
         if self.lr is None:

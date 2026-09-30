@@ -1,0 +1,5 @@
+# @package _global_
+
+metadata:
+  run_name: "🔀 Ensembling (predict): ${dataset.institution}"
+  description: Slide-level ensembling predictions for ${dataset.institution} (no ground truth)

@@ -1,4 +1,4 @@
-from ml.data.datasets.bags import Bags
+from ml.data.datasets.bags import Bags, BagsPredict
 
 
-__all__ = ["Bags"]
+__all__ = ["Bags", "BagsPredict"]

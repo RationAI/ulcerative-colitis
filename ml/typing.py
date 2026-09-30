@@ -20,7 +20,9 @@ class MetadataBags(Metadata):
 
 
 BagsSample: TypeAlias = tuple[Tensor, Tensor, MetadataBags]
+BagsPredictSample: TypeAlias = tuple[Tensor, MetadataBags]
 
 BagsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataBags]]
+BagsPredictInput: TypeAlias = tuple[Tensor, list[MetadataBags]]
 
 Output: TypeAlias = Tensor

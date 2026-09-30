@@ -23,3 +23,9 @@ test:
   thresholds:
     blur: 0.25
     artifacts: 0.25
+predict:
+  _target_: ml.data.datasets.BagsPredict
+  uris: ???
+  thresholds:
+    blur: 0.25
+    artifacts: 0.25

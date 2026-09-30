@@ -1,0 +1,8 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem_validation@dataset
+  - /predictions/ikem_validation@predictions
+  - _self_
+
+confidence: std
