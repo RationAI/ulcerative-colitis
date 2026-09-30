@@ -1,0 +1,27 @@
+# @package _global_
+
+defaults:
+  - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem@ikem
+  - /dataset/embeddings/ftn@ftn
+  - /dataset/embeddings/knl_patos@knl_patos
+  - _self_
+
+data:
+  train:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.train}
+      - ${ftn.mlflow_uris.embeddings.train}
+    mode: nancy_high
+  val:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_preliminary}
+      - ${ftn.mlflow_uris.embeddings.test_preliminary}
+      - ${knl_patos.mlflow_uris.embeddings.test_preliminary}
+    mode: nancy_high
+model:
+  num_classes: 4
+
+metadata:
+  run_name: '🏋️‍♂️ Training: MIL Bags - nancy_high - final'
+  description: Attention MIL over virchow2 tile embeddings, nancy_high, all institutions
