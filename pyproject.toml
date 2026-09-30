@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 dependencies = [
     "aiohttp>=3.13.2",
     "lightning>=2.5.6",
-    "mlflow<3.0.0",
+    "mlflow",
     "omegaconf>=2.3.0",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
@@ -18,6 +18,7 @@ dependencies = [
     "rationai-masks",
     "rationai-tiling",
     "ray[data]>=2.52.1",
+    "scikit-learn>=1.8.0",
     "torch>=2.9.0",
     "torchmetrics>=1.8.2",
     "ratiopath>=1.1.2",
@@ -29,7 +30,7 @@ dev = ["mypy", "ruff", "ipykernel"]
 job = ["rationai-kube-jobs"]
 
 [tool.uv.sources]
-rationai-mlkit = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/mlkit.git" }
+rationai-mlkit = { git = "https://github.com/RationAI/mlkit.git" }
 rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" }
 rationai-tiling = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" }
 rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
