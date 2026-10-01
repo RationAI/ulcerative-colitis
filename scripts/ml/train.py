@@ -14,5 +14,5 @@ submit_job(
         "uv sync --frozen",
         "uv run -m ml +experiment=ml/.../...",
     ],
-    storage=[storage.secure.DATA],
+    storage=[storage.secure.DATA, storage.secure.PROJECTS],
 )

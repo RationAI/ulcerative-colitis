@@ -9,6 +9,7 @@ train:
   thresholds:
     blur: 0.25
     artifacts: 0.25
+  cache_dir: ${project_dir}/cache
 val:
   _target_: ml.data.datasets.Bags
   uris: ???
@@ -16,6 +17,7 @@ val:
   thresholds:
     blur: 0.25
     artifacts: 0.25
+  cache_dir: ${project_dir}/cache
 test:
   _target_: ml.data.datasets.Bags
   uris: ???
@@ -23,9 +25,11 @@ test:
   thresholds:
     blur: 0.25
     artifacts: 0.25
+  cache_dir: ${project_dir}/cache
 predict:
   _target_: ml.data.datasets.BagsPredict
   uris: ???
   thresholds:
     blur: 0.25
     artifacts: 0.25
+  cache_dir: ${project_dir}/cache
