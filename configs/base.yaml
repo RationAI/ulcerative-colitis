@@ -5,3 +5,5 @@ defaults:
 
 metadata:
   experiment_name: Ulcerative Colitis
+
+project_dir: /mnt/projects/inflammatory_bowel_disease/ulcerative_colitis

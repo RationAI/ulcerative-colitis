@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem@datasets.ikem
+  - /dataset/processed/ftn@datasets.ftn
+  - /dataset/processed/knl_patos@datasets.knl_patos
+  - /predictions/final@predictions
+  - _self_
+
+dataset: null
+
+metadata:
+  run_name: "🎲 Bootstrap CI: all"
+  description: Case-level bootstrap confidence intervals of slide-level ensembling for the whole final test set (IKEM, FTN, KNL PATOS)

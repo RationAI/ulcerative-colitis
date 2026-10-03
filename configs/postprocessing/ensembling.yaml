@@ -1,0 +1,5 @@
+# @package _global_
+
+metadata:
+  run_name: "🔀 Ensembling: ${dataset.institution}"
+  description: Slide-level ensembling for ${dataset.institution}

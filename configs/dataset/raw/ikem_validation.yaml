@@ -1,0 +1,15 @@
+institution: ikem_validation
+folder: /mnt/data/IKEM/colon/IBD_AI/validation
+# [0-9]{2,4} - case ID (2 to 4 digits) (in year scope)
+# _ - underscore separator
+# 23 - year (2023)
+# _ - underscore separator
+# HE - stain type
+# _ - underscore separator
+# [0AB] - slide block (A, B, or 0)
+# .czi - file extension
+regex_pattern: ^[0-9]{2,4}_23_HE_[0AB]\.czi$
+labels:
+  - NANAI_validace.xlsx
+
+drop_missing: false

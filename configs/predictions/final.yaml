@@ -1,0 +1,4 @@
+mlflow_uris:
+  nancy_high: mlflow-artifacts:/86/c3f812ed55d34bf28a0f94138935e188/artifacts/predictions.json
+  nancy_low: mlflow-artifacts:/86/2d337b1f58cc4b1783305c02fb862e57/artifacts/predictions.json
+  neutrophils: mlflow-artifacts:/86/b55e70ab7bdb482fa1ccafcc42e03fde/artifacts/predictions.json

@@ -1,0 +1,9 @@
+defaults:
+  - base
+  - _self_
+
+seed: ${random_seed:}
+checkpoint: null
+
+metadata:
+  user: AdamK
