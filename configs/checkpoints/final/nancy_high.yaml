@@ -1,3 +1,3 @@
 # @package _global_
 
-checkpoint: mlflow-artifacts:/86/ac693e2ee17e4254a30786c0668e7af4/artifacts/checkpoints/epoch=299-step=176100/checkpoint.ckpt
+checkpoint: mlflow-artifacts:/86/6a80ce66762a46328aa90b1bcaddde86/artifacts/checkpoints/epoch=299-step=167700/checkpoint.ckpt
