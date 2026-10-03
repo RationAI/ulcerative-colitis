@@ -11,6 +11,7 @@ from sklearn.metrics import (
     accuracy_score,
     cohen_kappa_score,
     confusion_matrix,
+    mean_absolute_error,
     precision_score,
     recall_score,
 )
@@ -38,6 +39,9 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         "recall": recall_score(y_true, y_pred, average="macro", zero_division=0),
         "specificity": macro_specificity(y_true, y_pred),
         "cohen_kappa": cohen_kappa_score(y_true, y_pred),
+        "cohen_kappa_linear": cohen_kappa_score(y_true, y_pred, weights="linear"),
+        "cohen_kappa_quadratic": cohen_kappa_score(y_true, y_pred, weights="quadratic"),
+        "mae": mean_absolute_error(y_true, y_pred),
     }
 
 

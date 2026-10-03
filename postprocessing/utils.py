@@ -10,9 +10,18 @@ import pandas as pd
 TASKS = ["neutrophils", "nancy_low", "nancy_high"]
 
 
+def load_dataset(dataset_uri: str) -> pd.DataFrame:
+    return pd.read_csv(mlflow.artifacts.download_artifacts(dataset_uri), index_col=0)
+
+
 def load_label_map(dataset_uri: str) -> dict[str, int]:
-    dataset = pd.read_csv(mlflow.artifacts.download_artifacts(dataset_uri), index_col=0)
+    dataset = load_dataset(dataset_uri)
     return {str(k): int(v) for k, v in dataset["nancy"].items()}
+
+
+def load_case_map(dataset_uri: str) -> dict[str, str]:
+    dataset = load_dataset(dataset_uri)
+    return {str(k): str(v) for k, v in dataset["case_id"].items()}
 
 
 def load_task_predictions(
