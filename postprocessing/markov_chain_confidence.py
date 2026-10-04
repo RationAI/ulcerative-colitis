@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 
-from postprocessing.utils import load_label_map, load_predictions
+from postprocessing.utils import load_maps, load_predictions
 
 
 class Confidence(Enum):
@@ -63,7 +63,7 @@ def compute_confidence(pi: np.ndarray, mode: Confidence) -> np.ndarray:
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
     confidence_mode = Confidence(config.confidence)
-    label_map = load_label_map(config.dataset.mlflow_uris.dataset)
+    label_map, _ = load_maps(config)
     data = load_predictions(config.predictions.mlflow_uris, label_map)
 
     pi = absorption_distribution(
