@@ -5,9 +5,13 @@ from pathlib import Path
 import mlflow
 import mlflow.artifacts
 import pandas as pd
+from omegaconf import DictConfig
 
 
 TASKS = ["neutrophils", "nancy_low", "nancy_high"]
+
+# NHI 0-1 (negative) vs 2-4 (positive)
+BINARY_THRESHOLD = 2
 
 
 def load_dataset(dataset_uri: str) -> pd.DataFrame:
@@ -50,3 +54,19 @@ def load_predictions(
     for df in task_dfs.values():
         common = common.intersection(df.index)
     return {k: v.loc[common] for k, v in task_dfs.items()}
+
+
+def load_maps(config: DictConfig) -> tuple[dict[str, int], dict[str, str]]:
+    # whole test set pools several institutions in `datasets`
+    datasets = config.get("datasets") or {"dataset": config.dataset}
+    label_map: dict[str, int] = {}
+    case_map: dict[str, str] = {}
+    for dataset in datasets.values():
+        uri = dataset.mlflow_uris.dataset
+        label_map |= load_label_map(uri)
+        # case ids are numbered per institution and collide across institutions
+        case_map |= {
+            slide: f"{dataset.institution}/{case}"
+            for slide, case in load_case_map(uri).items()
+        }
+    return label_map, case_map

@@ -1,0 +1,5 @@
+# @package _global_
+
+metadata:
+  run_name: "🧮 Confusion Matrix: ${dataset.institution}"
+  description: Confusion matrices of slide-level ensembling for ${dataset.institution}

@@ -16,13 +16,10 @@ from sklearn.metrics import (
 )
 
 from postprocessing.ensembling import compute_metrics, run_ensembling
-from postprocessing.utils import load_case_map, load_label_map, load_predictions
+from postprocessing.utils import BINARY_THRESHOLD, load_maps, load_predictions
 
 
 METHODS = ["ensembling", "hierarchical"]
-
-# NHI 0-1 (negative) vs 2-4 (positive)
-BINARY_THRESHOLD = 2
 
 Metrics = Callable[[np.ndarray, np.ndarray], dict[str, float]]
 
@@ -35,20 +32,6 @@ def compute_binary_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, 
         "specificity": recall_score(y_true, y_pred, pos_label=0, zero_division=0),
         "cohen_kappa": cohen_kappa_score(y_true, y_pred),
     }
-
-
-def load_maps(datasets: DictConfig) -> tuple[dict[str, int], dict[str, str]]:
-    label_map: dict[str, int] = {}
-    case_map: dict[str, str] = {}
-    for dataset in datasets.values():
-        uri = dataset.mlflow_uris.dataset
-        label_map |= load_label_map(uri)
-        # case ids are numbered per institution and collide across institutions
-        case_map |= {
-            slide: f"{dataset.institution}/{case}"
-            for slide, case in load_case_map(uri).items()
-        }
-    return label_map, case_map
 
 
 def case_bootstrap(
@@ -85,9 +68,7 @@ def case_bootstrap(
 @hydra.main(config_path="../configs", config_name="postprocessing", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    # whole test set pools several institutions in `datasets`
-    datasets = config.get("datasets") or {"dataset": config.dataset}
-    label_map, case_map = load_maps(datasets)
+    label_map, case_map = load_maps(config)
     data = load_predictions(config.predictions.mlflow_uris, label_map)
     _, _, results = run_ensembling(data)
 
