@@ -35,6 +35,8 @@ def macro_specificity(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     return {
         "accuracy": accuracy_score(y_true, y_pred),
+        # off by at most one grade counts as correct
+        "accuracy_within_1": float(np.mean(np.abs(y_true - y_pred) <= 1)),
         "precision": precision_score(y_true, y_pred, average="macro", zero_division=0),
         "recall": recall_score(y_true, y_pred, average="macro", zero_division=0),
         "specificity": macro_specificity(y_true, y_pred),
