@@ -49,6 +49,11 @@ def organize_masks(output_path: Path, subdir: str, mask_prefix: str) -> None:
         file.rename(destination)
 
 
+def log_error(output_path: Path, wsi_path: str, error: str) -> None:
+    with open(output_path / "qc_errors.log", "a") as log_file:
+        log_file.write(f"Failed to process {wsi_path}: {error}\n")
+
+
 async def qc_main(
     output_path: Path,
     slides: list[str],
@@ -69,10 +74,9 @@ async def qc_main(
             total=len(slides),
         ):
             if not result.success:
-                with open(output_path / "qc_errors.log", "a") as log_file:
-                    log_file.write(
-                        f"Failed to process {result.wsi_path}: {result.error}\n"
-                    )
+                await asyncio.to_thread(
+                    log_error, output_path, f"{result.wsi_path}", f"{result.error}"
+                )
 
         # Organize generated masks into subdirectories
         for prefix, artifact_name in get_qc_masks(qc_parameters):
