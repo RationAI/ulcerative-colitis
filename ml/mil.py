@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 import torch
 from lightning import LightningModule
@@ -78,9 +78,6 @@ class MIL(LightningModule):
         self.log("train/loss", loss, on_step=True, prog_bar=True, batch_size=len(bags))
 
         self.train_metrics.update(self.activation(outputs), labels)
-        self.log_dict(
-            self.train_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
-        )
 
         return loss
 
@@ -92,9 +89,6 @@ class MIL(LightningModule):
         self.log("validation/loss", loss, prog_bar=True, batch_size=len(bags))
 
         self.val_metrics.update(self.activation(outputs), labels)
-        self.log_dict(
-            self.val_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
-        )
 
     def test_step(self, batch: BagsInput) -> Tensor:
         bags, labels, _ = batch
@@ -103,9 +97,6 @@ class MIL(LightningModule):
 
         probabilities = self.activation(outputs)
         self.test_metrics.update(probabilities, labels)
-        self.log_dict(
-            self.test_metrics, on_epoch=True, on_step=False, batch_size=len(bags)
-        )
 
         return probabilities
 
@@ -117,11 +108,21 @@ class MIL(LightningModule):
             raise ValueError("Learning rate must be set for training.")
         return Adam(self.parameters(), lr=self.lr)
 
-    def log_dict(self, dictionary: MetricCollection, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
-        for name, result in dictionary.compute().items():
+    def on_train_epoch_end(self) -> None:
+        self.log_metrics(self.train_metrics)
+
+    def on_validation_epoch_end(self) -> None:
+        self.log_metrics(self.val_metrics)
+
+    def on_test_epoch_end(self) -> None:
+        self.log_metrics(self.test_metrics)
+
+    def log_metrics(self, metrics: MetricCollection) -> None:
+        for name, result in metrics.compute().items():
             result = cast("Tensor", result)
             if result.shape:
                 for i, value in enumerate(result):
-                    self.log(f"{name}/{i}", value, *args, **kwargs)
+                    self.log(f"{name}/{i}", value)
             else:
-                self.log(name, result, *args, **kwargs)
+                self.log(name, result)
+        metrics.reset()
