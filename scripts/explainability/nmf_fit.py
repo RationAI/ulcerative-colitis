@@ -11,10 +11,6 @@ n_components = ...
 # (no scaling). One job per (n_components, scale_power) pair.
 scale_power = ...
 
-# token_statistics.py run over the per-tile embeddings - its
-# percentile_stats.parquet artifact URI (no default in nmf_fit.yaml).
-shift_mlflow_uri = ...
-
 submit_job(
     job_name=f"ulcerative-colitis-nmf-fit-embedding-k{n_components}-sp{scale_power}-...",
     username=...,
@@ -30,8 +26,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_fit "
-        f"n_components={n_components} nmf.scale_power={scale_power} "
-        f"shift.mlflow_uri={shift_mlflow_uri}",
+        f"n_components={n_components} nmf.scale_power={scale_power}",
     ],
     storage=[storage.secure.PROJECTS],
 )
