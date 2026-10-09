@@ -2886,11 +2886,11 @@ job = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.2" },
     { name = "lightning", specifier = ">=2.5.6" },
-    { name = "mlflow" },
+    { name = "mlflow", specifier = ">=3.16.1" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pyvips", specifier = "<3.1" },
+    { name = "pyvips", specifier = ">=3.0.0,<3.1" },
     { name = "rationai-masks", git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/masks.git" },
     { name = "rationai-mlkit", git = "https://github.com/RationAI/mlkit.git" },
     { name = "rationai-sdk", git = "https://github.com/RationAI/rationai-sdk-python.git" },
@@ -2905,9 +2905,9 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ipykernel" },
-    { name = "mypy" },
-    { name = "ruff" },
+    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "mypy", specifier = ">=1.19.1" },
+    { name = "ruff", specifier = ">=0.14.14" },
 ]
 job = [{ name = "rationai-kube-jobs", git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }]
 

@@ -25,6 +25,8 @@ class MIL(LightningModule):
         super().__init__()
         input_dim = 2560  # virchow2 embedding size
 
+        # Placeholder: bags hold precomputed Virchow2 embeddings, so no encoder is
+        # needed. Replace with a tile encoder when training on raw tiles.
         self.encoder = nn.Identity()
         self.attention = nn.Sequential(
             nn.Linear(input_dim, 512),

@@ -8,15 +8,15 @@ license = { file = "LICENSE" }
 dependencies = [
     "aiohttp>=3.13.2",
     "lightning>=2.5.6",
-    "mlflow",
+    "mlflow>=3.16.1",
     "omegaconf>=2.3.0",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
-    "pyvips<3.1",
-    "rationai-sdk",
-    "rationai-mlkit",
-    "rationai-masks",
-    "rationai-tiling",
+    "pyvips>=3.0.0,<3.1",
+    "rationai-sdk>=0.1.0",
+    "rationai-mlkit>=0.4.1",
+    "rationai-masks>=1.1.1",
+    "rationai-tiling>=1.1.1",
     "ray[data]>=2.52.1",
     "scikit-learn>=1.8.0",
     "torch>=2.9.0",
@@ -26,8 +26,8 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy", "ruff", "ipykernel"]
-job = ["rationai-kube-jobs"]
+dev = ["mypy>=1.19.1", "ruff>=0.14.14", "ipykernel>=7.1.0"]
+job = ["rationai-kube-jobs>=0.4.0"]
 
 [tool.uv.sources]
 rationai-mlkit = { git = "https://github.com/RationAI/mlkit.git" }

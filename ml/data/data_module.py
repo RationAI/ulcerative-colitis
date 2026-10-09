@@ -1,32 +1,25 @@
-from typing import Any
-
 import torch
 from hydra.utils import instantiate
 from lightning import LightningDataModule
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
-from torch.utils.data.dataloader import _collate_fn_t
 
 from ml.data.samplers import AutoWeightedRandomSampler
 from ml.typing import BagsInput, BagsPredictInput, BagsPredictSample, BagsSample
 
 
-class DataModule(LightningDataModule):
+class BagsDataModule(LightningDataModule):
     def __init__(
         self,
         batch_size: int,
         num_workers: int = 0,
         weighted_sampling: bool = True,
-        collate_fn: _collate_fn_t[BagsSample] | None = None,
-        collate_fn_predict: _collate_fn_t[BagsPredictSample] | None = None,
         **datasets: DictConfig,
     ) -> None:
         super().__init__()
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.weighted_sampling = weighted_sampling
-        self.collate_fn = collate_fn
-        self.collate_fn_predict = collate_fn_predict
         self.datasets = datasets
 
     def setup(self, stage: str) -> None:
@@ -52,7 +45,7 @@ class DataModule(LightningDataModule):
             shuffle=sampler is None,
             drop_last=True,
             num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
+            collate_fn=collate_fn,
             persistent_workers=self.num_workers > 0,
         )
 
@@ -61,7 +54,7 @@ class DataModule(LightningDataModule):
             self.val,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
+            collate_fn=collate_fn,
             persistent_workers=self.num_workers > 0,
         )
 
@@ -70,7 +63,7 @@ class DataModule(LightningDataModule):
             self.test,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
+            collate_fn=collate_fn,
         )
 
     def predict_dataloader(self) -> DataLoader[BagsPredictInput]:
@@ -78,14 +71,7 @@ class DataModule(LightningDataModule):
             self.predict,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            collate_fn=self.collate_fn_predict,
-        )
-
-
-class BagsDataModule(DataModule):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            collate_fn=collate_fn, collate_fn_predict=collate_fn_predict, **kwargs
+            collate_fn=collate_fn_predict,
         )
 
 

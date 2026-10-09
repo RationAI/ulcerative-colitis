@@ -5,11 +5,8 @@ from datasets import Dataset as HFDataset
 from torch import Tensor
 
 
-class Metadata(TypedDict):
+class MetadataBag(TypedDict):
     slide_name: str
-
-
-class MetadataBags(Metadata):
     slide_path: Path
     level: int
     tile_extent_x: int
@@ -19,10 +16,10 @@ class MetadataBags(Metadata):
     y: Tensor  # Tensor[int]
 
 
-BagsSample: TypeAlias = tuple[Tensor, Tensor, MetadataBags]
-BagsPredictSample: TypeAlias = tuple[Tensor, MetadataBags]
+BagsSample: TypeAlias = tuple[Tensor, Tensor, MetadataBag]
+BagsPredictSample: TypeAlias = tuple[Tensor, MetadataBag]
 
-BagsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataBags]]
-BagsPredictInput: TypeAlias = tuple[Tensor, list[MetadataBags]]
+BagsInput: TypeAlias = tuple[Tensor, Tensor, list[MetadataBag]]
+BagsPredictInput: TypeAlias = tuple[Tensor, list[MetadataBag]]
 
 Output: TypeAlias = Tensor

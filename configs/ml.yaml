@@ -6,4 +6,4 @@ seed: ${random_seed:}
 checkpoint: null
 
 metadata:
-  user: AdamK
+  user: ...

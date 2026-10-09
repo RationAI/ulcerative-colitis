@@ -15,7 +15,7 @@ from ml.data.datasets.utils import (
     embeddings_tensor,
     filter_tiles,
 )
-from ml.typing import BagsPredictSample, BagsSample, MetadataBags
+from ml.typing import BagsPredictSample, BagsSample, MetadataBag
 
 
 T = TypeVar("T", BagsSample, BagsPredictSample)
@@ -69,7 +69,7 @@ class _Bags(Dataset[T], Generic[T]):
     def __len__(self) -> int:
         return len(self.slides)
 
-    def _bag(self, slide_metadata: dict[str, Any]) -> tuple[Tensor, MetadataBags]:
+    def _bag(self, slide_metadata: dict[str, Any]) -> tuple[Tensor, MetadataBag]:
         tiles: HFDataset = self._meta.filter_tiles_by_slide(slide_metadata["id"])
         embeddings = embeddings_tensor(tiles)
 
@@ -77,7 +77,7 @@ class _Bags(Dataset[T], Generic[T]):
         if self.padding:
             embeddings = F.pad(embeddings, (0, 0, 0, pad_amount), value=0.0)
 
-        metadata = MetadataBags(
+        metadata = MetadataBag(
             slide_name=str(slide_metadata["name"]),
             slide_path=Path(slide_metadata["path"]),
             level=slide_metadata["level"],
