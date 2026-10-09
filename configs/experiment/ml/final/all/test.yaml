@@ -1,0 +1,19 @@
+# @package _global_
+
+defaults:
+  - /experiment/ml/final/all/train
+  - /ml/test
+  - /checkpoints/final/all
+  - _self_
+
+data:
+  batch_size: 8
+  test:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_final}
+      - ${ftn.mlflow_uris.embeddings.test_final}
+      - ${knl_patos.mlflow_uris.embeddings.test_final}
+    mode: all
+
+metadata:
+  run_name: '📏 Testing: MIL Bags - all - final'
