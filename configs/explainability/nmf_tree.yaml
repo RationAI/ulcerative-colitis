@@ -1,0 +1,84 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings/ftn@sources.ftn
+  - /dataset/embeddings/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_dir: ${project_dir}/embeddings
+split: train
+
+# Half the classifier's input width - load_full_model checks classifier.weight
+# against 2*embed_dim. The heads' weights give varsigma (tree priority and the
+# tau_diff test).
+embed_dim: 1280
+
+# "nmf" or "semi_nmf" - the factorization used for every split, same choice as
+# nmf_fit.yaml's method. No default, pick per run.
+method: ???
+# Per-dimension scale = IQR ** scale_power, same as nmf_fit.yaml's
+# nmf.scale_power. No default, pick per run.
+scale_power: ???
+
+shift:
+  # token_statistics.py percentile_stats.parquet artifact URI over the
+  # per-tile embeddings - IQR scale for both methods, shift for nmf only.
+  # Same run as nmf_fit.yaml's shift.mlflow_uri - keep the two in sync.
+  mlflow_uri: mlflow-artifacts:/86/cd5ef7666f134c58abe108cd04cda9c2/artifacts/percentile_stats.parquet
+  percentile_column: p0.0001
+
+tree:
+  # Fraction of slides (whole slides) read into memory to build the tree on -
+  # 0.3 is ~400k tiles, ~4GB float32 at 2560 dims. Every tile is still
+  # transformed against the final leaves.
+  sample_slide_fraction: 0.3
+  # Growth stops once this many leaves (= concepts) exist.
+  max_leaves: 32
+  # A split is rejected if either child, or either stability half, would get
+  # fewer sample rows than this.
+  min_node_rows: 2000
+  # Min cosine of the best-matched atom pair between the split re-fit on two
+  # slide-disjoint halves of the node.
+  stability_threshold: 0.9
+  # Min ||varsigma(a_L) - varsigma(a_R)|| (logit units, unit-norm atoms) for a
+  # split to count as one some head distinguishes. 0.0 disables the test -
+  # tree.parquet logs varsigma_diff for every candidate split, so calibrate
+  # this from a first run.
+  tau_diff: 0.0
+  # false: drop varsigma from the priority and disable tau_diff - the
+  # unsupervised baseline tree.
+  supervised: true
+  random_state: 42
+
+factorization:
+  # Iterations of each rank-2 split fit (NMF max_iter / semi-NMF alternations).
+  n_iter: 100
+  # FISTA iterations per NNLS solve (semi-NMF W-steps and the final transform).
+  nnls_iter: 200
+
+# Tiles read per streaming batch.
+batch_size: 25600
+
+output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/scale_power_${scale_power}/supervised_${tree.supervised}/tau_diff_${tree.tau_diff}
+
+metadata:
+  run_name: "🌳 NMF Tree (${method}, ${split}, scale_power=${scale_power}, supervised=${tree.supervised}, tau_diff=${tree.tau_diff})"
+  description: >-
+    Recursive binary-split ${method} concept dictionary over the per-tile
+    embeddings, grown best-first by mass * ||varsigma|| * err with
+    slide-disjoint stability and tau_diff acceptance tests; every tile then
+    NNLS-transformed against all leaves jointly.
+  hyperparams:
+    method: ${method}
+    split: ${split}
+    scale_power: ${scale_power}
+    shift_mlflow_uri: ${shift.mlflow_uri}
+    sample_slide_fraction: ${tree.sample_slide_fraction}
+    max_leaves: ${tree.max_leaves}
+    min_node_rows: ${tree.min_node_rows}
+    stability_threshold: ${tree.stability_threshold}
+    tau_diff: ${tree.tau_diff}
+    supervised: ${tree.supervised}
