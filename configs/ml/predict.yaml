@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - _self_
+
+mode: predict
+checkpoint: ???
+
+trainer:
+  callbacks:
+    - _target_: ml.callbacks.MLFlowPredictionCallback
