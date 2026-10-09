@@ -1,6 +1,9 @@
 from kube_jobs import storage, submit_job
 
 
+# "nmf" or "semi_nmf" - no default in configs/explainability/nmf_fit.yaml.
+method = ...
+
 # No default n_components in configs/explainability/nmf_fit.yaml on purpose -
 # the plan is to sweep several K (roughly 4-12) and pick/refine with the
 # pathologist, not commit to one upfront. Edit this per submission (one job
@@ -12,7 +15,7 @@ n_components = ...
 scale_power = ...
 
 submit_job(
-    job_name=f"ulcerative-colitis-nmf-fit-embedding-k{n_components}-sp{scale_power}-...",
+    job_name=f"ulcerative-colitis-nmf-fit-{method.replace('_', '-')}-k{n_components}-sp{scale_power}-...",
     username=...,
     public=False,
     # Deliberately low - keep in sync with num_cpus in
@@ -26,7 +29,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_fit "
-        f"n_components={n_components} nmf.scale_power={scale_power}",
+        f"method={method} n_components={n_components} nmf.scale_power={scale_power}",
     ],
     storage=[storage.secure.PROJECTS],
 )

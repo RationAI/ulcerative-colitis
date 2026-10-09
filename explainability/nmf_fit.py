@@ -12,6 +12,12 @@ from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
 
+from explainability.factorization import (
+    METHODS,
+    kmeans_init,
+    nnls_batch,
+    reseed_dead_components,
+)
 from explainability.tiles import load_embeddings_dataset, resolve_embedding_split_dirs
 
 
@@ -91,8 +97,9 @@ def iter_embedding_batches(
     metadata_columns: tuple[str, ...] = (),
     shuffle_seed: int | None = None,
     shuffle_buffer_size: int | None = None,
+    clip: bool = True,
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
-    """Yield shifted, scaled, non-negative embedding batches with optional provenance.
+    """Yield shifted, scaled (and by default non-negative) embedding batches with optional provenance.
 
     Args:
         dataset: `ray.data.Dataset` with an `embedding` column, in whatever
@@ -113,6 +120,8 @@ def iter_embedding_batches(
             must line up 1:1 with the yielded metadata.
         shuffle_buffer_size: Row buffer size for the local shuffle; required
             together with `shuffle_seed`, ignored otherwise.
+        clip: Clip negatives to zero (NMF's non-negativity transform). Off
+            for semi-NMF, which factors the signed embeddings directly.
 
     Yields:
         Tuples of (rows, metadata), where rows has shape
@@ -126,7 +135,9 @@ def iter_embedding_batches(
         local_shuffle_buffer_size=shuffle_buffer_size,
     ):
         raw = np.stack(batch["embedding"]).astype(np.float32, copy=False)
-        rows = np.maximum((raw - shift) / scale, 0.0)
+        rows = (raw - shift) / scale
+        if clip:
+            rows = np.maximum(rows, 0.0)
 
         metadata = None
         if metadata_columns:
@@ -140,8 +151,7 @@ def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
     For any positive diagonal S, W @ H == (W @ S^-1) @ (S @ H), so component
     magnitudes carry no meaning until this is fixed. No corresponding W
     correction is needed from the caller: `main` re-transforms every row
-    against this gauge-fixed H directly (by pointing `model.components_` at
-    it before the transform pass) rather than computing W against the
+    against this gauge-fixed H directly rather than computing W against the
     pre-fix H and rescaling it after the fact.
 
     Args:
@@ -155,46 +165,24 @@ def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
     return h / norms[:, None]
 
 
-@with_cli_args(["+explainability=nmf_fit"])
-@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
-@autolog
-def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    output_dir = Path(config.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+def fit_nmf_online(
+    dataset: ray.data.Dataset, config: DictConfig, shift: np.ndarray, scale: np.ndarray
+) -> np.ndarray:
+    """MiniBatchNMF over shuffled passes of the shifted, scaled, clipped embeddings.
 
-    stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
-    shift = load_shift(stats_path, config.shift.percentile_column)
-    # scale_power=1 -> IQR (original), 0.5 -> sqrt(IQR) (gentler), 0 -> all
-    # ones (no scaling) - IQR is always >0 (load_scale's own zero/negative
-    # fallback), so **0 is exactly 1 for every dimension, not just close to
-    # it. Why this knob exists: earlier weight checks (since removed) found
-    # |Theta|*IQR (each dimension's actual contribution to the logit)
-    # *positively* correlated with IQR for both halves of h_i - i.e. plain
-    # IQR scaling risks suppressing exactly the dimensions the trained
-    # classifiers rely on most.
-    scale = load_scale(stats_path) ** config.nmf.scale_power
+    Updates H only - W from mid-training batches would reflect a moving
+    target rather than the final dictionary, so W comes from a separate
+    transform pass against the final H.
 
-    split_dirs = resolve_embedding_split_dirs(
-        config.sources, config.get("local_embeddings_dir"), split=config.split
-    )
-    dataset = load_embeddings_dataset(split_dirs)
-    # A plain, unfiltered read_parquet count is metadata-only (row counts come
-    # from the parquet footers, no column data decoded) - unlike
-    # token_statistics.py's sampled count, nothing here forces a full read.
-    n_rows = dataset.count()
-
+    Returns:
+        H in the scaled fit space, shape `(n_components, embed_dim)`.
+    """
     model = MiniBatchNMF(
         n_components=config.n_components,
         init=config.nmf.init,
         beta_loss=config.nmf.beta_loss,
         random_state=config.nmf.random_state,
     )
-
-    # Fit: several shuffled passes over the full corpus, updating H only.
-    # W is deliberately not collected here - the H seen by an early batch in
-    # a later epoch is already better than the H an early epoch started
-    # with, so W from mid-training batches would reflect a moving target
-    # rather than the final dictionary.
     for epoch in range(config.nmf.epochs):
         for rows, _ in iter_embedding_batches(
             dataset,
@@ -205,29 +193,107 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
         ):
             model.partial_fit(rows)
+    return model.components_
 
-    # Recover H_k = H~_k * d (concept_mil.tex eq 2.24): the dictionary was
-    # fit on scaled embeddings, so its raw coefficients are per unit of
-    # (dimension j / scale[j]), not per unit of dimension j directly - this
-    # multiplies that back out into the original (shifted-only) embedding space.
-    # Must happen *before* gauge-fixing: gauge-fixing normalizes row norms,
-    # and this recovery changes those norms (scaling each column by a
-    # different amount).
-    h = model.components_ * scale[None, :]
+
+def fit_semi_nmf_online(
+    dataset: ray.data.Dataset, config: DictConfig, scale: np.ndarray
+) -> np.ndarray:
+    """Online semi-NMF (W >= 0, H signed) over shuffled passes of the scaled, signed embeddings.
+
+    Online dictionary learning (Mairal et al. 2010) with semi-NMF's
+    unconstrained H-step: per batch, W_b is the exact NNLS solution against
+    the current H, and H is re-solved from exponentially-forgotten
+    sufficient statistics `A = sum W_b^T W_b`, `B = sum W_b^T X_b` -
+    `H = (A + ridge I)^-1 B`. `forget` < 1 down-weights batches seen with an
+    early, worse H. H is initialized from k-means centroids of the first
+    batch (Ding et al.'s recommended semi-NMF init).
+
+    Returns:
+        H in the scaled fit space, shape `(n_components, embed_dim)`.
+    """
+    rng = np.random.default_rng(config.nmf.random_state)
+    no_shift = np.zeros_like(scale)
+    k = config.n_components
+    h = a = b = None
+    for epoch in range(config.nmf.epochs):
+        for rows, _ in iter_embedding_batches(
+            dataset,
+            config.nmf.batch_size,
+            no_shift,
+            scale,
+            shuffle_seed=config.nmf.random_state + epoch,
+            shuffle_buffer_size=config.nmf.shuffle_buffer_size,
+            clip=False,
+        ):
+            if h is None:
+                h = kmeans_init(rows, k, config.nmf.random_state)
+                a = np.zeros((k, k), dtype=np.float64)
+                b = np.zeros((k, rows.shape[1]), dtype=np.float64)
+            assert a is not None and b is not None
+            w = nnls_batch(rows, h, config.nmf.nnls_iter)
+            a = config.semi_nmf.forget * a + w.T @ w
+            b = config.semi_nmf.forget * b + w.T @ rows
+            h = np.linalg.solve(a + config.semi_nmf.ridge * np.eye(k), b).astype(np.float32)
+            h = reseed_dead_components(h, np.diag(a), rows, rng)
+    if h is None:
+        raise ValueError("Dataset is empty - nothing to fit.")
+    return h
+
+
+@with_cli_args(["+explainability=nmf_fit"])
+@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
+@autolog
+def main(config: DictConfig, logger: MLFlowLogger) -> None:
+    if config.method not in METHODS:
+        raise ValueError(f"method must be one of {METHODS}, got {config.method!r}")
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
+    # scale_power=1 -> IQR (original), 0.5 -> sqrt(IQR) (gentler), 0 -> all
+    # ones (no scaling) - IQR is always >0 (load_scale's own zero/negative
+    # fallback), so **0 is exactly 1 for every dimension, not just close to
+    # it. Why this knob exists: earlier weight checks (since removed) found
+    # |Theta|*IQR (each dimension's actual contribution to the logit)
+    # *positively* correlated with IQR for both halves of h_i - i.e. plain
+    # IQR scaling risks suppressing exactly the dimensions the trained
+    # classifiers rely on most.
+    scale = load_scale(stats_path) ** config.nmf.scale_power
+    # Semi-NMF factors the signed embeddings directly - no non-negativity
+    # shift. Saved as zeros so h_i ~= shift + phi_i @ H holds for both methods.
+    if config.method == "nmf":
+        shift = load_shift(stats_path, config.shift.percentile_column)
+    else:
+        shift = np.zeros_like(scale)
+
+    split_dirs = resolve_embedding_split_dirs(
+        config.sources, config.get("local_embeddings_dir"), split=config.split
+    )
+    dataset = load_embeddings_dataset(split_dirs)
+    # A plain, unfiltered read_parquet count is metadata-only (row counts come
+    # from the parquet footers, no column data decoded).
+    n_rows = dataset.count()
+
+    if config.method == "nmf":
+        h_fit = fit_nmf_online(dataset, config, shift, scale)
+    else:
+        h_fit = fit_semi_nmf_online(dataset, config, scale)
+
+    # Recover H_k = H~_k * d: the dictionary was fit on scaled embeddings, so
+    # its raw coefficients are per unit of (dimension j / scale[j]) - this
+    # multiplies that back out into the original (shifted-only) embedding
+    # space. Must happen *before* gauge-fixing: gauge-fixing normalizes row
+    # norms, and this recovery changes those norms.
+    h = (h_fit * scale[None, :]).astype(np.float32)
     if config.nmf.gauge_fix:
         h = gauge_fix_dictionary(h)
 
-    # Point the model at the final (recovered, possibly gauge-fixed) H and
-    # transform *shift-only* embeddings (scale=1 - h is no longer in the
-    # scaled-fit space, so the input mustn't be either) against it: W then
-    # comes out of transform() already correct, with no separate rescale
-    # needed the way leaving model.components_ unchanged would have required.
-    model.components_ = h
+    # Transform: one clean pass of *shift-only* (unscaled - H is no longer in
+    # the scaled fit space) embeddings against the final H. One row per tile,
+    # so W's rows are the tile-level concept weights phi_i directly, with
+    # h_i ~= shift + phi_i @ H.
     unscaled = np.ones_like(scale)
-
-    # Transform: one clean pass with the now-final H to get every tile's W -
-    # one row per tile, so W's rows are the tile-level concept weights phi_i
-    # directly, with h_i ~= shift + phi_i @ H.
     w_path = output_dir / "w.f32.npy"
     w = np.lib.format.open_memmap(
         w_path, mode="w+", dtype=np.float32, shape=(n_rows, config.n_components)
@@ -240,8 +306,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         shift,
         unscaled,
         metadata_columns=("slide_id", "x", "y"),
+        clip=config.method == "nmf",
     ):
-        w_batch = model.transform(rows)
+        w_batch = nnls_batch(rows, h, config.nmf.nnls_iter)
         w[offset : offset + w_batch.shape[0]] = w_batch
         metadata_chunks.append(metadata)
         offset += w_batch.shape[0]
@@ -261,10 +328,11 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
+        "method": config.method,
         "split": config.split,
         "n_components": config.n_components,
         "shift_mlflow_uri": config.shift.mlflow_uri,
-        "percentile_column": config.shift.percentile_column,
+        "percentile_column": config.shift.percentile_column if config.method == "nmf" else None,
         "scale_columns": "p0.75 - p0.25 (IQR)",
         "gauge_fixed": config.nmf.gauge_fix,
         "epochs": config.nmf.epochs,

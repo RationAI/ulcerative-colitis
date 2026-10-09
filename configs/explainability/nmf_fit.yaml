@@ -12,10 +12,18 @@ local_embeddings_dir: ${project_dir}/embeddings
 
 split: train
 
+# "nmf" (W, H >= 0 on shifted/clipped embeddings, sklearn MiniBatchNMF) or
+# "semi_nmf" (W >= 0, H signed, on the raw signed embeddings - no shift;
+# explainability.nmf_fit.fit_semi_nmf_online). No default, pick per run.
+method: ???
+
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
 
 shift:
+  # Also needed for method=semi_nmf: the shift itself is unused there, but the
+  # IQR scale comes from the same percentile_stats.parquet.
+  #
   # mlflow artifact URI for a token_statistics.py run's
   # percentile_stats.parquet (small artifact - always fetched from mlflow,
   # see explainability.nmf_fit.resolve_percentile_stats_path). Must be a run
@@ -49,8 +57,12 @@ nmf:
   # ~20KB/tile), 250_000 rows is 640M elements (~30% of the ceiling, safe
   # margin for the batcher's overshoot) and ~5GB of buffer.
   shuffle_buffer_size: 250_000
+  # method=nmf only (MiniBatchNMF).
   init: random
   beta_loss: frobenius
+  # FISTA iterations per batch for every NNLS solve of W given H - the final
+  # transform pass (both methods) and semi-NMF's per-batch W-step.
+  nnls_iter: 200
   random_state: 42
   gauge_fix: true
   # Per-dimension scale = IQR ** scale_power, before dividing embeddings by it
@@ -66,14 +78,24 @@ nmf:
   # most.
   scale_power: 1.0
 
-output_dir: ${project_dir}/explainability/nmf/embedding/${split}/k${n_components}/scale_power_${nmf.scale_power}
+# method=semi_nmf only - online H-step from forgotten sufficient statistics
+# (see explainability.nmf_fit.fit_semi_nmf_online).
+semi_nmf:
+  # Per-batch decay of the accumulated W^T W / W^T X statistics; < 1
+  # down-weights batches seen with an early, worse H.
+  forget: 0.95
+  # Ridge added to W^T W before solving for H (numerical safety only).
+  ridge: 1.0e-6
+
+output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/k${n_components}/scale_power_${nmf.scale_power}
 
 metadata:
-  run_name: "🧩 NMF Fit (embedding, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
+  run_name: "🧩 NMF Fit (${method}, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
   description: >-
-    MiniBatchNMF over shifted (and scale_power-scaled) full per-tile
+    Flat ${method} dictionary over the (scale_power-scaled) full per-tile
     embeddings h_i, gauge-fixed W/H stored for downstream explainability.
   hyperparams:
+    method: ${method}
     split: ${split}
     n_components: ${n_components}
     shift_mlflow_uri: ${shift.mlflow_uri}
