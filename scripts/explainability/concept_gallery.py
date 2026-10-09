@@ -21,5 +21,6 @@ submit_job(
         "uv sync --frozen",
         f"uv run --active python -m explainability.concept_gallery w_dir={w_dir}",
     ],
-    storage=[storage.secure.PROJECTS],
+    # DATA too: the example tiles are read from the WSIs under /mnt/data.
+    storage=[storage.secure.DATA, storage.secure.PROJECTS],
 )
