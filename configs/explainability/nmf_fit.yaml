@@ -1,143 +1,58 @@
 # @package _global_
 
 defaults:
-  - /dataset/embeddings_xai/ftn@sources.ftn
-  - /dataset/embeddings_xai/ikem@sources.ikem
+  - /dataset/embeddings/ftn@sources.ftn
+  - /dataset/embeddings/ikem@sources.ikem
   - _self_
 
-# Used only when grade == "all" (resolve_token_dirs, same flat loader
-# token_statistics.yaml uses for its own full-corpus pass) - preferred over
-# mlflow's download_artifacts when present, same local-mount-preferred
-# pattern as local_grade_split_dir below.
-local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+# Preferred over mlflow's download_artifacts when present - same data on the
+# same mount without the slow round-trip (see explainability.tiles.
+# resolve_embedding_split_dirs).
+local_embeddings_dir: ${project_dir}/embeddings
 
-# Local explainability/grade_split.py output directory (matches that script's
-# own output_dir convention: ${project_dir}/explainability/grade_split/<split>).
-# Preferred over grade_split.mlflow_uri when present - same local-mount-
-# preferred / mlflow-fallback pattern explainability.tiles.resolve_token_dirs
-# already uses for the plain (ungraded) patch/cls token tables.
-local_grade_split_dir: ${project_dir}/explainability/grade_split/${grade_split.split}
-
-grade_split:
-  # Which embeddings_xai split grade_split.py was run against - must match
-  # that run's own `split` (explainability/grade_split.py, default "train").
-  split: train
-  # mlflow artifact URI for the grade_split run's "tokens" directory (its
-  # kind=patch|cls/grade=0..4 partitions) - fallback when local_grade_split_dir
-  # isn't present (e.g. a kube job without the project mount). Update after
-  # every grade_split.py run, same convention as shift.mlflow_uri below.
-  # Points at run 97aa50e43e624920a44f29f0d624276f (2026-09-03, split=train,
-  # 154,327 tiles: grade counts 31661/25653/30716/30552/35745 for 0-4).
-  mlflow_uri: mlflow-artifacts:/86/97aa50e43e624920a44f29f0d624276f/artifacts/tokens
-
-# "patch" or "cls" - which embeddings_xai token table to fit NMF over. No
-# default on purpose: picked explicitly per run, same convention as
-# token_statistics.yaml's kind field - this changes both what's read
-# (resolve_grade_token_dir's kind=) and which shift entry below applies
-# (shift[kind], selected automatically - see that block's comment). For
-# kind="cls", W's rows are already tile-level phi_ik directly (one CLS token
-# per tile, no per-patch averaging needed) - see explainability/nmf_fit.py's
-# comment at the transform pass.
-kind: ???
-
-# Which predicted Nancy grade (0-4, explainability.grade_split's tile-level
-# classifier routing - concept_mil.tex's c_psi, not a slide-level MIL
-# prediction) to fit this NMF run on, or the literal string "all" to fit the
-# whole pooled corpus (every grade, both institutions - explainability.tiles.
-# resolve_token_dirs, the flat pre-grade_split loader still used by
-# token_statistics.py) with no grade filtering at all. "all" restores what
-# the original (pre-grade-split) nmf/k4..k12 flat sweeps did - concept_mil.tex
-# itself (line ~190) describes fitting on a sample "balanced across centre and
-# grade", i.e. one shared dictionary, not the grade-specific approach
-# everything since has actually used; "all" is the way to test that directly
-# against a grade-specific fit (e.g. via tile_r2_check_cls.py's r2_ols_vs_z)
-# rather than assuming grade-splitting is necessary. No default on purpose:
-# one job per grade (or "all"), same "one job per K" convention as
-# n_components below.
-grade: ???
+split: train
 
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
 
-# Keyed by kind ("patch"/"cls"), not a single shift.mlflow_uri overwritten
-# per run - deliberately mirrors concept_masks.yaml's `h` dict-of-variants
-# convention. Confirmed real failure this prevents (2026-09-18): a kind=cls
-# nmf_fit run was submitted with only kind/grade/n_components/scale_power
-# overridden on the CLI, silently falling back to a flat shift.mlflow_uri
-# default meant for kind=patch - applying patch-distribution shift constants
-# to cls tokens spuriously clipped up to ~78% of one dimension's real values
-# to zero. Keying by `kind` makes that specific mistake structurally
-# impossible: main() selects shift[config.kind] directly, there's no separate
-# field to forget to override. explainability/nmf_fit.py's check_shift_kind
-# is a secondary runtime guard (checks the resolved run's own logged `kind`
-# param) for the remaining case of a manual mlflow_uri copy-paste error
-# within the right key.
 shift:
-  # Each entry's percentile_column is the 1e-4 quantile column (see
-  # explainability/token_statistics.py's column naming): a light compromise
-  # between the true min (outlier-sensitive) and a looser quantile (more
-  # clipping). Retune once the real table is inspected.
-  #
-  # mlflow artifact URI for a specific token_statistics.py (kind=patch) run's
+  # mlflow artifact URI for a token_statistics.py run's
   # percentile_stats.parquet (small artifact - always fetched from mlflow,
-  # not a local mount, unlike the patch/cls token parquet or W/H memmaps -
-  # see explainability.nmf_fit.resolve_percentile_stats_path). Update after
-  # every token_statistics.py (kind=patch) run, same convention as
-  # configs/dataset/embeddings_xai/{ftn,ikem}.yaml's mlflow_uris. Must point
-  # at a run whose percentiles include p0.25/p0.75 (load_scale's IQR
-  # columns) - older, pre-IQR runs won't have them. This default predates
-  # the kind param existing at all (run from before patch_statistics.py was
-  # generalized into token_statistics.py), so check_shift_kind can't verify
-  # it against its own logged metadata - correct as of 2026-09-18 by
-  # inspection, not by the runtime guard.
-  patch:
-    mlflow_uri: mlflow-artifacts:/86/45bdcedf6f0c4f9fa39d43d1a8cbe020/artifacts/percentile_stats.parquet
-    percentile_column: p0.0001
-  # mlflow artifact URI for a specific token_statistics.py (kind=cls) run's
-  # percentile_stats.parquet. Update after every such run, same convention as
-  # the patch entry above. Points at run eb03d6040d9b401fbb9ac289726cc896
-  # (2026-09-18, the first token_statistics kind=cls run).
-  cls:
-    mlflow_uri: mlflow-artifacts:/86/eb03d6040d9b401fbb9ac289726cc896/artifacts/percentile_stats.parquet
-    percentile_column: p0.0001
+  # see explainability.nmf_fit.resolve_percentile_stats_path). Must be a run
+  # over the same per-tile embeddings this fit reads - stats from the old
+  # embeddings_xai patch/cls tables have half the width and fail on
+  # broadcasting. No default until that run exists.
+  mlflow_uri: ???
+  # The 1e-4 quantile column (see explainability/token_statistics.py's column
+  # naming): a light compromise between the true min (outlier-sensitive) and
+  # a looser quantile (more clipping).
+  percentile_column: p0.0001
 
 nmf:
-  # Patches read per partial_fit/transform call.
+  # Tile embeddings read per partial_fit/transform call.
   batch_size: 25600
   # Each epoch re-reads the full raw corpus once - keep this bounded.
   epochs: 1
   # Row buffer for ray.data's local (per-worker, no cross-node shuffle) read
-  # order randomization during training - see iter_patch_batches' shuffle_seed.
-  # Bigger mixes more patches per partial_fit call at the cost of more RAM -
-  # AND at the cost of pyarrow offset-overflow risk (see below), so this
-  # can't just be raised freely.
-  #
-  # embeddings are stored as float64 (~10KB/patch at 1280 dims, not float32
-  # as an earlier version of this comment assumed - confirmed from the
-  # `list<element: double>` arrow dtype in a real crash's traceback). At
-  # 500_000 rows that's ~5GB in the buffer, matching this comment's original
-  # (float32-based) memory budget.
+  # order randomization during training - see iter_embedding_batches'
+  # shuffle_seed. Bigger mixes more tiles per partial_fit call at the cost of
+  # more RAM - and of pyarrow offset-overflow risk, so this can't just be
+  # raised freely.
   #
   # Hard ceiling, not just a memory tradeoff: Ray's local shuffle
   # concatenates the whole buffered `embedding` column into one contiguous
-  # pyarrow ListArray before shuffling it, and pyarrow's default ListArray
-  # uses int32 offsets - capped at 2^31-1 (~2.15B) elements in the
-  # flattened child array. 1_280_000 rows * 1280 dims = 1.638B elements,
-  # already 71% of that ceiling for the *target* size alone, before the
-  # batcher's normal overshoot (it keeps accreting blocks past the target
-  # before it shuffles) - confirmed this actually overflows in practice
-  # (`pyarrow.lib.ArrowInvalid: offset overflow while concatenating arrays`).
-  # 500_000 rows * 1280 dims = 640M elements, ~30% of the ceiling - safe
-  # margin even accounting for overshoot. Don't raise this back toward
-  # 1_280_000 without also addressing the offset ceiling itself (e.g.
-  # casting `embedding` to `large_list` at read time in
-  # `explainability/tiles.py`, per pyarrow's own suggested fix).
-  shuffle_buffer_size: 500_000
+  # pyarrow ListArray, whose default int32 offsets cap the flattened child
+  # array at 2^31-1 (~2.15B) elements - confirmed to overflow in practice
+  # (`pyarrow.lib.ArrowInvalid: offset overflow while concatenating arrays`)
+  # at 1.64B elements on the old 1280-dim tables. At 2560 dims (float64,
+  # ~20KB/tile), 250_000 rows is 640M elements (~30% of the ceiling, safe
+  # margin for the batcher's overshoot) and ~5GB of buffer.
+  shuffle_buffer_size: 250_000
   init: random
   beta_loss: frobenius
   random_state: 42
   gauge_fix: true
-  # Per-dimension scale = IQR ** scale_power, before dividing patches by it
+  # Per-dimension scale = IQR ** scale_power, before dividing embeddings by it
   # (and multiplying H back out by it afterward - explainability/nmf_fit.py
   # applies this consistently in both places, so this one knob controls the
   # whole scheme). 1.0 = original IQR scaling; 0.5 = sqrt(IQR), a gentler
@@ -151,20 +66,18 @@ nmf:
   # that matter most.
   scale_power: 1.0
 
-output_dir: ${project_dir}/explainability/nmf/${kind}/grade${grade}/k${n_components}/scale_power_${nmf.scale_power}
+output_dir: ${project_dir}/explainability/nmf/embedding/${split}/k${n_components}/scale_power_${nmf.scale_power}
 
 metadata:
-  run_name: "🧩 NMF Fit (kind=${kind}, grade=${grade}, k=${n_components}, scale_power=${nmf.scale_power})"
+  run_name: "🧩 NMF Fit (embedding, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
   description: >-
-    MiniBatchNMF over shifted (and scale_power-scaled) ${kind} tokens,
-    restricted to explainability.grade_split's grade=${grade} tile partition
-    (tile-level classifier-predicted Nancy grade, not slide-level MIL),
-    gauge-fixed W/H stored for downstream explainability.
+    MiniBatchNMF over shifted (and scale_power-scaled) full per-tile
+    embeddings h_i, gauge-fixed W/H stored for downstream explainability.
   hyperparams:
-    kind: ${kind}
-    grade: ${grade}
+    split: ${split}
     n_components: ${n_components}
-    percentile_column: ${shift.${kind}.percentile_column}
+    shift_mlflow_uri: ${shift.mlflow_uri}
+    percentile_column: ${shift.percentile_column}
     scale_power: ${nmf.scale_power}
     batch_size: ${nmf.batch_size}
     epochs: ${nmf.epochs}

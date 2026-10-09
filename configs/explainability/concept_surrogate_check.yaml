@@ -1,0 +1,45 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings/ftn@sources.ftn
+  - /dataset/embeddings/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_dir: ${project_dir}/embeddings
+
+# Must be the split the NMF fit below was run on - W only exists for those
+# tiles. "train" is also what slides.parquet has ground-truth nancy_index for.
+split: train
+
+# Half the classifier's input width (h_i = [z_i; m_i]) - load_full_model
+# checks classifier.weight against 2*embed_dim, and compute_readouts checks
+# the embedding width against the classifier.
+embed_dim: 1280
+
+# Which nmf_fit.py run to check - no defaults, one job per fit.
+n_components: ???
+scale_power: ???
+w_dir: ${project_dir}/explainability/nmf/embedding/${split}/k${n_components}/scale_power_${scale_power}
+
+# Tiles per streaming batch in the readout pass (~670MB of float64 at 2560 dims).
+batch_size: 32768
+# Tiles per chunk when rebuilding h_hat = shift + phi @ H for the recon surrogate.
+chunk_size: 65536
+
+output_dir: ${project_dir}/explainability/concept_surrogate_check/${split}/k${n_components}/scale_power_${scale_power}
+
+metadata:
+  run_name: "🎯 Concept Surrogate Check (${split}, k=${n_components}, scale_power=${scale_power})"
+  description: >-
+    Tile-level R^2 and slide-level AUC of two concept surrogates of the real
+    MIL model - the real model on the NMF reconstruction shift + phi @ H, and
+    an OLS readout of phi - against the real model's readout of the full tile
+    embedding.
+  hyperparams:
+    split: ${split}
+    n_components: ${n_components}
+    scale_power: ${scale_power}
+    w_dir: ${w_dir}

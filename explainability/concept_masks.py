@@ -77,7 +77,8 @@ from ratiopath.masks.mask_builders import MaskBuilder, MeanAggregator
 from sklearn.decomposition import MiniBatchNMF
 
 from explainability.nmf_fit import (
-    iter_token_batches,
+    PATCH_METADATA_COLUMNS,
+    iter_embedding_batches,
     load_shift,
     resolve_percentile_stats_path,
 )
@@ -159,8 +160,8 @@ def patch_coords(metadata: pd.DataFrame, grid_size: int) -> np.ndarray:
 
     Args:
         metadata: A batch's (slide_id, x, y, patch_index) metadata, as
-            yielded by `explainability.nmf_fit.iter_token_batches` with
-            `with_metadata=True`.
+            yielded by `explainability.nmf_fit.iter_embedding_batches` with
+            `metadata_columns=PATCH_METADATA_COLUMNS`.
         grid_size: Tokens per tile side (16 for a 224px tile - see
             `PATCH_PIXELS`).
 
@@ -317,10 +318,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     n_updates = 0
     start = time.monotonic()
     last_log = start
-    for patches, metadata in iter_token_batches(
-        patches_ds, config.batch_size, shift, unscaled, with_metadata=True
+    for patches, metadata in iter_embedding_batches(
+        patches_ds, config.batch_size, shift, unscaled, metadata_columns=PATCH_METADATA_COLUMNS
     ):
-        assert metadata is not None  # guaranteed by with_metadata=True above
+        assert metadata is not None  # guaranteed by metadata_columns above
         w_batch = model.transform(patches)  # (B, K), non-negative
         coords = patch_coords(metadata, grid_size)
 

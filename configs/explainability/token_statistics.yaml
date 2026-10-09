@@ -1,22 +1,19 @@
 # @package _global_
 
 defaults:
-  - /dataset/embeddings_xai/ftn@sources.ftn
-  - /dataset/embeddings_xai/ikem@sources.ikem
+  - /dataset/embeddings/ftn@sources.ftn
+  - /dataset/embeddings/ikem@sources.ikem
   - _self_
 
 # Preferred over mlflow's download_artifacts when present, since it's the
 # same data on the same mount without the slow round-trip. Set to null to
 # always go through mlflow (e.g. on a fresh node without the project mount).
-local_embeddings_xai_dir: ${project_dir}/embeddings_xai
+local_embeddings_dir: ${project_dir}/embeddings
 
-# "patch" or "cls" - which embeddings_xai token table to compute statistics
-# over. No default: pick explicitly per run, same convention as nmf_fit.yaml's
-# n_components - this changes both what's read and where output_dir points.
-kind: ???
+split: train
 
-# Tokens read per streaming batch (also the digest-update batch size).
-batch_size: 131072
+# Tile embeddings read per streaming batch (also the digest-update batch size).
+batch_size: 32768
 overwrite: false
 
 # 0.25/0.75 are for the IQR (p0.75 - p0.25), used by nmf_fit.py as a
@@ -25,14 +22,14 @@ overwrite: false
 # (unweighted, Frobenius) loss.
 percentiles: [0, 1e-5, 1e-4, 1e-3, 1e-2, 0.25, 0.75, 1e-1, 1.0]
 
-output_dir: ${project_dir}/explainability/token_statistics/${kind}
+output_dir: ${project_dir}/explainability/token_statistics/embedding/${split}
 
 metadata:
-  run_name: "📊 Token Statistics (${kind})"
+  run_name: "📊 Embedding Statistics (${split})"
   description: >-
     Per-dimension percentile statistics (t-digest, full ftn + ikem corpus,
-    no sampling) over the ${kind} token table, used to pick a shift and IQR
-    scale for NMF.
+    no sampling) over the full per-tile embeddings, used to pick a shift and
+    IQR scale for NMF.
   hyperparams:
-    kind: ${kind}
+    split: ${split}
     percentiles: ${percentiles}
