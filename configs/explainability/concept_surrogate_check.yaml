@@ -10,7 +10,7 @@ defaults:
 
 local_embeddings_dir: ${project_dir}/embeddings
 
-# Must be the split the NMF fit below was run on - W only exists for those
+# Must be the split the dictionary (w_dir) was fit on - W only exists for those
 # tiles. "train" is also what slides.parquet has ground-truth nancy_index for.
 split: train
 
@@ -19,27 +19,26 @@ split: train
 # the embedding width against the classifier.
 embed_dim: 1280
 
-# Which nmf_fit.py run to check - no defaults, one job per fit.
-n_components: ???
-scale_power: ???
-w_dir: ${project_dir}/explainability/nmf/embedding/${split}/k${n_components}/scale_power_${scale_power}
+# Output dir of the nmf_fit.py or nmf_tree.py run to check (holds w.f32.npy,
+# w_metadata.parquet, h.parquet, shift.npy) - no default, one job per fit.
+# Must have been fit on `split` above.
+w_dir: ???
 
 # Tiles per streaming batch in the readout pass (~670MB of float64 at 2560 dims).
 batch_size: 32768
 # Tiles per chunk when rebuilding h_hat = shift + phi @ H for the recon surrogate.
 chunk_size: 65536
 
-output_dir: ${project_dir}/explainability/concept_surrogate_check/${split}/k${n_components}/scale_power_${scale_power}
+# Next to the checked dictionary, so each result sits with the fit it scores.
+output_dir: ${w_dir}/concept_surrogate_check
 
 metadata:
-  run_name: "🎯 Concept Surrogate Check (${split}, k=${n_components}, scale_power=${scale_power})"
+  run_name: "🎯 Concept Surrogate Check (${split})"
   description: >-
     Tile-level R^2 and slide-level AUC of two concept surrogates of the real
-    MIL model - the real model on the NMF reconstruction shift + phi @ H, and
-    an OLS readout of phi - against the real model's readout of the full tile
-    embedding.
+    MIL model - the real model on the dictionary reconstruction shift + phi @ H,
+    and an OLS readout of phi - against the real model's readout of the full
+    tile embedding. Dictionary: ${w_dir}.
   hyperparams:
     split: ${split}
-    n_components: ${n_components}
-    scale_power: ${scale_power}
     w_dir: ${w_dir}

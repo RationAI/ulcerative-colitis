@@ -106,18 +106,14 @@ def compute_readouts(
     return keys, s, u
 
 
-def load_dictionary(
-    w_dir: Path, n_components: int
-) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
-    """Load one nmf_fit.py run's `(w_metadata, W, H, shift)` from its output dir."""
+def load_dictionary(w_dir: Path) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    """Load one nmf_fit.py / nmf_tree.py run's `(w_metadata, W, H, shift)` from its output dir."""
     w = np.load(w_dir / "w.f32.npy", mmap_mode="r")
     metadata = pd.read_parquet(w_dir / "w_metadata.parquet")
     h = pd.read_parquet(w_dir / "h.parquet").sort_index(axis=0).sort_index(axis=1)
     shift = np.load(w_dir / "shift.npy")
-    if w.shape[1] != n_components or len(h) != n_components:
-        raise ValueError(
-            f"{w_dir}: W width {w.shape[1]} / H rows {len(h)}, expected {n_components}"
-        )
+    if w.shape[1] != len(h):
+        raise ValueError(f"{w_dir}: W has {w.shape[1]} columns but H has {len(h)} rows")
     if len(metadata) != w.shape[0]:
         raise ValueError(f"{w_dir}: {len(metadata)} metadata rows but W has {w.shape[0]}")
     return metadata, np.asarray(w), h.to_numpy(dtype=np.float32), shift.astype(np.float32)
@@ -216,7 +212,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         load_embeddings_dataset(split_dirs), models, config.batch_size
     )
 
-    w_keys, w, h, shift = load_dictionary(Path(config.w_dir), config.n_components)
+    w_keys, w, h, shift = load_dictionary(Path(config.w_dir))
     r_idx, w_idx = align(readout_keys, w_keys)
     phi = w[w_idx]
     keys = readout_keys.iloc[r_idx].reset_index(drop=True)
@@ -298,7 +294,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest = {
         "split": config.split,
         "w_dir": config.w_dir,
-        "n_components": config.n_components,
+        "n_components": len(h),
         "n_tiles": len(keys),
         "n_slides": len(slide_ids),
         "tile_r2": tile_df.to_dict(orient="records"),
