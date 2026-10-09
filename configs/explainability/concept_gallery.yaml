@@ -1,0 +1,42 @@
+# @package _global_
+
+defaults:
+  - /dataset/embeddings/ftn@sources.ftn
+  - /dataset/embeddings/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
+  - _self_
+
+local_embeddings_dir: ${project_dir}/embeddings
+
+# Must be the split the dictionary (w_dir) was fit on - W only exists for those
+# tiles.
+split: train
+
+# Half the classifier's input width - load_full_model checks classifier.weight
+# against 2*embed_dim.
+embed_dim: 1280
+
+# Output dir of the nmf_fit.py or nmf_tree.py run to show - no default, one
+# job per fit.
+w_dir: ???
+
+# Example tiles per concept (highest phi_k, at most one per slide).
+n_tiles: 8
+
+# Tiles per streaming batch in the readout pass.
+batch_size: 32768
+
+output_dir: ${w_dir}/concept_gallery
+
+metadata:
+  run_name: "🖼️ Concept Gallery (${split})"
+  description: >-
+    Example tiles per concept plus, for every output class, the OLS
+    coefficient of the real slide logit on attention-pooled concept weights
+    and the closed-form sigma = H Theta^T. Dictionary: ${w_dir}.
+  hyperparams:
+    split: ${split}
+    w_dir: ${w_dir}
+    n_tiles: ${n_tiles}
