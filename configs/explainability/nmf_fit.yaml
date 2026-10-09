@@ -58,12 +58,11 @@ nmf:
   # whole scheme). 1.0 = original IQR scaling; 0.5 = sqrt(IQR), a gentler
   # version that still reins in the most extreme dims without flattening
   # them to parity with everything else; 0.0 = no scaling at all (IQR**0=1
-  # for every dimension, exactly - not an approximation). See
-  # theta_m_check.py / explainability-status memory for why this is worth
-  # sweeping: |Theta_m|*IQR (each dimension's actual contribution to the
-  # trained classifiers' logits) turned out *positively* correlated with
-  # IQR, so plain IQR scaling may be suppressing exactly the dimensions
-  # that matter most.
+  # for every dimension, exactly - not an approximation). Worth sweeping
+  # because |Theta|*IQR (each dimension's actual contribution to the trained
+  # classifiers' logits) turned out *positively* correlated with IQR, so
+  # plain IQR scaling may be suppressing exactly the dimensions that matter
+  # most.
   scale_power: 1.0
 
 output_dir: ${project_dir}/explainability/nmf/embedding/${split}/k${n_components}/scale_power_${nmf.scale_power}

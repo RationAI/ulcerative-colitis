@@ -1,7 +1,6 @@
 """Tile-level R^2 and slide-level AUC of concept surrogates of the real MIL model.
 
-Replaces `tile_r2_check_cls.py` + `slide_auc_check_cls.py`. The NMF
-dictionary is now fit on the full tile embedding `h_i` - exactly what the MIL
+The NMF dictionary is fit on the full tile embedding `h_i` - exactly what the MIL
 model consumes (`s_i = Theta h_i + b`, `u_i = q^T tanh(U h_i + b1) + b2`) - so
 there's no z/m split and no mean-ablated `m_bar` stand-in anywhere: every
 target here is the real model's own readout of the real embedding.
@@ -45,13 +44,12 @@ from scipy.special import softmax
 from scipy.stats import pearsonr
 from sklearn.metrics import roc_auc_score
 
-from explainability.embedding_importance import (
+from explainability.model import (
     ModelWeights,
     load_full_model,
     logits_to_prob,
     nancy_to_target,
 )
-from explainability.tile_r2_ols_check import r2_score
 from explainability.tiles import (
     load_embedding_slides,
     load_embeddings_dataset,
@@ -162,6 +160,14 @@ def ols_predict(phi: np.ndarray, target: np.ndarray) -> np.ndarray:
     design = np.hstack([phi, np.ones((len(phi), 1), dtype=phi.dtype)])
     beta, *_ = np.linalg.lstsq(design, target, rcond=None)
     return design @ beta
+
+
+def r2_score(true: np.ndarray, pred: np.ndarray) -> float:
+    """R^2 of `pred` against `true`, NaN when `true` has zero variance."""
+    ss_tot = float(np.sum((true - true.mean()) ** 2))
+    if ss_tot <= 0:
+        return float("nan")
+    return 1.0 - float(np.sum((true - pred) ** 2)) / ss_tot
 
 
 def safe_pearson(a: np.ndarray, b: np.ndarray) -> float:

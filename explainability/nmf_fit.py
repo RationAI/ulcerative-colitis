@@ -83,11 +83,6 @@ def load_scale(
     return np.where(iqr <= 0, 1.0, iqr)
 
 
-# Provenance columns of the older embeddings_xai per-token tables, for
-# callers (concept_masks.py, tile_r2_check.py) that still read them.
-PATCH_METADATA_COLUMNS = ("slide_id", "x", "y", "patch_index")
-
-
 def iter_embedding_batches(
     dataset: ray.data.Dataset,
     batch_size: int,
@@ -98,11 +93,6 @@ def iter_embedding_batches(
     shuffle_buffer_size: int | None = None,
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
     """Yield shifted, scaled, non-negative embedding batches with optional provenance.
-
-    Works on any dataset with one `embedding` vector per row - the per-tile
-    embeddings `nmf_fit.py` itself reads, or the older embeddings_xai
-    per-token tables (`concept_masks.py`, `tile_r2_check.py`, which pass
-    `patch_index` among `metadata_columns`) - the transform doesn't care which.
 
     Args:
         dataset: `ray.data.Dataset` with an `embedding` column, in whatever
@@ -177,12 +167,11 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # scale_power=1 -> IQR (original), 0.5 -> sqrt(IQR) (gentler), 0 -> all
     # ones (no scaling) - IQR is always >0 (load_scale's own zero/negative
     # fallback), so **0 is exactly 1 for every dimension, not just close to
-    # it. See explainability-status memory for why this knob exists: raw
-    # |Theta_m| looked anti-correlated with IQR, but |Theta_m|*IQR (each
-    # dimension's actual contribution to the logit) is *positively*
-    # correlated - i.e. plain IQR scaling risks suppressing exactly the
-    # dimensions the trained classifiers rely on most. (theta_z_check.py
-    # found a similar, weaker effect for z_i/Theta_z.)
+    # it. Why this knob exists: earlier weight checks (since removed) found
+    # |Theta|*IQR (each dimension's actual contribution to the logit)
+    # *positively* correlated with IQR for both halves of h_i - i.e. plain
+    # IQR scaling risks suppressing exactly the dimensions the trained
+    # classifiers rely on most.
     scale = load_scale(stats_path) ** config.nmf.scale_power
 
     split_dirs = resolve_embedding_split_dirs(
