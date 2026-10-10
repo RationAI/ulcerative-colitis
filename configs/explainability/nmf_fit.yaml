@@ -38,8 +38,8 @@ shift:
   # over the same per-tile embeddings this fit reads - stats from the old
   # embeddings_xai patch/cls tables have half the width and fail on
   # broadcasting. Update after every token_statistics.py run. Points at run
-  # cd5ef7666f134c58abe108cd04cda9c2 (2026-10, split=train, 2560 dims).
-  mlflow_uri: mlflow-artifacts:/86/cd5ef7666f134c58abe108cd04cda9c2/artifacts/percentile_stats.parquet
+  # 205f4d2eac8d460a8541bf82f2087d52 (2026-10-10, split=train, 2560 dims, with mean).
+  mlflow_uri: mlflow-artifacts:/86/205f4d2eac8d460a8541bf82f2087d52/artifacts/percentile_stats.parquet
   # The 1e-4 quantile column (see explainability/token_statistics.py's column
   # naming): a light compromise between the true min (outlier-sensitive) and
   # a looser quantile (more clipping).

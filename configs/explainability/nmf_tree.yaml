@@ -34,7 +34,7 @@ shift:
   # token_statistics.py percentile_stats.parquet artifact URI over the
   # per-tile embeddings - IQR scale for both methods, shift for nmf only.
   # Same run as nmf_fit.yaml's shift.mlflow_uri - keep the two in sync.
-  mlflow_uri: mlflow-artifacts:/86/cd5ef7666f134c58abe108cd04cda9c2/artifacts/percentile_stats.parquet
+  mlflow_uri: mlflow-artifacts:/86/205f4d2eac8d460a8541bf82f2087d52/artifacts/percentile_stats.parquet
   percentile_column: p0.0001
 
 tree:
