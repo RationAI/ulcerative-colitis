@@ -37,9 +37,11 @@ def compute_percentiles(
         batch_size: Number of tiles to read per batch.
 
     Returns:
-        A DataFrame indexed by dimension, one column per requested percentile.
+        A DataFrame indexed by dimension, one column per requested percentile
+        plus an exact `mean` column.
     """
     digests: list[TDigest] | None = None
+    total: np.ndarray | None = None
     n_rows = 0
     start = time.monotonic()
     last_log = start
@@ -49,6 +51,9 @@ def compute_percentiles(
         rows = np.stack(batch["embedding"]).astype(np.float64, copy=False)
         if digests is None:
             digests = [TDigest() for _ in range(rows.shape[1])]
+            total = np.zeros(rows.shape[1])
+        assert total is not None
+        total += rows.sum(axis=0)
         for dim, digest in enumerate(digests):
             digest.update(rows[:, dim])
 
@@ -76,7 +81,12 @@ def compute_percentiles(
 
     stats = np.array([[digest.inverse_cdf(p) for p in percentiles] for digest in digests])
     columns = [f"p{p:g}" for p in percentiles]
-    return pd.DataFrame(stats, columns=columns).rename_axis("dimension")
+    frame = pd.DataFrame(stats, columns=columns).rename_axis("dimension")
+    # Exact (running sum, not a digest estimate) - the centring offset for
+    # semi-NMF (explainability.nmf_fit.select_shift).
+    assert total is not None
+    frame["mean"] = total / n_rows
+    return frame
 
 
 @with_cli_args(["+explainability=token_statistics"])
