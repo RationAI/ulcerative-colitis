@@ -41,7 +41,7 @@ unit-norm) are stacked into one dictionary H, and every tile's weights are
 the NNLS solution against all leaves jointly - so H is a single global
 linear decoder exactly like a flat fit (internal nodes carry no attribution)
 and the outputs (`w.f32.npy`, `w_metadata.parquet`, `h.parquet`,
-`shift.npy`) plug straight into concept_surrogate_check.py. `tree.parquet`
+`shift.npy`) plug straight into concept_completeness.py and concept_gallery.py. `tree.parquet`
 logs every node, including every rejected candidate split's stability and
 varsigma difference, to calibrate the thresholds.
 """

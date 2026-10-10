@@ -25,17 +25,20 @@ w_dir: ???
 # Example tiles per concept (highest phi_k, at most one per slide).
 n_tiles: 8
 
-# Tiles per streaming batch in the readout pass.
+# Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
+# FISTA iterations of the encoder E - same as the fit's own nnls_iter.
+nnls_iter: 200
 
 output_dir: ${w_dir}/concept_gallery
 
 metadata:
   run_name: "🖼️ Concept Gallery (${split})"
   description: >-
-    Example tiles per concept plus, for every output class, the OLS
-    coefficient of the real slide logit on attention-pooled concept weights
-    and the closed-form sigma = H Theta^T. Dictionary: ${w_dir}.
+    Q2/Q3 - example tiles per concept; per output class the exact slide
+    attributions phi_kc = vbar_sk a_kc summarised as class separation (ground
+    truth and predicted); per model attention enrichment and occlusion
+    attributions with their additivity error. Dictionary: ${w_dir}.
   hyperparams:
     split: ${split}
     w_dir: ${w_dir}
