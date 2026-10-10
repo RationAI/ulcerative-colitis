@@ -73,4 +73,49 @@ def nancy_to_target(nancy_index: np.ndarray, head: str) -> np.ndarray:
 
 def logits_to_prob(logits: np.ndarray, num_classes: int) -> np.ndarray:
     """Sigmoid for a single-logit (binary) head, softmax otherwise."""
-    return expit(logits) if num_classes == 1 else softmax(logits)
+    return expit(logits) if num_classes == 1 else softmax(logits, axis=-1)
+
+
+def centred_classifier(model: ModelWeights) -> tuple[np.ndarray, np.ndarray]:
+    """The tile-logit head `g_s` as `(Theta, b)`, centred across classes for multiclass heads.
+
+    Softmax ignores a shared offset, so for multiclass heads only logits
+    relative to the head's mean carry meaning - centring Theta's rows (and b)
+    makes every logit, attribution and error computed from them invariant to
+    that offset. The single neutrophils logit is left as is.
+    """
+    theta, b = model.cls_w, model.cls_b
+    if len(b) > 1:
+        theta, b = theta - theta.mean(axis=0), b - b.mean()
+    return theta, b
+
+
+def tile_logits(z: np.ndarray, model: ModelWeights) -> np.ndarray:
+    """g_s(z) = Theta z + b, centred across classes for multiclass heads; shape `(n, num_classes)`."""
+    theta, b = centred_classifier(model)
+    return z @ theta.T + b
+
+
+def attention_preactivation(z: np.ndarray, model: ModelWeights) -> np.ndarray:
+    """U z + b1, shape `(n, hidden)` - split out so occlusion can perturb it cheaply."""
+    return z @ model.attn_w1.T + model.attn_b1
+
+
+def attention_from_preactivation(pre: np.ndarray, model: ModelWeights) -> np.ndarray:
+    """q^T tanh(pre) + b2, shape `pre.shape[:-1]`."""
+    return (np.tanh(pre) @ model.attn_w2.T + model.attn_b2)[..., 0]
+
+
+def attention_scores(z: np.ndarray, model: ModelWeights) -> np.ndarray:
+    """g_u(z) = q^T tanh(U z + b1) + b2, shape `(n,)`."""
+    return attention_from_preactivation(attention_preactivation(z, model), model)
+
+
+def predicted_labels(probs: np.ndarray) -> np.ndarray:
+    """Hard labels from slide probabilities: threshold 0.5 for one output, argmax otherwise."""
+    return (probs[:, 0] >= 0.5).astype(np.int64) if probs.shape[1] == 1 else probs.argmax(axis=1)
+
+
+def class_mask(labels: np.ndarray, c: int, num_classes: int) -> np.ndarray:
+    """Slides 'of output c': label == c, or the positive label for a single-output head."""
+    return labels == (1 if num_classes == 1 else c)
