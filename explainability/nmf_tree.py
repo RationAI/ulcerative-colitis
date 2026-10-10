@@ -66,8 +66,8 @@ from explainability.model import ModelWeights, load_full_model
 from explainability.nmf_fit import (
     iter_embedding_batches,
     load_scale,
-    load_shift,
     resolve_percentile_stats_path,
+    select_shift,
 )
 from explainability.tiles import (
     load_embedding_slides,
@@ -289,10 +289,6 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     stats_path = resolve_percentile_stats_path(config.shift.mlflow_uri)
     scale = load_scale(stats_path) ** config.scale_power
-    if config.method == "nmf":
-        shift = load_shift(stats_path, config.shift.percentile_column)
-    else:
-        shift = np.zeros_like(scale)
 
     models = {
         head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
@@ -303,6 +299,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         config.sources, config.get("local_embeddings_dir"), split=config.split
     )
     dataset = load_embeddings_dataset(split_dirs)
+    # Corpus mean (centred semi-NMF), NMF's non-negativity shift, or zero -
+    # the same offset nmf_fit.py would use, saved as shift.npy.
+    shift = select_shift(config.method, config.center, stats_path, config.shift.percentile_column)
 
     slide_ids = load_embedding_slides(split_dirs)["id"].to_numpy()
     n_sampled = max(2, round(config.tree.sample_slide_fraction * len(slide_ids)))
@@ -355,6 +354,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
         "method": config.method,
+        "center": config.center,
         "split": config.split,
         "n_components": n_components,
         "n_nodes": len(nodes),

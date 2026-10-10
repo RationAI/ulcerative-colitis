@@ -19,6 +19,13 @@ embed_dim: 1280
 # "nmf" or "semi_nmf" - the factorization used for every split, same choice as
 # nmf_fit.yaml's method. No default, pick per run.
 method: ???
+# Subtract the corpus mean embedding (the `mean` column of shift.mlflow_uri's
+# percentile_stats.parquet - token_statistics runs before 2026-10-10 lack it)
+# before factorizing; saved as shift.npy, added back by the decoder. semi_nmf only - without it, several of the K
+# components get spent reproducing the mean every tile shares (k=12: 7 of 12
+# components were such generic, class-inert ones). Must be false for nmf
+# (centred data is ~half negative and NMF clips negatives to zero).
+center: true
 # Per-dimension scale = IQR ** scale_power, same as nmf_fit.yaml's
 # nmf.scale_power. No default, pick per run.
 scale_power: ???
@@ -62,10 +69,10 @@ factorization:
 # Tiles read per streaming batch.
 batch_size: 25600
 
-output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/scale_power_${scale_power}/supervised_${tree.supervised}/tau_diff_${tree.tau_diff}
+output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/supervised_${tree.supervised}/tau_diff_${tree.tau_diff}
 
 metadata:
-  run_name: "🌳 NMF Tree (${method}, ${split}, scale_power=${scale_power}, supervised=${tree.supervised}, tau_diff=${tree.tau_diff})"
+  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, supervised=${tree.supervised}, tau_diff=${tree.tau_diff})"
   description: >-
     Recursive binary-split ${method} concept dictionary over the per-tile
     embeddings, grown best-first by mass * ||varsigma|| * err with
@@ -73,6 +80,7 @@ metadata:
     NNLS-transformed against all leaves jointly.
   hyperparams:
     method: ${method}
+    center: ${center}
     split: ${split}
     scale_power: ${scale_power}
     shift_mlflow_uri: ${shift.mlflow_uri}

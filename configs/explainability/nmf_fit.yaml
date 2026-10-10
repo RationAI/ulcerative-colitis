@@ -17,12 +17,20 @@ split: train
 # explainability.nmf_fit.fit_semi_nmf_online). No default, pick per run.
 method: ???
 
+# Subtract the corpus mean embedding (the `mean` column of shift.mlflow_uri's
+# percentile_stats.parquet - token_statistics runs before 2026-10-10 lack it)
+# before factorizing; saved as shift.npy, added back by the decoder. semi_nmf only - without it, several of the K
+# components get spent reproducing the mean every tile shares (k=12: 7 of 12
+# components were such generic, class-inert ones). Must be false for nmf
+# (centred data is ~half negative and NMF clips negatives to zero).
+center: true
+
 # Number of NMF components (concepts) - no default on purpose, pick one per run.
 n_components: ???
 
 shift:
-  # Also needed for method=semi_nmf: the shift itself is unused there, but the
-  # IQR scale comes from the same percentile_stats.parquet.
+  # Also needed for method=semi_nmf: the IQR scale and (with center) the mean
+  # come from the same percentile_stats.parquet.
   #
   # mlflow artifact URI for a token_statistics.py run's
   # percentile_stats.parquet (small artifact - always fetched from mlflow,
@@ -87,15 +95,16 @@ semi_nmf:
   # Ridge added to W^T W before solving for H (numerical safety only).
   ridge: 1.0e-6
 
-output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/k${n_components}/scale_power_${nmf.scale_power}
+output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/center_${center}/k${n_components}/scale_power_${nmf.scale_power}
 
 metadata:
-  run_name: "🧩 NMF Fit (${method}, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
+  run_name: "🧩 NMF Fit (${method}, center=${center}, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
   description: >-
     Flat ${method} dictionary over the (scale_power-scaled) full per-tile
     embeddings h_i, gauge-fixed W/H stored for downstream explainability.
   hyperparams:
     method: ${method}
+    center: ${center}
     split: ${split}
     n_components: ${n_components}
     shift_mlflow_uri: ${shift.mlflow_uri}

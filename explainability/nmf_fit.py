@@ -145,6 +145,35 @@ def iter_embedding_batches(
         yield rows, metadata
 
 
+def load_mean(percentile_stats_path: Path) -> np.ndarray:
+    """Load the exact per-dimension mean embedding from token_statistics' output."""
+    stats = pd.read_parquet(percentile_stats_path).sort_index()
+    if "mean" not in stats:
+        raise ValueError(
+            f"{percentile_stats_path} has no `mean` column - re-run token_statistics.py "
+            "(runs before 2026-10-10 predate it) and point shift.mlflow_uri at the new run."
+        )
+    return stats["mean"].to_numpy(dtype=np.float32)
+
+
+def select_shift(method: str, center: bool, stats_path: Path, percentile_column: str) -> np.ndarray:
+    """The offset mu subtracted before factorizing (and added back by the decoder).
+
+    nmf: the non-negativity shift (a low percentile per dimension) - centring
+    would leave about half of every dimension negative, all clipped to zero
+    by NMF's non-negativity transform, so `center` must be false. semi_nmf:
+    the corpus mean when `center` (otherwise several components get spent
+    reproducing the shared mean every tile carries), else zero.
+    """
+    if method == "nmf":
+        if center:
+            raise ValueError("center=true is incompatible with method=nmf - set center=false")
+        return load_shift(stats_path, percentile_column)
+    if center:
+        return load_mean(stats_path)
+    return np.zeros_like(load_scale(stats_path))
+
+
 def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
     """Fix the WH scale ambiguity: rescale H to unit rows.
 
@@ -197,9 +226,9 @@ def fit_nmf_online(
 
 
 def fit_semi_nmf_online(
-    dataset: ray.data.Dataset, config: DictConfig, scale: np.ndarray
+    dataset: ray.data.Dataset, config: DictConfig, shift: np.ndarray, scale: np.ndarray
 ) -> np.ndarray:
-    """Online semi-NMF (W >= 0, H signed) over shuffled passes of the scaled, signed embeddings.
+    """Online semi-NMF (W >= 0, H signed) over shuffled passes of the shifted, scaled, signed embeddings.
 
     Online dictionary learning (Mairal et al. 2010) with semi-NMF's
     unconstrained H-step: per batch, W_b is the exact NNLS solution against
@@ -213,14 +242,13 @@ def fit_semi_nmf_online(
         H in the scaled fit space, shape `(n_components, embed_dim)`.
     """
     rng = np.random.default_rng(config.nmf.random_state)
-    no_shift = np.zeros_like(scale)
     k = config.n_components
     h = a = b = None
     for epoch in range(config.nmf.epochs):
         for rows, _ in iter_embedding_batches(
             dataset,
             config.nmf.batch_size,
-            no_shift,
+            shift,
             scale,
             shuffle_seed=config.nmf.random_state + epoch,
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
@@ -260,17 +288,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # IQR scaling risks suppressing exactly the dimensions the trained
     # classifiers rely on most.
     scale = load_scale(stats_path) ** config.nmf.scale_power
-    # Semi-NMF factors the signed embeddings directly - no non-negativity
-    # shift. Saved as zeros so h_i ~= shift + phi_i @ H holds for both methods.
-    if config.method == "nmf":
-        shift = load_shift(stats_path, config.shift.percentile_column)
-    else:
-        shift = np.zeros_like(scale)
 
     split_dirs = resolve_embedding_split_dirs(
         config.sources, config.get("local_embeddings_dir"), split=config.split
     )
     dataset = load_embeddings_dataset(split_dirs)
+    # Saved as shift.npy, so h_i ~= shift + phi_i @ H holds for every variant.
+    shift = select_shift(config.method, config.center, stats_path, config.shift.percentile_column)
     # A plain, unfiltered read_parquet count is metadata-only (row counts come
     # from the parquet footers, no column data decoded).
     n_rows = dataset.count()
@@ -278,7 +302,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     if config.method == "nmf":
         h_fit = fit_nmf_online(dataset, config, shift, scale)
     else:
-        h_fit = fit_semi_nmf_online(dataset, config, scale)
+        h_fit = fit_semi_nmf_online(dataset, config, shift, scale)
 
     # Recover H_k = H~_k * d: the dictionary was fit on scaled embeddings, so
     # its raw coefficients are per unit of (dimension j / scale[j]) - this
@@ -329,6 +353,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
         "method": config.method,
+        "center": config.center,
         "split": config.split,
         "n_components": config.n_components,
         "shift_mlflow_uri": config.shift.mlflow_uri,
