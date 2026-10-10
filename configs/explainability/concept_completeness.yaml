@@ -14,9 +14,8 @@ local_embeddings_dir: ${project_dir}/embeddings
 # tiles. "train" is also what slides.parquet has ground-truth nancy_index for.
 split: train
 
-# Half the classifier's input width (h_i = [z_i; m_i]) - load_full_model
-# checks classifier.weight against 2*embed_dim, and compute_readouts checks
-# the embedding width against the classifier.
+# Half the classifier's input width - load_full_model checks
+# classifier.weight against 2*embed_dim.
 embed_dim: 1280
 
 # Output dir of the nmf_fit.py or nmf_tree.py run to check (holds w.f32.npy,
@@ -24,21 +23,23 @@ embed_dim: 1280
 # Must have been fit on `split` above.
 w_dir: ???
 
-# Tiles per streaming batch in the readout pass (~670MB of float64 at 2560 dims).
+# Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
-# Tiles per chunk when rebuilding h_hat = shift + phi @ H for the recon surrogate.
-chunk_size: 65536
+# FISTA iterations of the encoder E (NNLS against the dictionary) - same as
+# the fit's own nmf.nnls_iter / factorization.nnls_iter, so v matches its W.
+nnls_iter: 200
 
 # Next to the checked dictionary, so each result sits with the fit it scores.
-output_dir: ${w_dir}/concept_surrogate_check
+output_dir: ${w_dir}/concept_completeness
 
 metadata:
-  run_name: "🎯 Concept Surrogate Check (${split})"
+  run_name: "🎯 Concept Completeness (${split})"
   description: >-
-    Tile-level R^2 and slide-level AUC of two concept surrogates of the real
-    MIL model - the real model on the dictionary reconstruction shift + phi @ H,
-    and an OLS readout of phi - against the real model's readout of the full
-    tile embedding. Dictionary: ${w_dir}.
+    Q1 - quality of the concept encoder and decoder (arXiv:2609.34750
+    metrics): RE in embedding space, FE of the tile-logit and attention heads
+    and of slide logits, the best-linear-head (OLS) estimate of MCE, plus
+    slide-level agreement with the model's prediction and AUC against ground
+    truth. Dictionary: ${w_dir}.
   hyperparams:
     split: ${split}
     w_dir: ${w_dir}
