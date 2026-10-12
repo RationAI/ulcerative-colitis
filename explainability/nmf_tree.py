@@ -59,7 +59,8 @@ linear decoder exactly like a flat fit (internal nodes carry no attribution)
 and the outputs (`w.f32.npy`, `w_metadata.parquet`, `h.parquet`,
 `shift.npy`) plug straight into concept_completeness.py and concept_gallery.py. `tree.parquet`
 logs every node, including every rejected candidate split's stability, gain
-and varsigma difference, to calibrate the thresholds.
+and varsigma difference, to calibrate the thresholds; `node_atoms.parquet`
+keeps every node's atom (internal ones too) for the pathologist's tree view.
 """
 
 import heapq
@@ -461,6 +462,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     np.save(output_dir / "shift.npy", shift)
     tree_path = output_dir / "tree.parquet"
     nodes_table(nodes, leaf_index).to_parquet(tree_path, index=False)
+    # Every node's atom (embedding space, unit norm) - internal nodes are
+    # scaffolding for attribution but context for the pathologist's labels.
+    with_atom = [node for node in nodes if node.atom is not None]
+    pd.DataFrame(
+        np.stack([node.atom for node in with_atom if node.atom is not None]),
+        index=pd.Index([node.node_id for node in with_atom], name="node_id"),
+    ).to_parquet(output_dir / "node_atoms.parquet")
 
     reasons = pd.Series([node.reason for node in nodes if node.status == "final"]).value_counts()
     manifest = {
@@ -482,6 +490,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     logger.log_artifact(str(output_dir / "h.parquet"))
     logger.log_artifact(str(tree_path))
+    logger.log_artifact(str(output_dir / "node_atoms.parquet"))
     logger.log_artifact(str(manifest_path))
     logger.log_metrics({"n_components": n_components, "n_nodes": len(nodes)})
 

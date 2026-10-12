@@ -93,6 +93,7 @@ from explainability.tiles import (
     load_embeddings_dataset,
     resolve_embedding_split_dirs,
 )
+from explainability.tree_view import jpeg_base64, render_tree_html, select_node_tiles
 
 
 HEADS = ("neutrophils", "nancy_low", "nancy_high")
@@ -477,6 +478,20 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     for name in ("gallery.html", "concept_class.parquet", "concept_attention.parquet",
                  "slide_additivity.parquet", "attention_additivity.parquet", "manifest.json"):
         logger.log_artifact(str(output_dir / name))
+
+    # Whole-tree view for the pathologist when the dictionary is an nmf_tree.py fit.
+    tree_path = Path(config.w_dir) / "tree.parquet"
+    if tree_path.exists():
+        tree = pd.read_parquet(tree_path)
+        node_tiles = select_node_tiles(v, keys, tree, config.n_tiles)
+        node_images = [
+            jpeg_base64(tile) for tile in read_tiles(node_tiles, load_embedding_slides(split_dirs))
+        ]
+        (output_dir / "tree.html").write_text(
+            render_tree_html(tree, node_tiles, node_images, f"Concept tree - {Path(config.w_dir).name}")
+        )
+        node_tiles.to_parquet(output_dir / "tree_tiles.parquet", index=False)
+        logger.log_artifact(str(output_dir / "tree.html"))
 
 
 if __name__ == "__main__":
