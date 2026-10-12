@@ -31,18 +31,26 @@ scaled, and for `nmf` also shifted/clipped - same transform as nmf_fit.py):
               in opposite directions cancel and the most productive splits
               rank low (19 of 30 splits in the first centred tree had
               opposing children). Unsupervised: relevance = 1.
-- A split is accepted only if it passes both tests, so depth is adaptive:
+- A split is accepted only if it passes both tests, so the tree decides its
+  own size - no K to choose:
     stability  re-fit the split separately on two slide-disjoint halves of
                the node's rows; the cosine of the best-matched atom pair must
                be >= `stability_threshold` (else it's sampling noise).
                Halves are by *slide*, never by tile - tiles of one slide are
                too correlated to count as independent evidence.
-    tau_diff   ||varsigma(a_L) - varsigma(a_R)|| >= `tau_diff` (else no head
-               distinguishes the children).
-  A rejected node is final. Growth stops at `max_leaves`.
-- `supervised: false` drops varsigma from the priority and disables the
-  tau_diff test - the unsupervised baseline tree, to check that steering the
-  tree with the classifier isn't circular.
+    min_gain   the split must explain at least `min_gain` of the
+               model-relevant variation, measured *held out*: the split fit
+               on one half assigns the other half's tiles to children (NNLS,
+               argmax) and the gain there is the between-children sum of
+               squares of varsigma_i over the half's total sum of squares;
+               averaged over both directions. Mass is built in - a tiny node
+               can't gain much - and held-out evaluation keeps deep splits
+               from memorising single slides.
+  A rejected node is final. Growth stops when every leaf is rejected
+  (converged); `max_leaves` is only a safety cap.
+- `supervised: false` is the unsupervised baseline tree, to check that
+  steering it with the classifier isn't circular: priority and gain use each
+  tile's fit-space embedding instead of its head responses.
 
 **Inference**: the leaf atoms (recovered to the original embedding space,
 unit-norm) are stacked into one dictionary H, and every tile's weights are
@@ -50,8 +58,8 @@ the NNLS solution against all leaves jointly - so H is a single global
 linear decoder exactly like a flat fit (internal nodes carry no attribution)
 and the outputs (`w.f32.npy`, `w_metadata.parquet`, `h.parquet`,
 `shift.npy`) plug straight into concept_completeness.py and concept_gallery.py. `tree.parquet`
-logs every node, including every rejected candidate split's stability and
-varsigma difference, to calibrate the thresholds.
+logs every node, including every rejected candidate split's stability, gain
+and varsigma difference, to calibrate the thresholds.
 """
 
 import heapq
@@ -99,6 +107,7 @@ class Node:
     status: str = "leaf"  # leaf (unexpanded) | split | final (split rejected)
     reason: str = ""
     stability: float = float("nan")
+    gain: float = float("nan")
     varsigma_diff: float = float("nan")
 
 
@@ -156,6 +165,24 @@ def embedding_spread(
     for start in range(0, len(rows), chunk_size):
         total += x[rows[start : start + chunk_size]].sum(axis=0, dtype=np.float64)
     return (float(sq_norms[rows].sum()) - float(total @ total) / len(rows)) / n_total
+
+
+def between_ss(values: np.ndarray, labels: np.ndarray) -> float:
+    """Between-children sum of squares: sum_c n_c ||mean_c - mean||^2."""
+    mean = values.mean(axis=0)
+    total = 0.0
+    for c in np.unique(labels):
+        group = values[labels == c]
+        total += len(group) * float(np.sum((group.mean(axis=0) - mean) ** 2))
+    return total
+
+
+def assign_rows(x: np.ndarray, atoms_fit: np.ndarray, config: DictConfig) -> np.ndarray:
+    """Child labels for rows a split wasn't fit on: NNLS against its two atoms, then argmax."""
+    w = nnls_batch(
+        x, atoms_fit, config.factorization.nnls_iter, tol=config.factorization.get("tol")
+    )
+    return np.argmax(w, axis=1)
 
 
 def relative_error(x: np.ndarray, sq_norms: np.ndarray, atom_fit: np.ndarray) -> float:
@@ -227,16 +254,25 @@ def build_tree(
     if tree.priority not in ("variance", "atom"):
         raise ValueError(f"tree.priority must be 'variance' or 'atom', got {tree.priority!r}")
     sq_norms = np.einsum("ij,ij->i", x, x)
-    responses = (
-        tile_responses(x, scale, models)
-        if tree.priority == "variance" and tree.supervised
-        else None
-    )
+    # Per-tile head responses drive the variance priority and the gain
+    # (supervised); the unsupervised tree uses the fit-space rows themselves.
+    responses = tile_responses(x, scale, models) if tree.supervised else None
+    half_total = [
+        (
+            node_spread(responses[half == side], 1)
+            if responses is not None
+            else embedding_spread(x, np.flatnonzero(half == side), sq_norms, 1)
+        )
+        for side in range(2)
+    ]
     nodes = [Node(node_id=0, parent=None, depth=0, rows=np.arange(len(x)))]
     heap: list[tuple[float, int]] = [(-float("inf"), 0)]
     n_leaves = 1
 
-    while heap and n_leaves < tree.max_leaves:
+    while heap:
+        if n_leaves >= tree.max_leaves:
+            print(f"Stopped at the max_leaves safety cap ({tree.max_leaves}).", flush=True)
+            break
         _, node_id = heapq.heappop(heap)
         node = nodes[node_id]
         print(
@@ -256,16 +292,27 @@ def build_tree(
             continue
 
         half_atoms = []
-        for side in range(2):
-            side_rows = half[node.rows] == side
+        half_masks = [half[node.rows] == side for side in range(2)]
+        for side_rows in half_masks:
             if side_rows.sum() < 2 * tree.min_node_rows:
                 break
             half_atoms.append(split_rows(x_node[side_rows], config)[1])
-        del x_node
         if len(half_atoms) < 2:
             node.status, node.reason = "final", "half_too_small"
             continue
         node.stability = matched_cosine(half_atoms[0], half_atoms[1])
+
+        # Held-out gain: the split fit on one half, scored on the other.
+        gains = []
+        for fit_side, eval_side in ((0, 1), (1, 0)):
+            eval_x = x_node[half_masks[eval_side]]
+            held_out = assign_rows(eval_x, half_atoms[fit_side], config)
+            values = (
+                responses[node.rows[half_masks[eval_side]]] if responses is not None else eval_x
+            )
+            gains.append(between_ss(values, held_out) / half_total[eval_side])
+        node.gain = float(np.mean(gains))
+        del x_node
 
         atoms = unit_rows(atoms_fit * scale[None, :])
         varsigmas = [head_response(atom, models) for atom in atoms]
@@ -274,8 +321,8 @@ def build_tree(
         if node.stability < tree.stability_threshold:
             node.status, node.reason = "final", "unstable"
             continue
-        if tree.supervised and node.varsigma_diff < tree.tau_diff:
-            node.status, node.reason = "final", "indistinguishable"
+        if node.gain < tree.min_gain:
+            node.status, node.reason = "final", "low_gain"
             continue
 
         node.status = "split"
@@ -304,7 +351,7 @@ def build_tree(
             nodes.append(child)
             heapq.heappush(heap, (-child.priority, child.node_id))
         print(
-            f"  split accepted: stability={node.stability:.3f}, "
+            f"  split accepted: stability={node.stability:.3f}, gain={node.gain:.4f}, "
             f"varsigma_diff={node.varsigma_diff:.4f}, children "
             f"{len(child_rows[0])}/{len(child_rows[1])} rows",
             flush=True,
@@ -333,6 +380,7 @@ def nodes_table(nodes: list[Node], leaf_index: dict[int, int]) -> pd.DataFrame:
             "status": node.status,
             "reason": node.reason,
             "stability": node.stability,
+            "gain": node.gain,
             "varsigma_diff": node.varsigma_diff,
             "component": leaf_index.get(node.node_id),
         }
@@ -422,6 +470,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "split": config.split,
         "n_components": n_components,
         "n_nodes": len(nodes),
+        "stopped_by": "max_leaves" if n_components >= config.tree.max_leaves else "converged",
         "max_depth": max(node.depth for node in leaf_nodes),
         "rejected_splits": reasons.to_dict(),
         "n_sample_rows": len(half),
