@@ -21,7 +21,11 @@ METHODS = ("nmf", "semi_nmf")
 
 
 def nnls_batch(
-    x: np.ndarray, h: np.ndarray, n_iter: int, w0: np.ndarray | None = None
+    x: np.ndarray,
+    h: np.ndarray,
+    n_iter: int,
+    w0: np.ndarray | None = None,
+    tol: float | None = None,
 ) -> np.ndarray:
     """Solve `min_W ||X - W H||_F^2  s.t. W >= 0` for every row of X at once.
 
@@ -33,8 +37,12 @@ def nnls_batch(
     Args:
         x: Rows to fit, shape `(n, d)`.
         h: Fixed dictionary, shape `(k, d)` - any sign.
-        n_iter: Number of FISTA iterations.
+        n_iter: Number of FISTA iterations (the maximum, if `tol` is set).
         w0: Optional warm start, shape `(n, k)`.
+        tol: Stop early once an iteration changes W by less than `tol`
+            relative to its norm. None (the default) always runs `n_iter` -
+            kept for every transform/encoder pass, so saved W stays exactly
+            reproducible.
 
     Returns:
         W, shape `(n, k)`, non-negative.
@@ -53,7 +61,12 @@ def nnls_batch(
         w_next = np.maximum(y - (y @ gram - xh) / lipschitz, 0.0)
         t_next = (1.0 + np.sqrt(1.0 + 4.0 * t * t)) / 2.0
         y = w_next + ((t - 1.0) / t_next) * (w_next - w)
+        converged = tol is not None and np.linalg.norm(w_next - w) <= tol * max(
+            float(np.linalg.norm(w)), 1e-12
+        )
         w, t = w_next, t_next
+        if converged:
+            break
     return w
 
 
@@ -88,20 +101,36 @@ def reseed_dead_components(
 
 
 def semi_nmf(
-    x: np.ndarray, k: int, n_iter: int, nnls_iter: int, random_state: int, ridge: float = 1e-6
-) -> tuple[np.ndarray, np.ndarray]:
+    x: np.ndarray,
+    k: int,
+    n_iter: int,
+    nnls_iter: int,
+    random_state: int,
+    ridge: float = 1e-6,
+    tol: float | None = None,
+) -> tuple[np.ndarray, np.ndarray, int]:
     """In-memory semi-NMF `X ~= W H`, `W >= 0`, H signed - alternating NNLS / least squares.
 
+    With `tol`, stops once an alternation changes H by less than `tol`
+    relative to its norm (H is only `(k, d)`, so the check is cheap), and
+    the inner NNLS solves stop early too; `n_iter` is then a maximum.
+
     Returns:
-        `(W, H)` with shapes `(n, k)` and `(k, d)`.
+        `(W, H, iterations)` with shapes `(n, k)` and `(k, d)`.
     """
     rng = np.random.default_rng(random_state)
     h = kmeans_init(x, k, random_state)
-    w = nnls_batch(x, h, nnls_iter)
+    w = nnls_batch(x, h, nnls_iter, tol=tol)
+    iterations = 0
     for _ in range(n_iter):
-        h = reseed_dead_components(update_h(w, x, ridge), w.sum(axis=0), x, rng)
-        w = nnls_batch(x, h, nnls_iter, w0=w)
-    return w, h
+        iterations += 1
+        h_next = reseed_dead_components(update_h(w, x, ridge), w.sum(axis=0), x, rng)
+        w = nnls_batch(x, h_next, nnls_iter, w0=w, tol=tol)
+        change = float(np.linalg.norm(h_next - h)) / max(float(np.linalg.norm(h)), 1e-12)
+        h = h_next
+        if tol is not None and change <= tol:
+            break
+    return w, h, iterations
 
 
 def factorize(
@@ -111,18 +140,27 @@ def factorize(
     random_state: int,
     n_iter: int,
     nnls_iter: int,
-) -> tuple[np.ndarray, np.ndarray]:
+    tol: float | None = None,
+) -> tuple[np.ndarray, np.ndarray, int]:
     """In-memory rank-k factorization of `x` with the chosen `method`.
 
     `nmf` requires `x >= 0` (callers pass shifted/clipped embeddings).
+    `tol` enables early stopping (sklearn's own `tol` for nmf; see
+    `semi_nmf`), `n_iter` is then the maximum.
 
     Returns:
-        `(W, H)` with shapes `(n, k)` and `(k, d)`.
+        `(W, H, iterations)` with shapes `(n, k)` and `(k, d)`.
     """
     if method == "nmf":
-        model = NMF(n_components=k, init="nndsvda", max_iter=n_iter, random_state=random_state)
+        model = NMF(
+            n_components=k,
+            init="nndsvda",
+            max_iter=n_iter,
+            random_state=random_state,
+            tol=0.0 if tol is None else tol,
+        )
         w = model.fit_transform(x)
-        return w.astype(x.dtype), model.components_.astype(x.dtype)
+        return w.astype(x.dtype), model.components_.astype(x.dtype), int(model.n_iter_)
     if method == "semi_nmf":
-        return semi_nmf(x, k, n_iter, nnls_iter, random_state)
+        return semi_nmf(x, k, n_iter, nnls_iter, random_state, tol=tol)
     raise ValueError(f"Unknown method {method!r}, expected one of {METHODS}")
