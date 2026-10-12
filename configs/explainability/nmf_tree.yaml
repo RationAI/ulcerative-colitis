@@ -69,10 +69,18 @@ tree:
   random_state: 42
 
 factorization:
-  # Iterations of each rank-2 split fit (NMF max_iter / semi-NMF alternations).
+  # Maximum iterations of each rank-2 split fit (NMF max_iter / semi-NMF
+  # alternations) - with tol set, fits stop as soon as they converge.
   n_iter: 100
-  # FISTA iterations per NNLS solve (semi-NMF W-steps and the final transform).
+  # FISTA iterations per NNLS solve (semi-NMF W-steps and the final transform;
+  # a maximum inside split fits when tol is set, always run in full for the
+  # final transform so W stays reproducible).
   nnls_iter: 200
+  # Early-stopping tolerance of the split fits: relative change of H between
+  # semi-NMF alternations (and of W inside its NNLS steps); sklearn's own tol
+  # for nmf. null = always run n_iter / nnls_iter in full (the original
+  # behaviour). The fit logs its iteration count per split.
+  tol: 1.0e-4
 
 # Tiles read per streaming batch.
 batch_size: 25600

@@ -167,14 +167,16 @@ def relative_error(x: np.ndarray, sq_norms: np.ndarray, atom_fit: np.ndarray) ->
 
 def split_rows(x: np.ndarray, config: DictConfig) -> tuple[np.ndarray, np.ndarray]:
     """Rank-2 factorization -> (hard child labels per row, the two unit atoms in fit space)."""
-    w, h = factorize(
+    w, h, iterations = factorize(
         x,
         2,
         config.method,
         config.tree.random_state,
         config.factorization.n_iter,
         config.factorization.nnls_iter,
+        tol=config.factorization.get("tol"),
     )
+    print(f"  rank-2 fit on {len(x)} rows: {iterations} iterations", flush=True)
     return np.argmax(w, axis=1), unit_rows(h)
 
 
