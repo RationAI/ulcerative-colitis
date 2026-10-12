@@ -13,16 +13,24 @@ scaled, and for `nmf` also shifted/clipped - same transform as nmf_fit.py):
 - Each split is a rank-2 factorization with the chosen `method` (`nmf` or
   `semi_nmf`, explainability.factorization.factorize); rows go hard to the
   child whose weight is larger, and each child's atom is its unit-norm H row.
-- Best-first: the leaf with the highest priority is tried next,
-      priority(n) = mass(n) * ||varsigma(a_n)|| * err(n)
-  `mass` = fraction of sample rows in the node, `err` = relative residual of
-  the node's rows against its own atom, and `varsigma(a)` the classifier
-  response to the atom stacked over heads - 8 entries: the neutrophils
-  logit, plus the nancy_low (3) and nancy_high (4) logits each centred
-  (softmax is invariant to a shared offset, so only the centred part means
-  anything). Each factor guards a different failure: mass alone refines
-  noise, relevance alone chases negligible nodes, error alone refines what
-  no head reads.
+- Best-first: the leaf with the highest priority is tried next. `varsigma`
+  is the classifier response stacked over heads - 8 entries: the
+  neutrophils logit, plus the nancy_low (3) and nancy_high (4) logits each
+  centred (softmax is invariant to a shared offset, so only the centred part
+  means anything). Two priorities (`tree.priority`):
+    variance  priority(n) = (1/N) sum_{i in n} ||varsigma_i - mean_n varsigma||^2
+              with varsigma_i each sample tile's own response (N = sample
+              size) - the model-relevant variation sitting inside the node.
+              Tiles the model reads in opposite directions add up here
+              instead of cancelling, and the sum (not mean) keeps mass in.
+              Unsupervised: the same with each tile's fit-space embedding.
+    atom      priority(n) = mass(n) * ||varsigma(a_n)|| * err(n) (the
+              original): mass = fraction of sample rows, err = relative
+              residual of the node's rows against its own atom. Its relevance
+              looks at the node's averaged atom, so children the model reads
+              in opposite directions cancel and the most productive splits
+              rank low (19 of 30 splits in the first centred tree had
+              opposing children). Unsupervised: relevance = 1.
 - A split is accepted only if it passes both tests, so depth is adaptive:
     stability  re-fit the split separately on two slide-disjoint halves of
                the node's rows; the cosine of the best-matched atom pair must
@@ -110,6 +118,46 @@ def head_response(atom: np.ndarray, models: dict[str, ModelWeights]) -> np.ndarr
     return np.concatenate(parts)
 
 
+def tile_responses(
+    x: np.ndarray, scale: np.ndarray, models: dict[str, ModelWeights], chunk_size: int = 65536
+) -> np.ndarray:
+    """varsigma_i for every fit-space row: head responses of x_i * scale, shape `(n, 8)`.
+
+    The fit-space offset (mu) is a constant shift of every varsigma_i, so it
+    cancels in any within-node spread and is left out.
+    """
+    parts = []
+    for start in range(0, len(x), chunk_size):
+        z = x[start : start + chunk_size] * scale[None, :]
+        heads = []
+        for model in models.values():
+            logits = z @ model.cls_w.T
+            if logits.shape[1] > 1:
+                logits = logits - logits.mean(axis=1, keepdims=True)
+            heads.append(logits)
+        parts.append(np.concatenate(heads, axis=1))
+    return np.concatenate(parts)
+
+
+def node_spread(values: np.ndarray, n_total: int) -> float:
+    """(1/N) sum_i ||values_i - mean(values)||^2 over the node's rows."""
+    return float(np.sum((values - values.mean(axis=0)) ** 2)) / n_total
+
+
+def embedding_spread(
+    x: np.ndarray, rows: np.ndarray, sq_norms: np.ndarray, n_total: int, chunk_size: int = 65536
+) -> float:
+    """node_spread of the fit-space rows themselves, via sum ||x||^2 - ||sum x||^2 / n.
+
+    Chunked so no full copy of a large node's (n, 2560) block is ever made -
+    the unsupervised counterpart of the response spread.
+    """
+    total = np.zeros(x.shape[1])
+    for start in range(0, len(rows), chunk_size):
+        total += x[rows[start : start + chunk_size]].sum(axis=0, dtype=np.float64)
+    return (float(sq_norms[rows].sum()) - float(total @ total) / len(rows)) / n_total
+
+
 def relative_error(x: np.ndarray, sq_norms: np.ndarray, atom_fit: np.ndarray) -> float:
     """1 - ||projection onto the (unit) atom||^2 / ||X||^2, with non-negative weights."""
     proj = np.maximum(x @ atom_fit, 0.0)
@@ -174,7 +222,14 @@ def build_tree(
 ) -> list[Node]:
     """Grow the tree best-first (see module docstring). Returns every node, root first."""
     tree = config.tree
+    if tree.priority not in ("variance", "atom"):
+        raise ValueError(f"tree.priority must be 'variance' or 'atom', got {tree.priority!r}")
     sq_norms = np.einsum("ij,ij->i", x, x)
+    responses = (
+        tile_responses(x, scale, models)
+        if tree.priority == "variance" and tree.supervised
+        else None
+    )
     nodes = [Node(node_id=0, parent=None, depth=0, rows=np.arange(len(x)))]
     heap: list[tuple[float, int]] = [(-float("inf"), 0)]
     n_leaves = 1
@@ -235,8 +290,15 @@ def build_tree(
                 varsigma=varsigmas[j],
             )
             child.err = relative_error(x[child.rows], sq_norms[child.rows], atoms_fit[j])
-            relevance = float(np.linalg.norm(varsigmas[j])) if tree.supervised else 1.0
-            child.priority = child.mass * relevance * child.err
+            if tree.priority == "variance":
+                child.priority = (
+                    node_spread(responses[child.rows], len(x))
+                    if responses is not None
+                    else embedding_spread(x, child.rows, sq_norms, len(x))
+                )
+            else:
+                relevance = float(np.linalg.norm(varsigmas[j])) if tree.supervised else 1.0
+                child.priority = child.mass * relevance * child.err
             nodes.append(child)
             heapq.heappush(heap, (-child.priority, child.node_id))
         print(

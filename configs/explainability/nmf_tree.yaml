@@ -55,8 +55,16 @@ tree:
   # tree.parquet logs varsigma_diff for every candidate split, so calibrate
   # this from a first run.
   tau_diff: 0.0
-  # false: drop varsigma from the priority and disable tau_diff - the
-  # unsupervised baseline tree.
+  # Which leaf to try next (see explainability/nmf_tree.py's docstring):
+  # "variance" - the model-relevant variation inside the node,
+  # (1/N) sum_i ||varsigma_i - mean varsigma||^2 over its tiles; "atom" - the
+  # original mass * ||varsigma(atom)|| * err, kept for comparison (its
+  # relevance cancels for nodes mixing tiles the model reads in opposite
+  # directions).
+  priority: variance
+  # false: the unsupervised baseline tree - tau_diff disabled, and the
+  # priority ignores the classifier (variance: spread of the embeddings
+  # themselves; atom: relevance = 1).
   supervised: true
   random_state: 42
 
@@ -69,10 +77,10 @@ factorization:
 # Tiles read per streaming batch.
 batch_size: 25600
 
-output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/supervised_${tree.supervised}/tau_diff_${tree.tau_diff}
+output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/priority_${tree.priority}/supervised_${tree.supervised}/tau_diff_${tree.tau_diff}
 
 metadata:
-  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, supervised=${tree.supervised}, tau_diff=${tree.tau_diff})"
+  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, priority=${tree.priority}, supervised=${tree.supervised}, tau_diff=${tree.tau_diff})"
   description: >-
     Recursive binary-split ${method} concept dictionary over the per-tile
     embeddings, grown best-first by mass * ||varsigma|| * err with
@@ -89,4 +97,5 @@ metadata:
     min_node_rows: ${tree.min_node_rows}
     stability_threshold: ${tree.stability_threshold}
     tau_diff: ${tree.tau_diff}
+    priority: ${tree.priority}
     supervised: ${tree.supervised}
