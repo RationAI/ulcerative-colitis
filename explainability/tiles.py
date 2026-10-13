@@ -40,9 +40,17 @@ def resolve_embedding_split_dirs(
         split_dir = None
         if local_embeddings_dir is not None:
             candidate = Path(local_embeddings_dir) / source.institution / split
-            if (candidate / "tiles").is_dir():
+            # Require actual parquet files, not just the folder: an interrupted
+            # copy can leave an empty tiles/ behind (knl_patos/test_preliminary
+            # did), which would otherwise crash the read with no clear error.
+            if any((candidate / "tiles").glob("*.parquet")):
                 log.info("Using local embeddings for %s: %s", institution, candidate)
                 split_dir = candidate
+            elif (candidate / "tiles").is_dir():
+                print(
+                    f"Local {candidate / 'tiles'} has no parquet files - downloading from mlflow",
+                    flush=True,
+                )
 
         if split_dir is None:
             split_dir = Path(download_artifacts(source.mlflow_uris.embeddings[split]))
