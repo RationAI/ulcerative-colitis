@@ -43,9 +43,11 @@ ground-truth class of each head.
 Multiclass logits are centred across the head's classes. In-sample, like
 concept_completeness.py.
 
-The report opens with a Q1 panel (RE / FE / MCE / agreement / AUC) read from
-`<fit dir>/concept_completeness/<split>/<institutions>/manifest.json` if concept_completeness.py has
-been run on this dictionary - run it first; nothing is recomputed here.
+The report opens with a Q1 panel (RE / FE / MCE / agreement / AUC) taken from
+the matching concept_completeness.py run - found in mlflow by its logged
+`dictionary_uri`, `split` and `institutions` params (the newest finished one)
+and read from its `manifest.json` artifact. Run it first; nothing is
+recomputed here, and the panel says so if no matching run exists.
 """
 
 import base64
@@ -56,6 +58,8 @@ from pathlib import Path
 from typing import Any
 
 import hydra
+import mlflow
+import mlflow.artifacts
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -170,6 +174,34 @@ def png_bytes(tile: np.ndarray) -> bytes:
     buffer = io.BytesIO()
     Image.fromarray(tile).save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def find_completeness(
+    experiment_id: str, dictionary_uri: str, split: str, institutions: str
+) -> dict[str, Any] | None:
+    """manifest.json of the newest finished concept_completeness.py run on the same evaluation.
+
+    Matched on the params that run logs (its metadata.hyperparams), so it
+    doesn't depend on where either job writes on disk. None if there is none.
+    """
+    runs = mlflow.search_runs(
+        experiment_ids=[experiment_id],
+        filter_string=(
+            f"params.dictionary_uri = '{dictionary_uri}' AND params.split = '{split}' "
+            f"AND params.institutions = '{institutions}' AND attributes.status = 'FINISHED' "
+            "AND tags.mlflow.runName LIKE '%Concept Completeness%'"
+        ),
+        order_by=["attributes.start_time DESC"],
+        max_results=1,
+        output_format="list",
+    )
+    if not runs:
+        print("No matching concept_completeness run in mlflow - Q1 panel left empty.", flush=True)
+        return None
+    run_id = runs[0].info.run_id
+    print(f"Q1 panel from concept_completeness run {run_id}", flush=True)
+    path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="manifest.json")
+    return json.loads(Path(path).read_text())
 
 
 def cell_colour(value: float, scale: float) -> str:
@@ -456,17 +488,11 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         (output_dir / "tiles" / name).write_bytes(image)
 
     title = f"Concept gallery - {dictionary.fit_dir.name} ({config.split}, {config.institutions})"
-    # Q1 numbers come from concept_completeness.py's own run on this
-    # dictionary, if there is one - nothing is recomputed here.
-    completeness_path = (
-        dictionary.fit_dir / "concept_completeness" / config.split / config.institutions
-        / "manifest.json"
+    if logger.experiment_id is None:
+        raise ValueError("MLflow logger has no experiment - can't look up concept_completeness")
+    completeness = find_completeness(
+        logger.experiment_id, config.dictionary_uri, config.split, config.institutions
     )
-    completeness = (
-        json.loads(completeness_path.read_text()) if completeness_path.exists() else None
-    )
-    if completeness is not None and completeness["split"] != config.split:
-        print(f"WARNING: {completeness_path} is for split {completeness['split']}", flush=True)
     (output_dir / "gallery.html").write_text(
         render_html(concept_class, concept_attention, slide_additivity, attention_additivity,
                     selected, images, title, completeness)
