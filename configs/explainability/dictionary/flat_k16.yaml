@@ -2,4 +2,4 @@
 
 # Flat semi-NMF (nmf_fit.py experiment semi_nmf_k16): centred, scale_power 0.0, k=16.
 # mlflow artifact root of that run: mlflow-artifacts:/86/<run_id>/artifacts
-dictionary_uri: ???
+dictionary_uri: mlflow-artifacts:/86/a888e3344a9348278450d45613afb50c/artifacts
