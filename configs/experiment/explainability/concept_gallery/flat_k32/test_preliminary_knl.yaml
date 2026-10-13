@@ -1,0 +1,6 @@
+# @package _global_
+
+defaults:
+  - /explainability/dictionary/flat_k32@_here_
+  - /explainability/evaluation/test_preliminary_knl@_here_
+  - _self_

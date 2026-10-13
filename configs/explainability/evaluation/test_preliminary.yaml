@@ -1,0 +1,5 @@
+# @package _global_
+
+# held out, same centres - choose configurations here.
+split: test_preliminary
+institutions: ftn+ikem

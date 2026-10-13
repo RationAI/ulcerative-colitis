@@ -1,12 +1,13 @@
 from kube_jobs import storage, submit_job
 
 
-# Output dir of the nmf_fit.py / nmf_tree.py run to show - no default in
-# configs/explainability/concept_gallery.yaml, one job per fit.
-w_dir = ...
+# Experiment under configs/experiment/explainability/concept_gallery/ -
+# "<dictionary>/<evaluation>", e.g. "tree_min_gain_0.005/test_preliminary".
+# Run the matching concept_completeness experiment first (Q1 panel).
+experiment = ...
 
 submit_job(
-    job_name="ulcerative-colitis-concept-gallery-...",
+    job_name=f"uc-gallery-{experiment.replace('/', '-').replace('_', '-')}-...",
     username=...,
     public=False,
     # Streams the full embeddings corpus once, then reads a few hundred tiles
@@ -19,7 +20,8 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run --active python -m explainability.concept_gallery w_dir={w_dir}",
+        f"uv run --active python -m explainability.concept_gallery "
+        f"+experiment=explainability/concept_gallery/{experiment}",
     ],
     # DATA too: the example tiles are read from the WSIs under /mnt/data.
     storage=[storage.secure.DATA, storage.secure.PROJECTS],

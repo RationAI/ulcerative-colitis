@@ -1,0 +1,6 @@
+# @package _global_
+
+method: semi_nmf
+n_components: 24
+nmf:
+  scale_power: 0.0

@@ -1,0 +1,5 @@
+# @package _global_
+
+# in-sample - the split every dictionary was fit on.
+split: train
+institutions: ftn+ikem

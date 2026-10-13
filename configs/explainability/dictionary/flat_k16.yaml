@@ -1,0 +1,5 @@
+# @package _global_
+
+# Flat semi-NMF (nmf_fit.py experiment semi_nmf_k16): centred, scale_power 0.0, k=16.
+# mlflow artifact root of that run: mlflow-artifacts:/86/<run_id>/artifacts
+dictionary_uri: ???

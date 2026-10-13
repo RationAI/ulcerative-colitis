@@ -1,0 +1,6 @@
+# @package _global_
+
+method: semi_nmf
+scale_power: 0.0
+tree:
+  min_gain: 0.002

@@ -1,12 +1,14 @@
 from kube_jobs import storage, submit_job
 
 
-# Output dir of the nmf_fit.py / nmf_tree.py run to check - no default in
-# configs/explainability/concept_completeness.yaml, one job per fit.
-w_dir = ...
+# Experiment under configs/experiment/explainability/concept_completeness/ -
+# "<dictionary>/<evaluation>", e.g. "tree_min_gain_0.005/test_preliminary".
+# Dictionaries: configs/explainability/dictionary/ (mlflow URI); evaluations:
+# configs/explainability/evaluation/ (split + institutions). One job each.
+experiment = ...
 
 submit_job(
-    job_name="ulcerative-colitis-concept-completeness-...",
+    job_name=f"uc-completeness-{experiment.replace('/', '-').replace('_', '-')}-...",
     username=...,
     public=False,
     # Streams the full embeddings corpus once - keep cpu in sync with
@@ -18,7 +20,8 @@ submit_job(
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",
         "uv sync --frozen",
-        f"uv run --active python -m explainability.concept_completeness w_dir={w_dir}",
+        f"uv run --active python -m explainability.concept_completeness "
+        f"+experiment=explainability/concept_completeness/{experiment}",
     ],
     storage=[storage.secure.PROJECTS],
 )

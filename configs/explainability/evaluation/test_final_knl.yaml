@@ -1,0 +1,5 @@
+# @package _global_
+
+# final report only, unseen centre.
+split: test_final
+institutions: knl_patos

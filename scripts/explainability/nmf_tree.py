@@ -1,16 +1,12 @@
 from kube_jobs import storage, submit_job
 
 
-# "nmf" or "semi_nmf" - no default in configs/explainability/nmf_tree.yaml.
-method = ...
-# IQR ** scale_power - no default either.
-scale_power = ...
-# Optional overrides of configs/explainability/nmf_tree.yaml's tree block,
-# e.g. "tree.min_gain=0.01 tree.supervised=false" - empty for the defaults.
-tree_overrides = ...
+# Experiment under configs/experiment/explainability/nmf_tree/ - e.g.
+# "min_gain_0.005" or "min_gain_0.002". One job per experiment.
+experiment = ...
 
 submit_job(
-    job_name=f"ulcerative-colitis-nmf-tree-{method.replace('_', '-')}-sp{scale_power}-...",
+    job_name=f"uc-nmf-tree-{experiment.replace('/', '-').replace('_', '-')}-...",
     username=...,
     public=False,
     # Keep cpu in sync with num_cpus in explainability/nmf_tree.py's
@@ -24,8 +20,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_tree "
-        f"method={method} scale_power={scale_power} "
-        f"{tree_overrides}",
+        f"+experiment=explainability/nmf_tree/{experiment}",
     ],
     storage=[storage.secure.PROJECTS],
 )
