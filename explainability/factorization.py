@@ -108,7 +108,7 @@ def semi_nmf(
     random_state: int,
     ridge: float = 1e-6,
     tol: float | None = None,
-) -> tuple[np.ndarray, np.ndarray, int]:
+) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory semi-NMF `X ~= W H`, `W >= 0`, H signed - alternating NNLS / least squares.
 
     With `tol`, stops once an alternation changes H by less than `tol`
@@ -116,12 +116,15 @@ def semi_nmf(
     the inner NNLS solves stop early too; `n_iter` is then a maximum.
 
     Returns:
-        `(W, H, iterations)` with shapes `(n, k)` and `(k, d)`.
+        `(W, H, iterations, final_change)` - W `(n, k)`, H `(k, d)`, and the
+        relative change of H in the last alternation (what `tol` is compared
+        against), so callers can see how close unconverged fits got.
     """
     rng = np.random.default_rng(random_state)
     h = kmeans_init(x, k, random_state)
     w = nnls_batch(x, h, nnls_iter, tol=tol)
     iterations = 0
+    change = float("nan")
     for _ in range(n_iter):
         iterations += 1
         h_next = reseed_dead_components(update_h(w, x, ridge), w.sum(axis=0), x, rng)
@@ -130,7 +133,7 @@ def semi_nmf(
         h = h_next
         if tol is not None and change <= tol:
             break
-    return w, h, iterations
+    return w, h, iterations, change
 
 
 def factorize(
@@ -141,7 +144,7 @@ def factorize(
     n_iter: int,
     nnls_iter: int,
     tol: float | None = None,
-) -> tuple[np.ndarray, np.ndarray, int]:
+) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory rank-k factorization of `x` with the chosen `method`.
 
     `nmf` requires `x >= 0` (callers pass shifted/clipped embeddings).
@@ -149,7 +152,8 @@ def factorize(
     `semi_nmf`), `n_iter` is then the maximum.
 
     Returns:
-        `(W, H, iterations)` with shapes `(n, k)` and `(k, d)`.
+        `(W, H, iterations, final_change)` - see `semi_nmf`; final_change is
+        NaN for nmf (sklearn doesn't expose it).
     """
     if method == "nmf":
         model = NMF(
@@ -160,7 +164,12 @@ def factorize(
             tol=0.0 if tol is None else tol,
         )
         w = model.fit_transform(x)
-        return w.astype(x.dtype), model.components_.astype(x.dtype), int(model.n_iter_)
+        return (
+            w.astype(x.dtype),
+            model.components_.astype(x.dtype),
+            int(model.n_iter_),
+            float("nan"),
+        )
     if method == "semi_nmf":
         return semi_nmf(x, k, n_iter, nnls_iter, random_state, tol=tol)
     raise ValueError(f"Unknown method {method!r}, expected one of {METHODS}")
