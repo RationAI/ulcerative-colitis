@@ -3,6 +3,7 @@
 defaults:
   - /dataset/embeddings/ftn@sources.ftn
   - /dataset/embeddings/ikem@sources.ikem
+  - /dataset/embeddings/knl_patos@sources.knl_patos
   - /checkpoints/final/nancy_high@checkpoints.nancy_high
   - /checkpoints/final/nancy_low@checkpoints.nancy_low
   - /checkpoints/final/neutrophils@checkpoints.neutrophils
@@ -10,18 +11,28 @@ defaults:
 
 local_embeddings_dir: ${project_dir}/embeddings
 
-# Must be the split the dictionary (w_dir) was fit on - W only exists for those
-# tiles. "train" is also what slides.parquet has ground-truth nancy_index for.
+# Which tiles to evaluate - any split: every tile is encoded here with the
+# (train-fit) dictionary, so test_preliminary / test_final give held-out
+# numbers. Choose configurations on test_preliminary; test_final only reports.
 split: train
+# `+`-joined keys of `sources` to evaluate - e.g. ftn+ikem, or knl_patos for
+# cross-centre transfer (KNL has no train split).
+institutions: ftn+ikem
+
+# Where the best linear head eta (the MCE estimate) is fit before being applied
+# to the evaluated tiles - equal to split/institutions means in-sample.
+eta_fit_split: train
+eta_fit_institutions: ftn+ikem
 
 # Half the classifier's input width - load_full_model checks
 # classifier.weight against 2*embed_dim.
 embed_dim: 1280
 
-# Output dir of the nmf_fit.py or nmf_tree.py run to check (holds w.f32.npy,
-# w_metadata.parquet, h.parquet, shift.npy) - no default, one job per fit.
-# Must have been fit on `split` above.
-w_dir: ???
+# mlflow artifact root of the nmf_fit.py or nmf_tree.py run to check, e.g.
+# "mlflow-artifacts:/86/<run_id>/artifacts" - set via
+# configs/explainability/dictionary/<name>.yaml. Only small artifacts are read
+# (h.parquet, manifest.json, shift.npy, tree.parquet).
+dictionary_uri: ???
 
 # Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
@@ -30,16 +41,21 @@ batch_size: 32768
 nnls_iter: 200
 
 # Next to the checked dictionary, so each result sits with the fit it scores.
-output_dir: ${w_dir}/concept_completeness
+# null: next to the fit itself on the project mount -
+# <fit dir>/concept_completeness/<split>/<institutions> (the fit dir comes from its manifest).
+output_dir: null
 
 metadata:
-  run_name: "🎯 Concept Completeness (${split})"
+  run_name: "🎯 Concept Completeness (${split}, ${institutions})"
   description: >-
     Q1 - quality of the concept encoder and decoder (arXiv:2609.34750
     metrics): RE in embedding space, FE of the tile-logit and attention heads
     and of slide logits, the best-linear-head (OLS) estimate of MCE, plus
     slide-level agreement with the model's prediction and AUC against ground
-    truth. Dictionary: ${w_dir}.
+    truth. Dictionary: ${dictionary_uri}.
   hyperparams:
     split: ${split}
-    w_dir: ${w_dir}
+    institutions: ${institutions}
+    eta_fit_split: ${eta_fit_split}
+    eta_fit_institutions: ${eta_fit_institutions}
+    dictionary_uri: ${dictionary_uri}

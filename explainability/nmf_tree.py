@@ -493,6 +493,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
     logger.log_artifact(str(output_dir / "h.parquet"))
+    # Small (one value per dimension) - logged so the dictionary is complete in
+    # mlflow: concept_completeness.py / concept_gallery.py read only from there.
+    logger.log_artifact(str(output_dir / "shift.npy"))
     logger.log_artifact(str(tree_path))
     logger.log_artifact(str(output_dir / "node_atoms.parquet"))
     logger.log_artifact(str(manifest_path))

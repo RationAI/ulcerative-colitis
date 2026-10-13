@@ -53,6 +53,15 @@ def resolve_embedding_split_dirs(
     return split_dirs
 
 
+def select_sources(sources: DictConfig, institutions: str) -> DictConfig:
+    """The `+`-joined subset of `sources` to use, e.g. "ftn+ikem" or "knl_patos"."""
+    names = institutions.split("+")
+    missing = [name for name in names if name not in sources]
+    if missing:
+        raise ValueError(f"Unknown institutions {missing}; configured sources: {list(sources)}")
+    return DictConfig({name: sources[name] for name in names})
+
+
 def load_embeddings_dataset(split_dirs: list[Path]) -> ray.data.Dataset:
     """Lazily pool every institution's per-tile embeddings into one `ray.data.Dataset`."""
     return ray.data.read_parquet([str(split_dir / "tiles") for split_dir in split_dirs])

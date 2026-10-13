@@ -29,8 +29,13 @@ probability correlation) and with ground truth (AUC of f, f_A and eta).
 Multiclass logits are centred across the head's classes throughout (softmax
 ignores a shared offset).
 
-In-sample: the dictionary and the OLS heads are fit on the same split they
-are evaluated on - upper bounds until this is run on a held-out split.
+**Held-out evaluation.** `split` / `institutions` choose the evaluated tiles
+- any split, since every tile is encoded here with the (train-fit)
+dictionary. The OLS head eta is fit on `eta_fit_split` / `eta_fit_institutions`
+(default train, ftn+ikem) and applied to the evaluated tiles; when those
+coincide it is fit in-sample. The manifest records both, plus the split the
+dictionary itself was fit on, so in-sample numbers can't pass for held-out
+ones. Choose configurations on test_preliminary; test_final only reports.
 """
 
 import json
@@ -49,10 +54,12 @@ from scipy.stats import pearsonr
 from sklearn.metrics import roc_auc_score
 
 from explainability.concepts import (
+    ConceptAutoencoder,
     SlideIndex,
     iter_tiles,
-    load_autoencoder,
-    ols_predict,
+    load_dictionary,
+    ols_apply,
+    ols_fit,
     r2_score,
     rmse,
 )
@@ -71,6 +78,7 @@ from explainability.tiles import (
     load_embedding_slides,
     load_embeddings_dataset,
     resolve_embedding_split_dirs,
+    select_sources,
 )
 
 
@@ -100,52 +108,107 @@ def error_row(true: np.ndarray, approx: np.ndarray, eta: np.ndarray) -> dict[str
     }
 
 
-@with_cli_args(["+explainability=concept_completeness"])
-@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
-@autolog
-def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    output_dir = Path(config.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+def stream_readouts(
+    split_dirs: list[Path],
+    autoencoder: ConceptAutoencoder,
+    models: dict[str, ModelWeights],
+    batch_size: int,
+) -> tuple[pd.DataFrame, np.ndarray, dict[str, dict[str, np.ndarray]], dict[str, float]]:
+    """One pass: encode/decode every tile, keeping only small per-tile readouts.
 
-    models: dict[str, ModelWeights] = {
-        head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
-        for head in HEADS
-    }
-    autoencoder = load_autoencoder(Path(config.w_dir), config.nnls_iter)
-    split_dirs = resolve_embedding_split_dirs(
-        config.sources, config.get("local_embeddings_dir"), split=config.split
-    )
-
-    # One pass: encode/decode every tile, keep only small per-tile readouts.
+    Returns:
+        `(keys, v, readouts, re_stats)` - readouts[head] holds `s`, `s_A`,
+        `u`, `u_A`; re_stats holds RE, relative RE and the tile count.
+    """
     key_chunks, v_chunks = [], []
-    readouts: dict[str, dict[str, list[np.ndarray]]] = {
-        head: {"s": [], "s_A": [], "u": [], "u_A": []} for head in HEADS
+    chunks: dict[str, dict[str, list[np.ndarray]]] = {
+        head: {"s": [], "s_A": [], "u": [], "u_A": []} for head in models
     }
-    sq_err = sum_z = sum_sq = 0.0
+    sq_err = sum_sq = 0.0
+    n_tiles = 0
     sum_z_vec: np.ndarray | None = None
-    for keys, z in iter_tiles(load_embeddings_dataset(split_dirs), config.batch_size):
+    for keys, z in iter_tiles(load_embeddings_dataset(split_dirs), batch_size):
         v = autoencoder.encode(z)
         z_hat = autoencoder.decode(v)
         sq_err += float(np.sum((z - z_hat) ** 2))
         sum_sq += float(np.sum(z.astype(np.float64) ** 2))
         batch_sum = z.astype(np.float64).sum(axis=0)
         sum_z_vec = batch_sum if sum_z_vec is None else sum_z_vec + batch_sum
-        sum_z += len(z)
+        n_tiles += len(z)
         for head, model in models.items():
-            readouts[head]["s"].append(tile_logits(z, model).astype(np.float32))
-            readouts[head]["s_A"].append(tile_logits(z_hat, model).astype(np.float32))
-            readouts[head]["u"].append(attention_scores(z, model).astype(np.float32))
-            readouts[head]["u_A"].append(attention_scores(z_hat, model).astype(np.float32))
+            chunks[head]["s"].append(tile_logits(z, model).astype(np.float32))
+            chunks[head]["s_A"].append(tile_logits(z_hat, model).astype(np.float32))
+            chunks[head]["u"].append(attention_scores(z, model).astype(np.float32))
+            chunks[head]["u_A"].append(attention_scores(z_hat, model).astype(np.float32))
         key_chunks.append(keys)
         v_chunks.append(v)
     assert sum_z_vec is not None
-    n_tiles = int(sum_z)
-    keys = pd.concat(key_chunks, ignore_index=True)
-    v = np.concatenate(v_chunks)
     re = float(np.sqrt(sq_err / n_tiles))
     total_var = sum_sq / n_tiles - float(np.sum((sum_z_vec / n_tiles) ** 2))
-    re_rel = re / float(np.sqrt(total_var))
+    readouts = {
+        head: {name: np.concatenate(parts) for name, parts in head_chunks.items()}
+        for head, head_chunks in chunks.items()
+    }
+    re_stats = {"re": re, "re_relative": re / float(np.sqrt(total_var)), "n_tiles": n_tiles}
+    return pd.concat(key_chunks, ignore_index=True), np.concatenate(v_chunks), readouts, re_stats
+
+
+@with_cli_args(["+explainability=concept_completeness"])
+@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
+@autolog
+def main(config: DictConfig, logger: MLFlowLogger) -> None:
+    dictionary = load_dictionary(config.dictionary_uri, config.nnls_iter)
+    autoencoder = dictionary.autoencoder
+    # Results go next to the fit itself on the project mount, unless overridden.
+    output_dir = (
+        Path(config.output_dir)
+        if config.get("output_dir")
+        else dictionary.fit_dir / "concept_completeness" / config.split / config.institutions
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    models: dict[str, ModelWeights] = {
+        head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
+        for head in HEADS
+    }
+    local_dir = config.get("local_embeddings_dir")
+    split_dirs = resolve_embedding_split_dirs(
+        select_sources(config.sources, config.institutions), local_dir, split=config.split
+    )
+
+    keys, v, readouts, re_stats = stream_readouts(
+        split_dirs, autoencoder, models, config.batch_size
+    )
+    n_tiles, re, re_rel = re_stats["n_tiles"], re_stats["re"], re_stats["re_relative"]
     print(f"RE = {re:.4f} (relative {re_rel:.4f}) over {n_tiles} tiles, K={v.shape[1]}", flush=True)
+
+    # The best linear head eta: fit where configured, applied to the evaluated tiles.
+    eta_in_sample = (config.eta_fit_split, config.eta_fit_institutions) == (
+        config.split,
+        config.institutions,
+    )
+    if eta_in_sample:
+        fit_v, fit_readouts = v, readouts
+    else:
+        print(
+            f"Fitting eta on {config.eta_fit_split} / {config.eta_fit_institutions}...", flush=True
+        )
+        fit_dirs = resolve_embedding_split_dirs(
+            select_sources(config.sources, config.eta_fit_institutions),
+            local_dir,
+            split=config.eta_fit_split,
+        )
+        _, fit_v, fit_readouts, _ = stream_readouts(
+            fit_dirs, autoencoder, models, config.batch_size
+        )
+    eta = {
+        head: {
+            "s": ols_apply(v, ols_fit(fit_v, fit_readouts[head]["s"])),
+            "u": ols_apply(v, ols_fit(fit_v, fit_readouts[head]["u"])),
+        }
+        for head in models
+    }
+    del fit_v, fit_readouts
 
     slides = SlideIndex(keys["slide_id"])
     nancy_index = (
@@ -158,8 +221,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     slide_rows: list[dict[str, Any]] = []
     agreement_rows: list[dict[str, Any]] = []
     for head, model in models.items():
-        r = {name: np.concatenate(chunks) for name, chunks in readouts[head].items()}
-        s_eta, u_eta = ols_predict(v, r["s"]), ols_predict(v, r["u"])
+        r = readouts[head]
+        s_eta, u_eta = eta[head]["s"], eta[head]["u"]
         theta, _ = centred_classifier(model)
         num_classes = theta.shape[0]
 
@@ -214,8 +277,14 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     slide_df.to_parquet(output_dir / "slide_fidelity.parquet", index=False)
     agreement_df.to_parquet(output_dir / "slide_agreement.parquet", index=False)
     manifest = {
-        "w_dir": config.w_dir,
+        "dictionary_uri": config.dictionary_uri,
+        "fit_dir": str(dictionary.fit_dir),
         "split": config.split,
+        "institutions": config.institutions,
+        "dictionary_fit_split": dictionary.manifest.get("split"),
+        "eta_fit_split": config.eta_fit_split,
+        "eta_fit_institutions": config.eta_fit_institutions,
+        "eta_in_sample": eta_in_sample,
         "n_components": int(v.shape[1]),
         "n_tiles": n_tiles,
         "n_slides": len(slides),

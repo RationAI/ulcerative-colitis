@@ -368,6 +368,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # W and its per-tile metadata stay on the project mount (too large for
     # mlflow); only H and the manifest are small enough to log directly.
     logger.log_artifact(str(output_dir / "h.parquet"))
+    # Small (one value per dimension) - logged so the dictionary is complete in
+    # mlflow: concept_completeness.py / concept_gallery.py read only from there.
+    logger.log_artifact(str(output_dir / "shift.npy"))
     logger.log_artifact(str(manifest_path))
 
 

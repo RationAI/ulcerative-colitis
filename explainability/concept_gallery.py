@@ -44,7 +44,7 @@ Multiclass logits are centred across the head's classes. In-sample, like
 concept_completeness.py.
 
 The report opens with a Q1 panel (RE / FE / MCE / agreement / AUC) read from
-`<w_dir>/concept_completeness/manifest.json` if concept_completeness.py has
+`<fit dir>/concept_completeness/<split>/<institutions>/manifest.json` if concept_completeness.py has
 been run on this dictionary - run it first; nothing is recomputed here.
 """
 
@@ -71,7 +71,7 @@ from ray.data.expressions import col
 from explainability.concepts import (
     SlideIndex,
     iter_tiles,
-    load_autoencoder,
+    load_dictionary,
     r2_score,
     rmse,
 )
@@ -92,6 +92,7 @@ from explainability.tiles import (
     load_embedding_slides,
     load_embeddings_dataset,
     resolve_embedding_split_dirs,
+    select_sources,
 )
 from explainability.tree_view import jpeg_base64, render_tree_html, select_node_tiles
 
@@ -339,16 +340,24 @@ attribution to the attention score. Header: additivity error of the occlusion at
 @hydra.main(config_path="../configs", config_name="explainability", version_base=None)
 @autolog
 def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    output_dir = Path(config.output_dir)
+    dictionary = load_dictionary(config.dictionary_uri, config.nnls_iter)
+    autoencoder = dictionary.autoencoder
+    # Results go next to the fit itself on the project mount, unless overridden.
+    output_dir = (
+        Path(config.output_dir)
+        if config.get("output_dir")
+        else dictionary.fit_dir / "concept_gallery" / config.split / config.institutions
+    )
     (output_dir / "tiles").mkdir(parents=True, exist_ok=True)
 
     models: dict[str, ModelWeights] = {
         head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
         for head in HEADS
     }
-    autoencoder = load_autoencoder(Path(config.w_dir), config.nnls_iter)
     split_dirs = resolve_embedding_split_dirs(
-        config.sources, config.get("local_embeddings_dir"), split=config.split
+        select_sources(config.sources, config.institutions),
+        config.get("local_embeddings_dir"),
+        split=config.split,
     )
 
     key_chunks, v_chunks = [], []
@@ -446,10 +455,13 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         name = f"concept{selected.at[i, 'concept']}_rank{selected.at[i, 'rank']}.png"
         (output_dir / "tiles" / name).write_bytes(image)
 
-    title = f"Concept gallery - {Path(config.w_dir).name} ({config.split})"
+    title = f"Concept gallery - {dictionary.fit_dir.name} ({config.split}, {config.institutions})"
     # Q1 numbers come from concept_completeness.py's own run on this
     # dictionary, if there is one - nothing is recomputed here.
-    completeness_path = Path(config.w_dir) / "concept_completeness" / "manifest.json"
+    completeness_path = (
+        dictionary.fit_dir / "concept_completeness" / config.split / config.institutions
+        / "manifest.json"
+    )
     completeness = (
         json.loads(completeness_path.read_text()) if completeness_path.exists() else None
     )
@@ -465,8 +477,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     attention_additivity.to_parquet(output_dir / "attention_additivity.parquet", index=False)
     selected.to_parquet(output_dir / "tiles.parquet", index=False)
     manifest = {
-        "w_dir": config.w_dir,
+        "dictionary_uri": config.dictionary_uri,
+        "fit_dir": str(dictionary.fit_dir),
         "split": config.split,
+        "institutions": config.institutions,
         "n_components": n_components,
         "n_tiles_per_concept": config.n_tiles,
         "n_slides": len(slides),
@@ -480,15 +494,14 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         logger.log_artifact(str(output_dir / name))
 
     # Whole-tree view for the pathologist when the dictionary is an nmf_tree.py fit.
-    tree_path = Path(config.w_dir) / "tree.parquet"
-    if tree_path.exists():
-        tree = pd.read_parquet(tree_path)
+    tree = dictionary.tree
+    if tree is not None:
         node_tiles = select_node_tiles(v, keys, tree, config.n_tiles)
         node_images = [
             jpeg_base64(tile) for tile in read_tiles(node_tiles, load_embedding_slides(split_dirs))
         ]
         (output_dir / "tree.html").write_text(
-            render_tree_html(tree, node_tiles, node_images, f"Concept tree - {Path(config.w_dir).name}")
+            render_tree_html(tree, node_tiles, node_images, f"Concept tree - {dictionary.fit_dir.name}")
         )
         node_tiles.to_parquet(output_dir / "tree_tiles.parquet", index=False)
         logger.log_artifact(str(output_dir / "tree.html"))
