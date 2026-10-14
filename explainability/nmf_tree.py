@@ -227,24 +227,38 @@ def load_sample(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Read every tile of the sampled slides into memory, in the fit space.
 
+    Rows are sorted by (slide_id, x, y), so the tree never depends on the order
+    Ray happened to read the files in - k-means initialisation subsamples rows,
+    and a different row order gave a different tree for an identical config
+    (17 vs 13 leaves for min_gain 0.005).
+
     Returns:
         `(x, slide_ids)` - `x` float32 `(n, d)`, `slide_ids` one per row.
     """
-    chunks, slide_chunks = [], []
+    chunks, meta_chunks = [], []
     for rows, metadata in iter_embedding_batches(
         dataset,
         config.batch_size,
         shift,
         scale,
-        metadata_columns=("slide_id",),
+        metadata_columns=("slide_id", "x", "y"),
         clip=config.method == "nmf",
     ):
         assert metadata is not None
         keep = metadata["slide_id"].isin(sampled_slides).to_numpy()
         if keep.any():
             chunks.append(rows[keep])
-            slide_chunks.append(metadata["slide_id"].to_numpy()[keep])
-    return np.concatenate(chunks), np.concatenate(slide_chunks)
+            meta_chunks.append(metadata[keep])
+    metadata = pd.concat(meta_chunks, ignore_index=True)
+    order = sample_order(metadata)
+    return np.concatenate(chunks)[order], metadata["slide_id"].to_numpy()[order]
+
+
+def sample_order(metadata: pd.DataFrame) -> np.ndarray:
+    """Row order sorting tiles by (slide_id, x, y) - a canonical order independent of reading."""
+    return np.lexsort(
+        (metadata["y"].to_numpy(), metadata["x"].to_numpy(), metadata["slide_id"].to_numpy())
+    )
 
 
 def build_tree(
@@ -506,6 +520,10 @@ if __name__ == "__main__":
     ctx = ray.data.DataContext.get_current()
     ctx.enable_rich_progress_bars = True
     ctx.use_ray_tqdm = False
+    # Deterministic read order: by default Ray Data yields blocks in whatever
+    # order its parallel read tasks finish, which makes fits (and the order of
+    # the saved W) differ run to run for an identical config.
+    ctx.execution_options.preserve_order = True
 
     # num_cpus=8: same conservative cap as nmf_fit.py (full embeddings corpus
     # read, twice). Keep in sync with cpu= in scripts/explainability/nmf_tree.py.

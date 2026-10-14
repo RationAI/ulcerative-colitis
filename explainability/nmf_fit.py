@@ -378,6 +378,10 @@ if __name__ == "__main__":
     ctx = ray.data.DataContext.get_current()
     ctx.enable_rich_progress_bars = True
     ctx.use_ray_tqdm = False
+    # Deterministic read order: by default Ray Data yields blocks in whatever
+    # order its parallel read tasks finish, which makes fits (and the order of
+    # the saved W) differ run to run for an identical config.
+    ctx.execution_options.preserve_order = True
 
     # num_cpus set deliberately *low* - same root cause as
     # explainability/token_statistics.py (see that file's comment): confirmed

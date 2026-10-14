@@ -15,6 +15,7 @@ across rows.
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.decomposition import NMF
+from threadpoolctl import threadpool_limits
 
 
 METHODS = ("nmf", "semi_nmf")
@@ -80,7 +81,11 @@ def kmeans_init(x: np.ndarray, k: int, random_state: int, max_rows: int = 20_000
     rng = np.random.default_rng(random_state)
     sample = x if len(x) <= max_rows else x[rng.choice(len(x), max_rows, replace=False)]
     kmeans = KMeans(n_clusters=k, n_init=1, max_iter=100, random_state=random_state)
-    return kmeans.fit(sample).cluster_centers_.astype(x.dtype)
+    # Single-threaded on purpose: multithreaded KMeans sums partial results in
+    # varying order, so identical data gave slightly different centroids - and
+    # every tree split downstream drifted apart. At <= max_rows rows this is cheap.
+    with threadpool_limits(limits=1):
+        return kmeans.fit(sample).cluster_centers_.astype(x.dtype)
 
 
 def update_h(w: np.ndarray, x: np.ndarray, ridge: float) -> np.ndarray:
