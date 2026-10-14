@@ -1,0 +1,8 @@
+defaults:
+  - /dataset/tiled/knl_patos@_here_
+  - _self_
+
+mlflow_uris:
+  embeddings:
+    test_preliminary: mlflow-artifacts:/86/6258c7f5ccc745b486d027e46917cd8d/artifacts/test_preliminary - knl_patos
+    test_final: mlflow-artifacts:/86/6258c7f5ccc745b486d027e46917cd8d/artifacts/test_final - knl_patos

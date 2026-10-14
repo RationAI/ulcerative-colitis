@@ -1,0 +1,20 @@
+# @package _global_
+
+defaults:
+  - /experiment/ml/predict/mil_bags
+  - /checkpoints/final/neutrophils
+  - /dataset/embeddings/ikem_validation@ikem_validation
+  - _self_
+
+data:
+  batch_size: 8
+  predict:
+    uris:
+      - ${ikem_validation.mlflow_uris.embeddings.predict}
+
+model:
+  num_classes: 1
+
+metadata:
+  run_name: '🎯 Predicting: MIL Bags - neutrophils - ikem validation'
+  description: Predict neutrophil MIL bag scores on the IKEM validation cohort

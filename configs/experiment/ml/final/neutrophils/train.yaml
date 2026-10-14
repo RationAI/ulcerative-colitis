@@ -1,0 +1,27 @@
+# @package _global_
+
+defaults:
+  - /experiment/ml/train/mil_bags
+  - /dataset/embeddings/ikem@ikem
+  - /dataset/embeddings/ftn@ftn
+  - /dataset/embeddings/knl_patos@knl_patos
+  - _self_
+
+data:
+  train:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.train}
+      - ${ftn.mlflow_uris.embeddings.train}
+    mode: neutrophils
+  val:
+    uris:
+      - ${ikem.mlflow_uris.embeddings.test_preliminary}
+      - ${ftn.mlflow_uris.embeddings.test_preliminary}
+      - ${knl_patos.mlflow_uris.embeddings.test_preliminary}
+    mode: neutrophils
+model:
+  num_classes: 1
+
+metadata:
+  run_name: '🏋️‍♂️ Training: MIL Bags - neutrophils - final'
+  description: Attention MIL over virchow2 tile embeddings, neutrophils, all institutions

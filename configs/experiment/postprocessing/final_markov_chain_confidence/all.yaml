@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - /dataset/processed/ikem@datasets.ikem
+  - /dataset/processed/ftn@datasets.ftn
+  - /dataset/processed/knl_patos@datasets.knl_patos
+  - /predictions/final@predictions
+  - _self_
+
+dataset: null
+confidence: std
+
+metadata:
+  run_name: "🔗 Markov Chain Confidence (${confidence}): all"
+  description: Markov chain absorption confidence scores for the whole final test set (IKEM, FTN, KNL PATOS)
