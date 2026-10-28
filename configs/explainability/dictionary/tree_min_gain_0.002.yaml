@@ -2,4 +2,4 @@
 
 # Tree (nmf_tree.py experiment min_gain_0.002): variance priority, held-out min_gain 0.2%.
 # mlflow artifact root of that run: mlflow-artifacts:/86/<run_id>/artifacts
-dictionary_uri: mlflow-artifacts:/86/7595f1fd01e04a078316b9d300e40922/artifacts
+dictionary_uri: ???
