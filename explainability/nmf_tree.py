@@ -181,7 +181,7 @@ def between_ss(values: np.ndarray, labels: np.ndarray) -> float:
 def assign_rows(x: np.ndarray, atoms_fit: np.ndarray, config: DictConfig) -> np.ndarray:
     """Child labels for rows a split wasn't fit on: NNLS against its two atoms, then argmax."""
     w = nnls_batch(
-        x, atoms_fit, config.factorization.nnls_iter, tol=config.factorization.get("tol")
+        x, atoms_fit, config.factorization.nnls_iter, tol=config.factorization.get("nnls_tol")
     )
     return np.argmax(w, axis=1)
 
@@ -203,6 +203,7 @@ def split_rows(x: np.ndarray, config: DictConfig) -> tuple[np.ndarray, np.ndarra
         config.factorization.n_iter,
         config.factorization.nnls_iter,
         tol=config.factorization.get("tol"),
+        nnls_tol=config.factorization.get("nnls_tol"),
     )
     print(
         f"  rank-2 fit on {len(x)} rows: {iterations} iterations, "

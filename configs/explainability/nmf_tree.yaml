@@ -79,10 +79,16 @@ factorization:
   # final transform so W stays reproducible).
   nnls_iter: 200
   # Early-stopping tolerance of the split fits: relative change of H between
-  # semi-NMF alternations (and of W inside its NNLS steps); sklearn's own tol
-  # for nmf. null = always run n_iter / nnls_iter in full (the original
-  # behaviour). The fit logs its iteration count per split.
-  tol: 1.0e-4
+  # semi-NMF alternations (sklearn's own tol for nmf); null = always run
+  # n_iter. Set from the logged final changes of the 2026-10-14 trees: at
+  # 1e-4 199 of 199 fits ran to n_iter=100 still moving (median final change
+  # 1.2e-3); 3e-3 is reached by 96-98% of fits, and moves an atom's
+  # direction by cos ~ 1 - 5e-6. Each fit logs its iterations and final change.
+  tol: 3.0e-3
+  # Early-stopping tolerance of the inner NNLS solves (semi-NMF W-steps and
+  # the held-out child assignment): relative change of W. Kept strict - child
+  # assignment is an argmax of W. null = always run nnls_iter.
+  nnls_tol: 1.0e-4
 
 # Tiles read per streaming batch.
 batch_size: 25600

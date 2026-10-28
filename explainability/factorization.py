@@ -113,12 +113,14 @@ def semi_nmf(
     random_state: int,
     ridge: float = 1e-6,
     tol: float | None = None,
+    nnls_tol: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory semi-NMF `X ~= W H`, `W >= 0`, H signed - alternating NNLS / least squares.
 
     With `tol`, stops once an alternation changes H by less than `tol`
-    relative to its norm (H is only `(k, d)`, so the check is cheap), and
-    the inner NNLS solves stop early too; `n_iter` is then a maximum.
+    relative to its norm (H is only `(k, d)`, so the check is cheap);
+    `n_iter` is then a maximum. `nnls_tol` separately stops the inner NNLS
+    W-steps - kept stricter, since the hard child assignment is an argmax of W.
 
     Returns:
         `(W, H, iterations, final_change)` - W `(n, k)`, H `(k, d)`, and the
@@ -127,13 +129,13 @@ def semi_nmf(
     """
     rng = np.random.default_rng(random_state)
     h = kmeans_init(x, k, random_state)
-    w = nnls_batch(x, h, nnls_iter, tol=tol)
+    w = nnls_batch(x, h, nnls_iter, tol=nnls_tol)
     iterations = 0
     change = float("nan")
     for _ in range(n_iter):
         iterations += 1
         h_next = reseed_dead_components(update_h(w, x, ridge), w.sum(axis=0), x, rng)
-        w = nnls_batch(x, h_next, nnls_iter, w0=w, tol=tol)
+        w = nnls_batch(x, h_next, nnls_iter, w0=w, tol=nnls_tol)
         change = float(np.linalg.norm(h_next - h)) / max(float(np.linalg.norm(h)), 1e-12)
         h = h_next
         if tol is not None and change <= tol:
@@ -149,6 +151,7 @@ def factorize(
     n_iter: int,
     nnls_iter: int,
     tol: float | None = None,
+    nnls_tol: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory rank-k factorization of `x` with the chosen `method`.
 
@@ -176,5 +179,5 @@ def factorize(
             float("nan"),
         )
     if method == "semi_nmf":
-        return semi_nmf(x, k, n_iter, nnls_iter, random_state, tol=tol)
+        return semi_nmf(x, k, n_iter, nnls_iter, random_state, tol=tol, nnls_tol=nnls_tol)
     raise ValueError(f"Unknown method {method!r}, expected one of {METHODS}")
