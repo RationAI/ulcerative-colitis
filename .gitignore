@@ -181,3 +181,6 @@ lightning_logs/
 # Project
 /data
 playground.ipynb
+
+# Per-job launchers (local, one file per submitted job)
+/jobs/

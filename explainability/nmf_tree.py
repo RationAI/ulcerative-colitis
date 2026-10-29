@@ -7,8 +7,13 @@ binary tree fixes this: once a split isolates, say, inflamed mucosa, the rare
 pattern is a large fraction *within that node*, and the next split can
 resolve it.
 
-**Construction** (on an in-memory sample of whole slides, in the fit space -
-scaled, and for `nmf` also shifted/clipped - same transform as nmf_fit.py):
+**Construction** (on an in-memory sample - a fraction of the slides, and of
+each slide's tiles - in the fit space: scaled, and for `nmf` also
+shifted/clipped - same transform as nmf_fit.py). Sampling every slide at a
+fraction of its tiles makes the tree depend far less on the seed than a
+fraction of whole slides (8 / 15 / 28 leaves for seeds 1 / 42 / 0 on
+2026-10-29 - each seed saw a different 30% of the slides and a different root
+split):
 
 - Each split is a rank-2 factorization with the chosen `method` (`nmf` or
   `semi_nmf`, explainability.factorization.factorize); rows go hard to the
@@ -44,6 +49,11 @@ scaled, and for `nmf` also shifted/clipped - same transform as nmf_fit.py):
                (a slowly converging half otherwise rejected the whole root -
                every seed-1 tree of 2026-10-29). The held-out gain then
                starts from a split that also saw the evaluated half.
+               With `stability_repeats` > 1 this is done for that many
+               random halvings: stability is the median cosine, gain (below)
+               the mean - a single halving put the same ~97k-tile node at
+               0.72, 0.88 and > 0.9 across seeds, and a rejection removes
+               the whole branch.
     min_gain   the split must explain at least `min_gain` of the
                model-relevant variation, measured *held out*: the split fit
                on one half assigns the other half's tiles to children (NNLS,
@@ -114,6 +124,7 @@ class Node:
     status: str = "leaf"  # leaf (unexpanded) | split | final (split rejected)
     reason: str = ""
     stability: float = float("nan")
+    stabilities: list[float] | None = None  # one per halving; stability is their median
     gain: float = float("nan")
     varsigma_diff: float = float("nan")
 
@@ -239,7 +250,11 @@ def load_sample(
     scale: np.ndarray,
     config: DictConfig,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Read every tile of the sampled slides into memory, in the fit space.
+    """Read the sampled slides' tiles into memory, in the fit space.
+
+    With `tree.sample_tile_fraction` < 1 only that fraction of each slide's
+    tiles is kept, picked by a seeded hash of (slide_id, x, y) - the same
+    tiles whatever order Ray reads them in.
 
     Rows are sorted by (slide_id, x, y), so the tree never depends on the order
     Ray happened to read the files in - k-means initialisation subsamples rows,
@@ -260,12 +275,24 @@ def load_sample(
     ):
         assert metadata is not None
         keep = metadata["slide_id"].isin(sampled_slides).to_numpy()
+        if config.tree.sample_tile_fraction < 1:
+            keep &= tile_uniform(metadata, config.tree.random_state) < (
+                config.tree.sample_tile_fraction
+            )
         if keep.any():
             chunks.append(rows[keep])
             meta_chunks.append(metadata[keep])
     metadata = pd.concat(meta_chunks, ignore_index=True)
     order = sample_order(metadata)
     return np.concatenate(chunks)[order], metadata["slide_id"].to_numpy()[order]
+
+
+def tile_uniform(metadata: pd.DataFrame, random_state: int) -> np.ndarray:
+    """A seeded pseudo-uniform [0, 1) value per tile from its (slide_id, x, y)."""
+    hashes = pd.util.hash_pandas_object(
+        metadata[["slide_id", "x", "y"]], index=False, hash_key=f"{random_state:016d}"[-16:]
+    )
+    return hashes.to_numpy() / 2.0**64
 
 
 def sample_order(metadata: pd.DataFrame) -> np.ndarray:
@@ -277,12 +304,16 @@ def sample_order(metadata: pd.DataFrame) -> np.ndarray:
 
 def build_tree(
     x: np.ndarray,
-    half: np.ndarray,
+    halves: np.ndarray,
     scale: np.ndarray,
     models: dict[str, ModelWeights],
     config: DictConfig,
 ) -> list[Node]:
-    """Grow the tree best-first (see module docstring). Returns every node, root first."""
+    """Grow the tree best-first (see module docstring). Returns every node, root first.
+
+    `halves` is `(stability_repeats, n)`: each row one slide-disjoint halving
+    of the sample (0/1 per row).
+    """
     tree = config.tree
     if tree.priority not in ("variance", "atom"):
         raise ValueError(f"tree.priority must be 'variance' or 'atom', got {tree.priority!r}")
@@ -291,12 +322,15 @@ def build_tree(
     # (supervised); the unsupervised tree uses the fit-space rows themselves.
     responses = tile_responses(x, scale, models) if tree.supervised else None
     half_total = [
-        (
-            node_spread(responses[half == side], 1)
-            if responses is not None
-            else embedding_spread(x, np.flatnonzero(half == side), sq_norms, 1)
-        )
-        for side in range(2)
+        [
+            (
+                node_spread(responses[half == side], 1)
+                if responses is not None
+                else embedding_spread(x, np.flatnonzero(half == side), sq_norms, 1)
+            )
+            for side in range(2)
+        ]
+        for half in halves
     ]
     nodes = [Node(node_id=0, parent=None, depth=0, rows=np.arange(len(x)))]
     heap: list[tuple[float, int]] = [(-float("inf"), 0)]
@@ -325,28 +359,38 @@ def build_tree(
             node.status, node.reason = "final", "small_child"
             continue
 
-        half_atoms = []
-        half_masks = [half[node.rows] == side for side in range(2)]
-        for side_rows in half_masks:
-            if side_rows.sum() < 2 * tree.min_node_rows:
+        # Every halving re-fits the split on both halves; stability is the
+        # median over halvings and gain the mean, so one unlucky halving
+        # can't decide a whole branch.
+        h0 = h_node if tree.stability_warm_start else None
+        stabilities, gains = [], []
+        for half, totals in zip(halves, half_total, strict=True):
+            half_masks = [half[node.rows] == side for side in range(2)]
+            if min(int(mask.sum()) for mask in half_masks) < 2 * tree.min_node_rows:
                 break
-            h0 = h_node if tree.stability_warm_start else None
-            half_atoms.append(unit_rows(split_rows(x_node[side_rows], config, h0)[1]))
-        if len(half_atoms) < 2:
+            half_atoms = [
+                unit_rows(split_rows(x_node[mask], config, h0)[1]) for mask in half_masks
+            ]
+            stabilities.append(matched_cosine(half_atoms[0], half_atoms[1]))
+
+            # Held-out gain: the split fit on one half, scored on the other.
+            for fit_side, eval_side in ((0, 1), (1, 0)):
+                eval_x = x_node[half_masks[eval_side]]
+                held_out = assign_rows(eval_x, half_atoms[fit_side], config)
+                values = (
+                    responses[node.rows[half_masks[eval_side]]]
+                    if responses is not None
+                    else eval_x
+                )
+                gains.append(between_ss(values, held_out) / totals[eval_side])
+        if len(stabilities) < len(halves):
             node.status, node.reason = "final", "half_too_small"
             continue
-        node.stability = matched_cosine(half_atoms[0], half_atoms[1])
-
-        # Held-out gain: the split fit on one half, scored on the other.
-        gains = []
-        for fit_side, eval_side in ((0, 1), (1, 0)):
-            eval_x = x_node[half_masks[eval_side]]
-            held_out = assign_rows(eval_x, half_atoms[fit_side], config)
-            values = (
-                responses[node.rows[half_masks[eval_side]]] if responses is not None else eval_x
-            )
-            gains.append(between_ss(values, held_out) / half_total[eval_side])
+        node.stabilities = stabilities
+        node.stability = float(np.median(stabilities))
         node.gain = float(np.mean(gains))
+        if len(stabilities) > 1:
+            print(f"  stability per halving: {np.round(stabilities, 3).tolist()}", flush=True)
         del x_node
 
         atoms = unit_rows(atoms_fit * scale[None, :])
@@ -415,6 +459,7 @@ def nodes_table(nodes: list[Node], leaf_index: dict[int, int]) -> pd.DataFrame:
             "status": node.status,
             "reason": node.reason,
             "stability": node.stability,
+            "stabilities": node.stabilities,
             "gain": node.gain,
             "varsigma_diff": node.varsigma_diff,
             "component": leaf_index.get(node.node_id),
@@ -453,14 +498,20 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     slide_ids = load_embedding_slides(split_dirs)["id"].to_numpy()
     n_sampled = max(2, round(config.tree.sample_slide_fraction * len(slide_ids)))
     sampled = rng.choice(slide_ids, n_sampled, replace=False)
-    # Slide-disjoint halves for the stability test.
-    slide_half = dict(zip(sampled, rng.permutation(len(sampled)) % 2, strict=True))
+    # Slide-disjoint halvings for the stability test, one per repeat (the
+    # first is the same draw as single-halving trees used).
+    slide_halves = [
+        dict(zip(sampled, rng.permutation(len(sampled)) % 2, strict=True))
+        for _ in range(config.tree.stability_repeats)
+    ]
 
     x, row_slides = load_sample(dataset, set(sampled), shift, scale, config)
-    half = np.array([slide_half[s] for s in row_slides])
+    halves = np.array(
+        [[slide_half[s] for s in row_slides] for slide_half in slide_halves], dtype=np.int8
+    )
     print(f"Loaded {len(x)} tiles from {n_sampled} sampled slides for tree construction.", flush=True)
 
-    nodes = build_tree(x, half, scale, models, config)
+    nodes = build_tree(x, halves, scale, models, config)
     del x
     leaf_nodes = leaves(nodes)
     leaf_index = {node.node_id: k for k, node in enumerate(leaf_nodes)}
@@ -515,7 +566,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "stopped_by": "max_leaves" if n_components >= config.tree.max_leaves else "converged",
         "max_depth": max(node.depth for node in leaf_nodes),
         "rejected_splits": reasons.to_dict(),
-        "n_sample_rows": len(half),
+        "n_sample_rows": halves.shape[1],
         "shift_mlflow_uri": config.shift.mlflow_uri,
         "tree": OmegaConf.to_container(config.tree),
     }
