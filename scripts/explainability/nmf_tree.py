@@ -16,9 +16,9 @@ submit_job(
     # Keep cpu in sync with num_cpus in explainability/nmf_tree.py's
     # ray.init(). Memory: the tree is built on an in-memory sample of slides
     # (~4GB at the default 0.3 fraction) plus per-node copies.
-    cpu=8,
-    memory="64Gi",
-    shm="16Gi",
+    cpu=4,
+    memory="40Gi",
+    shm="8Gi",
     script=[
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
         "cd workdir",

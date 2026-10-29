@@ -541,7 +541,7 @@ if __name__ == "__main__":
     # the saved W) differ run to run for an identical config.
     ctx.execution_options.preserve_order = True
 
-    # num_cpus=8: same conservative cap as nmf_fit.py (full embeddings corpus
-    # read, twice). Keep in sync with cpu= in scripts/explainability/nmf_tree.py.
-    with ray.init(num_cpus=8, runtime_env={"excludes": [".git", ".venv"]}):
+    # num_cpus=4: the tree is single-process numpy apart from the two corpus
+    # reads. Keep in sync with cpu= in scripts/explainability/nmf_tree.py.
+    with ray.init(num_cpus=4, runtime_env={"excludes": [".git", ".venv"]}):
         main()
