@@ -37,7 +37,13 @@ scaled, and for `nmf` also shifted/clipped - same transform as nmf_fit.py):
                the node's rows; the cosine of the best-matched atom pair must
                be >= `stability_threshold` (else it's sampling noise).
                Halves are by *slide*, never by tile - tiles of one slide are
-               too correlated to count as independent evidence.
+               too correlated to count as independent evidence. With
+               `stability_warm_start` both halves start from the node's own
+               split, so the test asks whether that split survives on each
+               half, not whether two random inits land in the same optimum
+               (a slowly converging half otherwise rejected the whole root -
+               every seed-1 tree of 2026-10-29). The held-out gain then
+               starts from a split that also saw the evaluated half.
     min_gain   the split must explain at least `min_gain` of the
                model-relevant variation, measured *held out*: the split fit
                on one half assigns the other half's tiles to children (NNLS,
@@ -193,8 +199,14 @@ def relative_error(x: np.ndarray, sq_norms: np.ndarray, atom_fit: np.ndarray) ->
     return 1.0 - float(np.sum(proj * proj)) / total if total > 0 else 0.0
 
 
-def split_rows(x: np.ndarray, config: DictConfig) -> tuple[np.ndarray, np.ndarray]:
-    """Rank-2 factorization -> (hard child labels per row, the two unit atoms in fit space)."""
+def split_rows(
+    x: np.ndarray, config: DictConfig, h0: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Rank-2 factorization -> (hard child labels per row, the two atoms H in fit space).
+
+    `h0` warm-starts the fit from a given H (the stability halves start from
+    the node's own split); None uses the method's default init.
+    """
     w, h, iterations, final_change = factorize(
         x,
         2,
@@ -204,13 +216,14 @@ def split_rows(x: np.ndarray, config: DictConfig) -> tuple[np.ndarray, np.ndarra
         config.factorization.nnls_iter,
         tol=config.factorization.get("tol"),
         nnls_tol=config.factorization.get("nnls_tol"),
+        h0=h0,
     )
     print(
         f"  rank-2 fit on {len(x)} rows: {iterations} iterations, "
         f"final relative H change {final_change:.2e}",
         flush=True,
     )
-    return np.argmax(w, axis=1), unit_rows(h)
+    return np.argmax(w, axis=1), h
 
 
 def matched_cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -305,7 +318,8 @@ def build_tree(
             continue
 
         x_node = x[node.rows]
-        labels, atoms_fit = split_rows(x_node, config)
+        labels, h_node = split_rows(x_node, config)
+        atoms_fit = unit_rows(h_node)
         child_rows = [node.rows[labels == j] for j in range(2)]
         if min(len(r) for r in child_rows) < tree.min_node_rows:
             node.status, node.reason = "final", "small_child"
@@ -316,7 +330,8 @@ def build_tree(
         for side_rows in half_masks:
             if side_rows.sum() < 2 * tree.min_node_rows:
                 break
-            half_atoms.append(split_rows(x_node[side_rows], config)[1])
+            h0 = h_node if tree.stability_warm_start else None
+            half_atoms.append(unit_rows(split_rows(x_node[side_rows], config, h0)[1]))
         if len(half_atoms) < 2:
             node.status, node.reason = "final", "half_too_small"
             continue

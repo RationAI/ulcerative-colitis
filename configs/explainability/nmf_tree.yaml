@@ -51,6 +51,10 @@ tree:
   # Min cosine of the best-matched atom pair between the split re-fit on two
   # slide-disjoint halves of the node.
   stability_threshold: 0.9
+  # Fit both stability halves starting from the node's own split instead of
+  # the method's default init (k-means / nndsvda) - see nmf_tree.py's
+  # docstring. false reproduces trees fit before 2026-10-29.
+  stability_warm_start: true
   # Min held-out share of the model-relevant variation (the sample half's
   # total sum of squares of the per-tile head responses) a split must explain
   # to be accepted - the stopping rule in place of a leaf count. 0.005 = 0.5%.
@@ -93,10 +97,10 @@ factorization:
 # Tiles read per streaming batch.
 batch_size: 25600
 
-output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/priority_${tree.priority}/supervised_${tree.supervised}/min_gain_${tree.min_gain}/tol_${factorization.tol}/stability_${tree.stability_threshold}/seed_${tree.random_state}
+output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/priority_${tree.priority}/supervised_${tree.supervised}/min_gain_${tree.min_gain}/tol_${factorization.tol}/stability_${tree.stability_threshold}/warm_start_${tree.stability_warm_start}/seed_${tree.random_state}
 
 metadata:
-  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, priority=${tree.priority}, supervised=${tree.supervised}, min_gain=${tree.min_gain}, tol=${factorization.tol}, stability=${tree.stability_threshold}, seed=${tree.random_state})"
+  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, priority=${tree.priority}, supervised=${tree.supervised}, min_gain=${tree.min_gain}, tol=${factorization.tol}, stability=${tree.stability_threshold}, warm_start=${tree.stability_warm_start}, seed=${tree.random_state})"
   description: >-
     Recursive binary-split ${method} concept dictionary over the per-tile
     embeddings, grown best-first by tree.priority until every split fails the
@@ -112,6 +116,7 @@ metadata:
     max_leaves: ${tree.max_leaves}
     min_node_rows: ${tree.min_node_rows}
     stability_threshold: ${tree.stability_threshold}
+    stability_warm_start: ${tree.stability_warm_start}
     min_gain: ${tree.min_gain}
     priority: ${tree.priority}
     supervised: ${tree.supervised}

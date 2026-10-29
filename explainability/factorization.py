@@ -114,6 +114,7 @@ def semi_nmf(
     ridge: float = 1e-6,
     tol: float | None = None,
     nnls_tol: float | None = None,
+    h0: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory semi-NMF `X ~= W H`, `W >= 0`, H signed - alternating NNLS / least squares.
 
@@ -121,6 +122,7 @@ def semi_nmf(
     relative to its norm (H is only `(k, d)`, so the check is cheap);
     `n_iter` is then a maximum. `nnls_tol` separately stops the inner NNLS
     W-steps - kept stricter, since the hard child assignment is an argmax of W.
+    `h0` starts from a given H `(k, d)` instead of k-means centroids.
 
     Returns:
         `(W, H, iterations, final_change)` - W `(n, k)`, H `(k, d)`, and the
@@ -128,7 +130,7 @@ def semi_nmf(
         against), so callers can see how close unconverged fits got.
     """
     rng = np.random.default_rng(random_state)
-    h = kmeans_init(x, k, random_state)
+    h = kmeans_init(x, k, random_state) if h0 is None else h0.astype(x.dtype, copy=True)
     w = nnls_batch(x, h, nnls_iter, tol=nnls_tol)
     iterations = 0
     change = float("nan")
@@ -152,12 +154,14 @@ def factorize(
     nnls_iter: int,
     tol: float | None = None,
     nnls_tol: float | None = None,
+    h0: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, float]:
     """In-memory rank-k factorization of `x` with the chosen `method`.
 
     `nmf` requires `x >= 0` (callers pass shifted/clipped embeddings).
     `tol` enables early stopping (sklearn's own `tol` for nmf; see
-    `semi_nmf`), `n_iter` is then the maximum.
+    `semi_nmf`), `n_iter` is then the maximum. `h0` starts from a given H
+    (non-negative for nmf, with W its NNLS fit) instead of the default init.
 
     Returns:
         `(W, H, iterations, final_change)` - see `semi_nmf`; final_change is
@@ -166,12 +170,17 @@ def factorize(
     if method == "nmf":
         model = NMF(
             n_components=k,
-            init="nndsvda",
+            init="nndsvda" if h0 is None else "custom",
             max_iter=n_iter,
             random_state=random_state,
             tol=0.0 if tol is None else tol,
         )
-        w = model.fit_transform(x)
+        if h0 is None:
+            w = model.fit_transform(x)
+        else:
+            h_init = h0.astype(x.dtype, copy=True)
+            w_init = nnls_batch(x, h_init, nnls_iter, tol=nnls_tol).astype(x.dtype)
+            w = model.fit_transform(x, W=w_init, H=h_init)
         return (
             w.astype(x.dtype),
             model.components_.astype(x.dtype),
@@ -179,5 +188,7 @@ def factorize(
             float("nan"),
         )
     if method == "semi_nmf":
-        return semi_nmf(x, k, n_iter, nnls_iter, random_state, tol=tol, nnls_tol=nnls_tol)
+        return semi_nmf(
+            x, k, n_iter, nnls_iter, random_state, tol=tol, nnls_tol=nnls_tol, h0=h0
+        )
     raise ValueError(f"Unknown method {method!r}, expected one of {METHODS}")
