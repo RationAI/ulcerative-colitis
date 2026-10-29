@@ -4,6 +4,10 @@ from kube_jobs import storage, submit_job
 # Experiment under configs/experiment/explainability/nmf_tree/ - e.g.
 # "min_gain_0.005" or "min_gain_0.002". One job per experiment.
 experiment = ...
+# Hydra overrides applied on top of the experiment, space-separated, e.g.
+# "factorization.tol=0.0001 tree.stability_threshold=0.75 tree.random_state=0"; "" for none.
+# Put a short tag for them in the job name below.
+overrides = ...
 
 submit_job(
     job_name=f"uc-nmf-tree-{experiment.replace('/', '-').replace('_', '-')}-...",
@@ -20,7 +24,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_tree "
-        f"+experiment=explainability/nmf_tree/{experiment}",
+        f"+experiment=explainability/nmf_tree/{experiment} {overrides}",
     ],
     storage=[storage.secure.PROJECTS],
 )

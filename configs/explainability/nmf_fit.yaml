@@ -95,10 +95,10 @@ semi_nmf:
   # Ridge added to W^T W before solving for H (numerical safety only).
   ridge: 1.0e-6
 
-output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/center_${center}/k${n_components}/scale_power_${nmf.scale_power}
+output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/center_${center}/k${n_components}/scale_power_${nmf.scale_power}/seed_${nmf.random_state}
 
 metadata:
-  run_name: "🧩 NMF Fit (${method}, center=${center}, ${split}, k=${n_components}, scale_power=${nmf.scale_power})"
+  run_name: "🧩 NMF Fit (${method}, center=${center}, ${split}, k=${n_components}, scale_power=${nmf.scale_power}, seed=${nmf.random_state})"
   description: >-
     Flat ${method} dictionary over the (scale_power-scaled) full per-tile
     embeddings h_i, gauge-fixed W/H stored for downstream explainability.

@@ -6,6 +6,10 @@ from kube_jobs import storage, submit_job
 # Dictionaries: configs/explainability/dictionary/ (mlflow URI); evaluations:
 # configs/explainability/evaluation/ (split + institutions). One job each.
 experiment = ...
+# Hydra overrides applied on top of the experiment, space-separated, e.g.
+# "dictionary_uri=mlflow-artifacts:/86/<run_id>/artifacts"; "" for none.
+# Put a short tag for them in the job name below.
+overrides = ...
 
 submit_job(
     job_name=f"uc-completeness-{experiment.replace('/', '-').replace('_', '-')}-...",
@@ -21,7 +25,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.concept_completeness "
-        f"+experiment=explainability/concept_completeness/{experiment}",
+        f"+experiment=explainability/concept_completeness/{experiment} {overrides}",
     ],
     storage=[storage.secure.PROJECTS],
 )

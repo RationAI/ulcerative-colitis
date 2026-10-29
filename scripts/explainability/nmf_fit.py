@@ -4,6 +4,10 @@ from kube_jobs import storage, submit_job
 # Experiment under configs/experiment/explainability/nmf_fit/ - e.g. "semi_nmf_k16"
 # (method, n_components, nmf.scale_power). One job per experiment.
 experiment = ...
+# Hydra overrides applied on top of the experiment, space-separated, e.g.
+# "nmf.random_state=1"; "" for none.
+# Put a short tag for them in the job name below.
+overrides = ...
 
 submit_job(
     job_name=f"uc-nmf-fit-{experiment.replace('/', '-').replace('_', '-')}-...",
@@ -20,7 +24,7 @@ submit_job(
         "cd workdir",
         "uv sync --frozen",
         f"uv run --active python -m explainability.nmf_fit "
-        f"+experiment=explainability/nmf_fit/{experiment}",
+        f"+experiment=explainability/nmf_fit/{experiment} {overrides}",
     ],
     storage=[storage.secure.PROJECTS],
 )
