@@ -18,7 +18,7 @@ submit_job(
     # Streams the full embeddings corpus once - keep cpu in sync with
     # num_cpus in explainability/concept_completeness.py's ray.init().
     cpu=8,
-    memory="64Gi",
+    memory="40Gi",
     shm="16Gi",
     script=[
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
