@@ -17,7 +17,7 @@ submit_job(
     # explainability/nmf_fit.py's ray.init() (conservative carry-over from
     # the oversized-row-group OOM on the old embeddings_xai patch tables).
     cpu=8,
-    memory="48Gi",
+    memory="64Gi",
     shm="16Gi",
     script=[
         "git clone https://github.com/RationAI/ulcerative-colitis.git workdir",
