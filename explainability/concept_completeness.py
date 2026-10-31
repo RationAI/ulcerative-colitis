@@ -36,6 +36,11 @@ dictionary. The OLS head eta is fit on `eta_fit_split` / `eta_fit_institutions`
 coincide it is fit in-sample. The manifest records both, plus the split the
 dictionary itself was fit on, so in-sample numbers can't pass for held-out
 ones. Choose configurations on test_preliminary; test_final only reports.
+
+**Tree prefixes.** With `tree_prefix_leaves`, a tree dictionary's K-leaf
+prefixes are evaluated one after another in the same run (results under
+prefix_<K>/, metrics at step K) - a fidelity-vs-number-of-concepts curve from
+a single grown tree.
 """
 
 import json
@@ -55,13 +60,16 @@ from sklearn.metrics import roc_auc_score
 
 from explainability.concepts import (
     ConceptAutoencoder,
+    Dictionary,
     SlideIndex,
     iter_tiles,
     load_dictionary,
+    load_node_atoms,
     ols_apply,
     ols_fit,
     r2_score,
     rmse,
+    tree_prefix,
 )
 from explainability.model import (
     ModelWeights,
@@ -153,24 +161,23 @@ def stream_readouts(
     return pd.concat(key_chunks, ignore_index=True), np.concatenate(v_chunks), readouts, re_stats
 
 
-@with_cli_args(["+explainability=concept_completeness"])
-@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
-@autolog
-def main(config: DictConfig, logger: MLFlowLogger) -> None:
-    dictionary = load_dictionary(config.dictionary_uri, config.nnls_iter)
-    autoencoder = dictionary.autoencoder
-    # Results go next to the fit itself on the project mount, unless overridden.
-    output_dir = (
-        Path(config.output_dir)
-        if config.get("output_dir")
-        else dictionary.fit_dir / "concept_completeness" / config.split / config.institutions
-    )
-    output_dir.mkdir(parents=True, exist_ok=True)
+def evaluate(
+    dictionary: Dictionary,
+    models: dict[str, ModelWeights],
+    config: DictConfig,
+    output_dir: Path,
+    logger: MLFlowLogger,
+    step: int | None = None,
+    artifact_path: str | None = None,
+    extra_manifest: dict[str, Any] | None = None,
+) -> None:
+    """Every completeness metric of one dictionary - written to `output_dir`, logged to mlflow.
 
-    models: dict[str, ModelWeights] = {
-        head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
-        for head in HEADS
-    }
+    `step` (metrics) and `artifact_path` (artifacts) keep several dictionaries
+    of one run apart - the tree prefixes.
+    """
+    autoencoder = dictionary.autoencoder
+    output_dir.mkdir(parents=True, exist_ok=True)
     local_dir = config.get("local_embeddings_dir")
     split_dirs = resolve_embedding_split_dirs(
         select_sources(config.sources, config.institutions), local_dir, split=config.split
@@ -288,6 +295,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "n_components": int(v.shape[1]),
         "n_tiles": n_tiles,
         "n_slides": len(slides),
+        **(extra_manifest or {}),
         "re": re,
         "re_relative": re_rel,
         "tile_fidelity": tile_df.to_dict(orient="records"),
@@ -298,16 +306,60 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     for name in ("tile_fidelity.parquet", "slide_fidelity.parquet", "slide_agreement.parquet",
                  "manifest.json"):
-        logger.log_artifact(str(output_dir / name))
-    logger.log_metrics({"re": re, "re_relative": re_rel})
+        logger.log_artifact(str(output_dir / name), artifact_path)
+    logger.log_metrics({"re": re, "re_relative": re_rel}, step)
     for tile_row in tile_rows:
         tag = f"{tile_row['head']}_{tile_row['target']}"
-        logger.log_metrics({f"tile_fe/{tag}": tile_row["fe"], f"tile_mce_ols/{tag}": tile_row["mce_ols"]})
+        logger.log_metrics(
+            {f"tile_fe/{tag}": tile_row["fe"], f"tile_mce_ols/{tag}": tile_row["mce_ols"]}, step
+        )
     for logged_row in slide_rows:
         tag = f"{logged_row['head']}_class{logged_row['class']}"
         logger.log_metrics(
             {f"slide_{k}/{tag}": float(val) for k, val in logged_row.items()
-             if k not in ("head", "class", "n_slides")}
+             if k not in ("head", "class", "n_slides")},
+            step,
+        )
+
+
+@with_cli_args(["+explainability=concept_completeness"])
+@hydra.main(config_path="../configs", config_name="explainability", version_base=None)
+@autolog
+def main(config: DictConfig, logger: MLFlowLogger) -> None:
+    dictionary = load_dictionary(config.dictionary_uri, config.nnls_iter)
+    # Results go next to the fit itself on the project mount, unless overridden.
+    output_dir = (
+        Path(config.output_dir)
+        if config.get("output_dir")
+        else dictionary.fit_dir / "concept_completeness" / config.split / config.institutions
+    )
+    models: dict[str, ModelWeights] = {
+        head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
+        for head in HEADS
+    }
+
+    prefixes = config.get("tree_prefix_leaves")
+    if prefixes is None:
+        evaluate(dictionary, models, config, output_dir, logger)
+        return
+    if dictionary.tree is None:
+        raise ValueError("tree_prefix_leaves needs a tree dictionary (nmf_tree.py run)")
+    node_atoms = load_node_atoms(config.dictionary_uri)
+    if prefixes == "all":
+        n_leaves = int(dictionary.tree["component"].notna().sum())
+        prefixes = list(range(2, n_leaves + 1))
+    for k in prefixes:
+        print(f"=== Tree prefix with {k} leaves ===", flush=True)
+        prefix, nodes = tree_prefix(dictionary, node_atoms, int(k))
+        evaluate(
+            prefix,
+            models,
+            config,
+            output_dir / f"prefix_{k}",
+            logger,
+            step=int(k),
+            artifact_path=f"prefix_{k}",
+            extra_manifest={"tree_prefix_leaves": int(k), "tree_prefix_nodes": nodes},
         )
 
 

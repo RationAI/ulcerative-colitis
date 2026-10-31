@@ -17,7 +17,7 @@ Completeness Guarantees" (arXiv:2609.34750), adapted to the attention-MIL model:
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +96,50 @@ def load_dictionary(uri: str, nnls_iter: int) -> Dictionary:
         nnls_iter=nnls_iter,
     )
     return Dictionary(autoencoder=autoencoder, manifest=manifest, fit_dir=fit_dir, tree=tree)
+
+
+def tree_prefix_nodes(tree: pd.DataFrame, n_leaves: int) -> list[int]:
+    """Node ids of the `n_leaves`-leaf tree inside a grown tree (its tree.parquet).
+
+    nmf_tree.py grows best-first and numbers both children when a split is
+    accepted, so sorting the split nodes by their children's ids gives the
+    order the splits were made in. The frontier after the first
+    `n_leaves - 1` of them is exactly the tree a run with
+    `max_leaves=n_leaves` (same config and seed) would have built - its
+    leaves are a mix of the grown tree's leaves and of inner nodes split later.
+    """
+    children = tree.dropna(subset=["parent"]).groupby("parent")["node_id"]
+    split_order = children.min().sort_values().index.astype(int)
+    if not 2 <= n_leaves <= len(split_order) + 1:
+        raise ValueError(
+            f"n_leaves must be in [2, {len(split_order) + 1}] for this tree, got {n_leaves}"
+        )
+    child_ids = children.apply(list)
+    frontier = {0}
+    for parent in split_order[: n_leaves - 1]:
+        frontier.remove(parent)
+        frontier.update(int(child) for child in child_ids[parent])
+    return sorted(frontier)
+
+
+def load_node_atoms(uri: str) -> pd.DataFrame:
+    """Every node's unit atom of a tree run (node_atoms.parquet), indexed by node_id."""
+    return pd.read_parquet(_download(uri, "node_atoms.parquet")).sort_index(axis=1)
+
+
+def tree_prefix(
+    dictionary: Dictionary, node_atoms: pd.DataFrame, n_leaves: int
+) -> tuple[Dictionary, list[int]]:
+    """The `n_leaves`-leaf prefix of a tree dictionary (see `tree_prefix_nodes`).
+
+    Same shift and encoder settings, only the atoms differ - rows ordered by
+    node id. Returns the dictionary and its node ids (row k is node ids[k]).
+    """
+    if dictionary.tree is None:
+        raise ValueError("Tree prefixes need a tree dictionary (nmf_tree.py run)")
+    nodes = tree_prefix_nodes(dictionary.tree, n_leaves)
+    atoms = node_atoms.loc[nodes].to_numpy(dtype=np.float32)
+    return replace(dictionary, autoencoder=replace(dictionary.autoencoder, dictionary=atoms)), nodes
 
 
 def iter_tiles(

@@ -34,6 +34,14 @@ embed_dim: 1280
 # (h.parquet, manifest.json, shift.npy, tree.parquet).
 dictionary_uri: ???
 
+# Tree dictionaries only: evaluate the tree's K-leaf prefixes instead of the
+# tree itself - the tree a run with max_leaves=K would have built, rebuilt
+# from tree.parquet and node_atoms.parquet (explainability/concepts.py's
+# tree_prefix_nodes). A list of K, e.g. [2, 4, 8], or "all" for 2..n_leaves.
+# One run: each K's results under prefix_<K>/ (output dir and artifacts),
+# metrics logged at step K. null evaluates the dictionary as fitted.
+tree_prefix_leaves: null
+
 # Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
 # FISTA iterations of the encoder E (NNLS against the dictionary) - same as
@@ -59,3 +67,4 @@ metadata:
     eta_fit_split: ${eta_fit_split}
     eta_fit_institutions: ${eta_fit_institutions}
     dictionary_uri: ${dictionary_uri}
+    tree_prefix_leaves: ${tree_prefix_leaves}
