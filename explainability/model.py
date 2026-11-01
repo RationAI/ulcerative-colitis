@@ -119,3 +119,37 @@ def predicted_labels(probs: np.ndarray) -> np.ndarray:
 def class_mask(labels: np.ndarray, c: int, num_classes: int) -> np.ndarray:
     """Slides 'of output c': label == c, or the positive label for a single-output head."""
     return labels == (1 if num_classes == 1 else c)
+
+
+def ensemble_route(probs: dict[str, np.ndarray]) -> np.ndarray:
+    """Soft vote that the slide is Nancy >= 2, in [0, 1]: the mean of the three heads' votes.
+
+    The heads' slide probabilities are `logits_to_prob` outputs keyed by head.
+    Thresholding it at 0.5 is the `pred_ensembling` routing rule
+    (`postprocessing/ensembling.py` on the `thesis` branch).
+    """
+    votes = probs["neutrophils"][:, 0] + probs["nancy_low"][:, 2] + probs["nancy_high"][:, 1:].sum(axis=1)
+    return votes / 3
+
+
+def ensemble_labels(probs: dict[str, np.ndarray]) -> np.ndarray:
+    """Final Nancy grade 0-4 of the ensembling method, exactly as `pred_ensembling`."""
+    low_branch = probs["nancy_low"][:, :2].argmax(axis=1)
+    high_branch = probs["nancy_high"][:, 1:].argmax(axis=1) + 2
+    return np.where(ensemble_route(probs) >= 0.5, high_branch, low_branch)
+
+
+def ensemble_probs(probs: dict[str, np.ndarray]) -> np.ndarray:
+    """Per-grade scores of the ensembling method, shape `(n_slides, 5)`, rows summing to 1.
+
+    `pred_ensembling` only yields hard labels, so the scores follow its
+    routing: the route probability q is split over Nancy 2-4 in nancy_high's
+    proportions, 1 - q over Nancy 0-1 in nancy_low's. Their argmax can
+    differ from `ensemble_labels` near the routing threshold.
+    """
+    q = ensemble_route(probs)[:, None]
+    low = probs["nancy_low"][:, :2]
+    high = probs["nancy_high"][:, 1:]
+    return np.hstack(
+        [(1 - q) * low / low.sum(axis=1, keepdims=True), q * high / high.sum(axis=1, keepdims=True)]
+    )

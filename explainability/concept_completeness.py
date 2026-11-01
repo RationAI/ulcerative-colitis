@@ -29,6 +29,13 @@ probability correlation) and with ground truth (AUC of f, f_A and eta).
 Multiclass logits are centred across the head's classes throughout (softmax
 ignores a shared offset).
 
+**Ensembling.** The three heads are also combined into the final Nancy grade
+0-4 by the `pred_ensembling` rule (`ensemble_labels`), for real, A and eta
+alike: label agreement with the real ensemble (head "ensemble" in
+slide_agreement) and per-grade AUC against ground truth / the real ensemble's
+grade (ensemble_fidelity), scored by `ensemble_probs`. Every slide's
+probabilities are kept in slide_probs for further analysis.
+
 **Held-out evaluation.** `split` / `institutions` choose the evaluated tiles
 - any split, since every tile is encoded here with the (train-fit)
 dictionary. The OLS head eta is fit on `eta_fit_split` / `eta_fit_institutions`
@@ -76,6 +83,8 @@ from explainability.model import (
     attention_scores,
     centred_classifier,
     class_mask,
+    ensemble_labels,
+    ensemble_probs,
     load_full_model,
     logits_to_prob,
     nancy_to_target,
@@ -227,6 +236,7 @@ def evaluate(
     tile_rows: list[dict[str, Any]] = []
     slide_rows: list[dict[str, Any]] = []
     agreement_rows: list[dict[str, Any]] = []
+    head_probs: dict[str, dict[str, np.ndarray]] = {}
     for head, model in models.items():
         r = readouts[head]
         s_eta, u_eta = eta[head]["s"], eta[head]["u"]
@@ -253,6 +263,7 @@ def evaluate(
             "eta": slides.attention_pool(s_eta, u_eta),
         }
         probs = {name: logits_to_prob(value, num_classes) for name, value in logits.items()}
+        head_probs[head] = probs
         real_pred = predicted_labels(probs["real"])
         target = nancy_to_target(nancy_index, head)
         for name in ("A", "eta"):
@@ -274,15 +285,48 @@ def evaluate(
             slide_rows.append(slide_row)
         print(f"Done {head}.", flush=True)
 
-    tile_df, slide_df, agreement_df = (
-        pd.DataFrame(tile_rows), pd.DataFrame(slide_rows), pd.DataFrame(agreement_rows)
+    # The final Nancy grade, combined from the three heads as `pred_ensembling`.
+    surrogate_probs = {
+        name: {head: head_probs[head][name] for head in HEADS} for name in ("real", "A", "eta")
+    }
+    grades = {name: ensemble_labels(p) for name, p in surrogate_probs.items()}
+    grade_scores = {name: ensemble_probs(p) for name, p in surrogate_probs.items()}
+    for name in ("A", "eta"):
+        agreement_rows.append(
+            {"head": "ensemble", "surrogate": name,
+             "label_agreement": float(np.mean(grades[name] == grades["real"]))}
+        )
+    ensemble_rows: list[dict[str, Any]] = []
+    for grade in range(grade_scores["real"].shape[1]):
+        gt, pred = nancy_index == grade, grades["real"] == grade
+        ensemble_row: dict[str, Any] = {
+            "grade": grade, "n_slides": len(slides), "n_groundtruth": int(gt.sum()),
+            "auc_real_vs_groundtruth": safe_auc(gt, grade_scores["real"][:, grade]),
+        }
+        for name in ("A", "eta"):
+            ensemble_row[f"auc_{name}_vs_groundtruth"] = safe_auc(gt, grade_scores[name][:, grade])
+            ensemble_row[f"auc_{name}_vs_predicted"] = safe_auc(pred, grade_scores[name][:, grade])
+        ensemble_rows.append(ensemble_row)
+
+    probs_df = pd.DataFrame({"slide_id": slides.ids, "nancy_index": nancy_index})
+    for name, by_head in surrogate_probs.items():
+        for head, p in by_head.items():
+            for c in range(p.shape[1]):
+                probs_df[f"{head}_{name}_class{c}"] = p[:, c]
+        probs_df[f"ensemble_{name}_grade"] = grades[name]
+
+    tile_df, slide_df, agreement_df, ensemble_df = (
+        pd.DataFrame(tile_rows), pd.DataFrame(slide_rows), pd.DataFrame(agreement_rows),
+        pd.DataFrame(ensemble_rows),
     )
-    for df in (tile_df, slide_df, agreement_df):
+    for df in (tile_df, slide_df, agreement_df, ensemble_df):
         print(df.to_string(index=False), flush=True)
 
     tile_df.to_parquet(output_dir / "tile_fidelity.parquet", index=False)
     slide_df.to_parquet(output_dir / "slide_fidelity.parquet", index=False)
     agreement_df.to_parquet(output_dir / "slide_agreement.parquet", index=False)
+    ensemble_df.to_parquet(output_dir / "ensemble_fidelity.parquet", index=False)
+    probs_df.to_parquet(output_dir / "slide_probs.parquet", index=False)
     manifest = {
         "dictionary_uri": config.dictionary_uri,
         "fit_dir": str(dictionary.fit_dir),
@@ -301,11 +345,12 @@ def evaluate(
         "tile_fidelity": tile_df.to_dict(orient="records"),
         "slide_fidelity": slide_df.to_dict(orient="records"),
         "slide_agreement": agreement_df.to_dict(orient="records"),
+        "ensemble_fidelity": ensemble_df.to_dict(orient="records"),
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
     for name in ("tile_fidelity.parquet", "slide_fidelity.parquet", "slide_agreement.parquet",
-                 "manifest.json"):
+                 "ensemble_fidelity.parquet", "slide_probs.parquet", "manifest.json"):
         logger.log_artifact(str(output_dir / name), artifact_path)
     logger.log_metrics({"re": re, "re_relative": re_rel}, step)
     for tile_row in tile_rows:
@@ -318,6 +363,18 @@ def evaluate(
         logger.log_metrics(
             {f"slide_{k}/{tag}": float(val) for k, val in logged_row.items()
              if k not in ("head", "class", "n_slides")},
+            step,
+        )
+    for agreement_row in agreement_rows:
+        logger.log_metrics(
+            {f"label_agreement_{agreement_row['surrogate']}/{agreement_row['head']}":
+             agreement_row["label_agreement"]},
+            step,
+        )
+    for logged_row in ensemble_rows:
+        logger.log_metrics(
+            {f"ensemble_{k}/grade{logged_row['grade']}": float(val) for k, val in logged_row.items()
+             if k.startswith("auc_")},
             step,
         )
 
