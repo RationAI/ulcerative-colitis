@@ -84,6 +84,25 @@ tree:
   supervised: true
   random_state: 42
 
+# Fit under the heads' output metric instead of plain embedding error
+# (explainability.model.output_metric): the factorization runs on T (z - mu),
+# with T^T T the expected squared error of every tile output the heads read
+# (centred logits and attention scores, each in units of its own spread), so
+# no atoms are spent on embedding variance no head looks at. Atoms are mapped
+# back to the embedding space; T is saved as transform.npy and the encoder
+# solves the codes in its space. semi_nmf with no per-dimension scale only.
+metric:
+  enabled: false
+  # Tiles the metric's attention gradients and output variances are averaged
+  # over (a seeded uniform sample).
+  n_tiles: 20000
+  # Added to the metric (rescaled to mean eigenvalue 1): what a direction no
+  # head reads still costs, relative to an average direction - keeps atoms
+  # tied to how tiles look and T invertible.
+  ridge: 0.01
+  # Weight of the attention scores relative to the logits.
+  attention_weight: 1.0
+
 factorization:
   # Maximum iterations of each rank-2 split fit (NMF max_iter / semi-NMF
   # alternations) - with tol set, fits stop as soon as they converge.
@@ -107,10 +126,10 @@ factorization:
 # Tiles read per streaming batch.
 batch_size: 25600
 
-output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/priority_${tree.priority}/supervised_${tree.supervised}/min_gain_${tree.min_gain}/max_leaves_${tree.max_leaves}/tol_${factorization.tol}/stability_${tree.stability_threshold}/warm_start_${tree.stability_warm_start}/slides_${tree.sample_slide_fraction}/tiles_${tree.sample_tile_fraction}/repeats_${tree.stability_repeats}/seed_${tree.random_state}
+output_dir: ${project_dir}/explainability/nmf_tree/embedding/${split}/${method}/center_${center}/scale_power_${scale_power}/priority_${tree.priority}/supervised_${tree.supervised}/min_gain_${tree.min_gain}/max_leaves_${tree.max_leaves}/tol_${factorization.tol}/stability_${tree.stability_threshold}/warm_start_${tree.stability_warm_start}/slides_${tree.sample_slide_fraction}/tiles_${tree.sample_tile_fraction}/repeats_${tree.stability_repeats}/metric_${metric.enabled}_ridge_${metric.ridge}_attn_${metric.attention_weight}/seed_${tree.random_state}
 
 metadata:
-  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, priority=${tree.priority}, supervised=${tree.supervised}, min_gain=${tree.min_gain}, max_leaves=${tree.max_leaves}, tol=${factorization.tol}, stability=${tree.stability_threshold}, warm_start=${tree.stability_warm_start}, slides=${tree.sample_slide_fraction}, tiles=${tree.sample_tile_fraction}, repeats=${tree.stability_repeats}, seed=${tree.random_state})"
+  run_name: "🌳 NMF Tree (${method}, center=${center}, ${split}, scale_power=${scale_power}, priority=${tree.priority}, supervised=${tree.supervised}, min_gain=${tree.min_gain}, max_leaves=${tree.max_leaves}, tol=${factorization.tol}, stability=${tree.stability_threshold}, warm_start=${tree.stability_warm_start}, slides=${tree.sample_slide_fraction}, tiles=${tree.sample_tile_fraction}, repeats=${tree.stability_repeats}, metric=${metric.enabled}, ridge=${metric.ridge}, attn=${metric.attention_weight}, seed=${tree.random_state})"
   description: >-
     Recursive binary-split ${method} concept dictionary over the per-tile
     embeddings, grown best-first by tree.priority until every split fails the
@@ -137,3 +156,7 @@ metadata:
     nnls_iter: ${factorization.nnls_iter}
     tol: ${factorization.tol}
     nnls_tol: ${factorization.nnls_tol}
+    metric_enabled: ${metric.enabled}
+    metric_n_tiles: ${metric.n_tiles}
+    metric_ridge: ${metric.ridge}
+    metric_attention_weight: ${metric.attention_weight}

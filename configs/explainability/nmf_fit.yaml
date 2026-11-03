@@ -3,6 +3,9 @@
 defaults:
   - /dataset/embeddings/ftn@sources.ftn
   - /dataset/embeddings/ikem@sources.ikem
+  - /checkpoints/final/nancy_high@checkpoints.nancy_high
+  - /checkpoints/final/nancy_low@checkpoints.nancy_low
+  - /checkpoints/final/neutrophils@checkpoints.neutrophils
   - _self_
 
 # Preferred over mlflow's download_artifacts when present - same data on the
@@ -86,6 +89,29 @@ nmf:
   # most.
   scale_power: 1.0
 
+# Half the classifier's input width - load_full_model checks classifier.weight
+# against 2*embed_dim. The heads are read only for metric.enabled.
+embed_dim: 1280
+
+# Fit under the heads' output metric instead of plain embedding error
+# (explainability.model.output_metric): the factorization runs on T (z - mu),
+# with T^T T the expected squared error of every tile output the heads read
+# (centred logits and attention scores, each in units of its own spread), so
+# no atoms are spent on embedding variance no head looks at. Atoms are mapped
+# back to the embedding space; T is saved as transform.npy and the encoder
+# solves the codes in its space. semi_nmf with no per-dimension scale only.
+metric:
+  enabled: false
+  # Tiles the metric's attention gradients and output variances are averaged
+  # over (a seeded uniform sample).
+  n_tiles: 20000
+  # Added to the metric (rescaled to mean eigenvalue 1): what a direction no
+  # head reads still costs, relative to an average direction - keeps atoms
+  # tied to how tiles look and T invertible.
+  ridge: 0.01
+  # Weight of the attention scores relative to the logits.
+  attention_weight: 1.0
+
 # method=semi_nmf only - online H-step from forgotten sufficient statistics
 # (see explainability.nmf_fit.fit_semi_nmf_online).
 semi_nmf:
@@ -95,10 +121,10 @@ semi_nmf:
   # Ridge added to W^T W before solving for H (numerical safety only).
   ridge: 1.0e-6
 
-output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/center_${center}/k${n_components}/scale_power_${nmf.scale_power}/seed_${nmf.random_state}
+output_dir: ${project_dir}/explainability/nmf/embedding/${split}/${method}/center_${center}/k${n_components}/scale_power_${nmf.scale_power}/metric_${metric.enabled}_ridge_${metric.ridge}_attn_${metric.attention_weight}/seed_${nmf.random_state}
 
 metadata:
-  run_name: "🧩 NMF Fit (${method}, center=${center}, ${split}, k=${n_components}, scale_power=${nmf.scale_power}, seed=${nmf.random_state})"
+  run_name: "🧩 NMF Fit (${method}, center=${center}, ${split}, k=${n_components}, scale_power=${nmf.scale_power}, metric=${metric.enabled}, ridge=${metric.ridge}, attn=${metric.attention_weight}, seed=${nmf.random_state})"
   description: >-
     Flat ${method} dictionary over the (scale_power-scaled) full per-tile
     embeddings h_i, gauge-fixed W/H stored for downstream explainability.
@@ -115,3 +141,7 @@ metadata:
     shuffle_buffer_size: ${nmf.shuffle_buffer_size}
     random_state: ${nmf.random_state}
     gauge_fix: ${nmf.gauge_fix}
+    metric_enabled: ${metric.enabled}
+    metric_n_tiles: ${metric.n_tiles}
+    metric_ridge: ${metric.ridge}
+    metric_attention_weight: ${metric.attention_weight}

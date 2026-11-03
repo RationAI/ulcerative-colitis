@@ -9,8 +9,11 @@ resolve it.
 
 **Construction** (on an in-memory sample - a fraction of the slides, and of
 each slide's tiles - in the fit space: scaled, and for `nmf` also
-shifted/clipped - same transform as nmf_fit.py). Sampling every slide at a
-fraction of its tiles makes the tree depend far less on the seed than a
+shifted/clipped - same transform as nmf_fit.py; with `metric.enabled` mapped
+by the heads' output metric T, so every split, its stability and its atoms
+are measured in what the heads read - explainability.model.output_metric).
+Sampling every slide at a fraction of its tiles makes the tree depend far
+less on the seed than a
 fraction of whole slides (8 / 15 / 28 leaves for seeds 1 / 42 / 0 on
 2026-10-29 - each seed saw a different 30% of the slides and a different root
 split):
@@ -99,8 +102,10 @@ from explainability.model import ModelWeights, load_full_model
 from explainability.nmf_fit import (
     iter_embedding_batches,
     load_scale,
+    metric_transform,
     resolve_percentile_stats_path,
     select_shift,
+    tile_uniform,
 )
 from explainability.tiles import (
     load_embedding_slides,
@@ -134,6 +139,11 @@ def unit_rows(a: np.ndarray) -> np.ndarray:
     return a / np.where(norms == 0, 1.0, norms)
 
 
+def to_embedding(x: np.ndarray, scale: np.ndarray, inverse: np.ndarray | None) -> np.ndarray:
+    """Fit-space rows back to the (shift-only) embedding space: undo T, then the scale."""
+    return (x if inverse is None else x @ inverse) * scale[None, :]
+
+
 def head_response(atom: np.ndarray, models: dict[str, ModelWeights]) -> np.ndarray:
     """varsigma(a): each head's logit response to the atom, multiclass heads centred - 8 entries."""
     parts = []
@@ -146,16 +156,20 @@ def head_response(atom: np.ndarray, models: dict[str, ModelWeights]) -> np.ndarr
 
 
 def tile_responses(
-    x: np.ndarray, scale: np.ndarray, models: dict[str, ModelWeights], chunk_size: int = 65536
+    x: np.ndarray,
+    scale: np.ndarray,
+    models: dict[str, ModelWeights],
+    inverse: np.ndarray | None = None,
+    chunk_size: int = 65536,
 ) -> np.ndarray:
-    """varsigma_i for every fit-space row: head responses of x_i * scale, shape `(n, 8)`.
+    """varsigma_i for every fit-space row: head responses of its embedding-space row, shape `(n, 8)`.
 
     The fit-space offset (mu) is a constant shift of every varsigma_i, so it
     cancels in any within-node spread and is left out.
     """
     parts = []
     for start in range(0, len(x), chunk_size):
-        z = x[start : start + chunk_size] * scale[None, :]
+        z = to_embedding(x[start : start + chunk_size], scale, inverse)
         heads = []
         for model in models.values():
             logits = z @ model.cls_w.T
@@ -287,14 +301,6 @@ def load_sample(
     return np.concatenate(chunks)[order], metadata["slide_id"].to_numpy()[order]
 
 
-def tile_uniform(metadata: pd.DataFrame, random_state: int) -> np.ndarray:
-    """A seeded pseudo-uniform [0, 1) value per tile from its (slide_id, x, y)."""
-    hashes = pd.util.hash_pandas_object(
-        metadata[["slide_id", "x", "y"]], index=False, hash_key=f"{random_state:016d}"[-16:]
-    )
-    return hashes.to_numpy() / 2.0**64
-
-
 def sample_order(metadata: pd.DataFrame) -> np.ndarray:
     """Row order sorting tiles by (slide_id, x, y) - a canonical order independent of reading."""
     return np.lexsort(
@@ -308,11 +314,13 @@ def build_tree(
     scale: np.ndarray,
     models: dict[str, ModelWeights],
     config: DictConfig,
+    inverse: np.ndarray | None = None,
 ) -> list[Node]:
     """Grow the tree best-first (see module docstring). Returns every node, root first.
 
     `halves` is `(stability_repeats, n)`: each row one slide-disjoint halving
-    of the sample (0/1 per row).
+    of the sample (0/1 per row). `inverse` is T^-T of the output metric when
+    `x` is in its space (None otherwise).
     """
     tree = config.tree
     if tree.priority not in ("variance", "atom"):
@@ -320,7 +328,7 @@ def build_tree(
     sq_norms = np.einsum("ij,ij->i", x, x)
     # Per-tile head responses drive the variance priority and the gain
     # (supervised); the unsupervised tree uses the fit-space rows themselves.
-    responses = tile_responses(x, scale, models) if tree.supervised else None
+    responses = tile_responses(x, scale, models, inverse) if tree.supervised else None
     half_total = [
         [
             (
@@ -393,7 +401,7 @@ def build_tree(
             print(f"  stability per halving: {np.round(stabilities, 3).tolist()}", flush=True)
         del x_node
 
-        atoms = unit_rows(atoms_fit * scale[None, :])
+        atoms = unit_rows(to_embedding(atoms_fit, scale, inverse))
         varsigmas = [head_response(atom, models) for atom in atoms]
         node.varsigma_diff = float(np.linalg.norm(varsigmas[0] - varsigmas[1]))
 
@@ -506,12 +514,23 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     ]
 
     x, row_slides = load_sample(dataset, set(sampled), shift, scale, config)
+    transform = inverse = None
+    if config.metric.enabled:
+        if config.scale_power != 0:
+            raise ValueError("metric.enabled needs scale_power=0")
+        n_metric = min(config.metric.n_tiles, len(x))
+        transform, inverse = metric_transform(
+            x[rng.choice(len(x), n_metric, replace=False)], shift, config
+        )
+        # In place, chunk by chunk - the sample is several GB.
+        for start in range(0, len(x), config.batch_size):
+            x[start : start + config.batch_size] = x[start : start + config.batch_size] @ transform.T
     halves = np.array(
         [[slide_half[s] for s in row_slides] for slide_half in slide_halves], dtype=np.int8
     )
     print(f"Loaded {len(x)} tiles from {n_sampled} sampled slides for tree construction.", flush=True)
 
-    nodes = build_tree(x, halves, scale, models, config)
+    nodes = build_tree(x, halves, scale, models, config, inverse)
     del x
     leaf_nodes = leaves(nodes)
     leaf_index = {node.node_id: k for k, node in enumerate(leaf_nodes)}
@@ -519,7 +538,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     n_components = len(h)
     print(f"Tree has {n_components} leaves.", flush=True)
 
-    # Joint NNLS of every tile (shift-only, unscaled) against all leaves.
+    # Joint NNLS of every tile (shift-only, unscaled) against all leaves -
+    # both mapped by T under the output metric, as ConceptAutoencoder.encode.
+    h_codes = h if transform is None else h @ transform.T
     n_rows = dataset.count()
     w_path = output_dir / "w.f32.npy"
     w = np.lib.format.open_memmap(w_path, mode="w+", dtype=np.float32, shape=(n_rows, n_components))
@@ -532,8 +553,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         np.ones_like(scale),
         metadata_columns=("slide_id", "x", "y"),
         clip=config.method == "nmf",
+        transform=transform,
     ):
-        w_batch = nnls_batch(rows, h, config.factorization.nnls_iter)
+        w_batch = nnls_batch(rows, h_codes, config.factorization.nnls_iter)
         w[offset : offset + len(w_batch)] = w_batch
         metadata_chunks.append(metadata)
         offset += len(w_batch)
@@ -545,6 +567,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     )
     pd.DataFrame(h).rename_axis("component").to_parquet(output_dir / "h.parquet")
     np.save(output_dir / "shift.npy", shift)
+    if transform is not None:
+        np.save(output_dir / "transform.npy", transform)
     tree_path = output_dir / "tree.parquet"
     nodes_table(nodes, leaf_index).to_parquet(tree_path, index=False)
     # Every node's atom (embedding space, unit norm) - internal nodes are
@@ -569,6 +593,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "n_sample_rows": halves.shape[1],
         "shift_mlflow_uri": config.shift.mlflow_uri,
         "tree": OmegaConf.to_container(config.tree),
+        "metric": OmegaConf.to_container(config.metric),
     }
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
@@ -577,6 +602,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # Small (one value per dimension) - logged so the dictionary is complete in
     # mlflow: concept_completeness.py / concept_gallery.py read only from there.
     logger.log_artifact(str(output_dir / "shift.npy"))
+    if transform is not None:
+        logger.log_artifact(str(output_dir / "transform.npy"))
     logger.log_artifact(str(tree_path))
     logger.log_artifact(str(output_dir / "node_atoms.parquet"))
     logger.log_artifact(str(manifest_path))

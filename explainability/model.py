@@ -121,6 +121,45 @@ def class_mask(labels: np.ndarray, c: int, num_classes: int) -> np.ndarray:
     return labels == (1 if num_classes == 1 else c)
 
 
+def output_metric(
+    z: np.ndarray, models: dict[str, ModelWeights], attention_weight: float, ridge: float
+) -> np.ndarray:
+    """T with ||T e||^2 the heads' first-order tile-output error for an embedding error e.
+
+    The heads read a tile only through their outputs - every (centred) tile
+    logit and the attention score of each head. Per output o, an error e in
+    the embedding moves it by about grad o(z) . e, so with
+    M = sum_o E_z[grad o grad o^T] / Var(o) (expectations and variances over
+    the sample tiles `z`, raw embeddings), e^T M e is the expected squared
+    output error with every output in units of its own spread - a first-order
+    sum of (1 - R^2) over the outputs. Logits are linear, so their gradients
+    are Theta's rows; attention scores are not, so their gradients
+    U^T (q * tanh'(U z + b1)) are averaged over the tiles. Attention terms are
+    multiplied by `attention_weight`.
+
+    M is rescaled to mean eigenvalue 1 and `ridge` * I is added, so directions
+    no head reads still cost a little and the atoms stay tied to how tiles
+    actually look (and T stays invertible). Returns T = Lambda^1/2 V^T, so
+    T^T T = M; a dictionary fit on T (z - mu) minimises this metric.
+    """
+    z = z.astype(np.float64)
+    dim = z.shape[1]
+    metric = np.zeros((dim, dim))
+    for model in models.values():
+        theta, b = centred_classifier(model)
+        logits = z @ theta.T + b
+        for c in range(len(theta)):
+            metric += np.outer(theta[c], theta[c]) / logits[:, c].var()
+        pre = attention_preactivation(z, model)
+        grads = (model.attn_w2[0] * (1 - np.tanh(pre) ** 2)) @ model.attn_w1
+        scores = attention_from_preactivation(pre, model)
+        metric += attention_weight * (grads.T @ grads) / len(z) / scores.var()
+    metric *= dim / np.trace(metric)
+    metric += ridge * np.eye(dim)
+    eigenvalues, eigenvectors = np.linalg.eigh(metric)
+    return (eigenvectors * np.sqrt(eigenvalues)).T.astype(np.float32)
+
+
 def ensemble_route(probs: dict[str, np.ndarray]) -> np.ndarray:
     """Soft vote that the slide is Nancy >= 2, in [0, 1]: the mean of the three heads' votes.
 

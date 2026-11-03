@@ -6,7 +6,9 @@ Completeness Guarantees" (arXiv:2609.34750), adapted to the attention-MIL model:
     z_i = h(x_i)                 tile embedding (frozen Virchow2), in Z = R^2560
     v_i = E(z_i)                 concept code in V = R^K_+: NNLS of (z_i - mu)
                                  against the dictionary rows d_k (clipped at 0
-                                 first for method=nmf, matching nmf_fit.py)
+                                 first for method=nmf, matching nmf_fit.py) -
+                                 of T (z_i - mu) against T d_k for fits under
+                                 the heads' output metric (transform.npy)
     D(v) = mu + sum_k v_k d_k    decoder; mu is nmf_fit.py's saved shift
     g_s(z) = Theta z + b         tile-logit head (centred for multiclass heads)
     g_u(z) = q^T tanh(U z + b1) + b2   attention head
@@ -39,13 +41,17 @@ class ConceptAutoencoder:
     mu: np.ndarray  # (D,)
     clip: bool  # NMF's non-negativity clip before encoding
     nnls_iter: int
+    transform: np.ndarray | None = None  # (D, D) T of a fit under the heads' output metric
 
     def encode(self, z: np.ndarray) -> np.ndarray:
-        """V = E(z), shape `(n, K)`."""
+        """V = E(z), shape `(n, K)` - NNLS in the metric the dictionary was fit in."""
         x = z - self.mu
         if self.clip:
             x = np.maximum(x, 0.0)
-        return nnls_batch(x, self.dictionary, self.nnls_iter)
+        atoms = self.dictionary
+        if self.transform is not None:
+            x, atoms = x @ self.transform.T, atoms @ self.transform.T
+        return nnls_batch(x, atoms, self.nnls_iter)
 
     def decode(self, v: np.ndarray) -> np.ndarray:
         """D(v) = mu + v @ dictionary, shape `(n, D)`."""
@@ -70,9 +76,10 @@ def load_dictionary(uri: str, nnls_iter: int) -> Dictionary:
     """The (E, D) pair and metadata of one fit, from its mlflow run's artifacts.
 
     `uri` is the run's artifact root, e.g. "mlflow-artifacts:/86/<run_id>/artifacts".
-    Only small artifacts are read - h.parquet, manifest.json, shift.npy, and
-    tree.parquet for trees; every caller encodes tiles itself, so the large W
-    never leaves the project mount. Runs from before shift.npy was logged fall
+    Only small artifacts are read - h.parquet, manifest.json, shift.npy,
+    tree.parquet for trees and transform.npy for fits under the output
+    metric; every caller encodes tiles itself, so the large W never leaves
+    the project mount. Runs from before shift.npy was logged fall
     back to the copy next to their W (the manifest's `w.path`), with a note.
 
     The run's artifacts are listed first (instant) and only those present are
@@ -89,11 +96,17 @@ def load_dictionary(uri: str, nnls_iter: int) -> Dictionary:
         shift_path = fit_dir / "shift.npy"
         print(f"{uri} has no logged shift.npy - using {shift_path}", flush=True)
     tree = pd.read_parquet(_download(uri, "tree.parquet")) if "tree.parquet" in logged else None
+    transform = (
+        np.load(_download(uri, "transform.npy")).astype(np.float32)
+        if "transform.npy" in logged
+        else None
+    )
     autoencoder = ConceptAutoencoder(
         dictionary=h.to_numpy(dtype=np.float32),
         mu=np.load(shift_path).astype(np.float32),
         clip=manifest["method"] == "nmf",
         nnls_iter=nnls_iter,
+        transform=transform,
     )
     return Dictionary(autoencoder=autoencoder, manifest=manifest, fit_dir=fit_dir, tree=tree)
 

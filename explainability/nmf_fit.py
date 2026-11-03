@@ -7,7 +7,7 @@ import mlflow.artifacts
 import numpy as np
 import pandas as pd
 import ray
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from rationai.mlkit import autolog, with_cli_args
 from rationai.mlkit.lightning.loggers import MLFlowLogger
 from sklearn.decomposition import MiniBatchNMF
@@ -18,7 +18,11 @@ from explainability.factorization import (
     nnls_batch,
     reseed_dead_components,
 )
+from explainability.model import load_full_model, output_metric
 from explainability.tiles import load_embeddings_dataset, resolve_embedding_split_dirs
+
+
+HEADS = ("neutrophils", "nancy_low", "nancy_high")
 
 
 def resolve_percentile_stats_path(mlflow_uri: str) -> Path:
@@ -98,6 +102,7 @@ def iter_embedding_batches(
     shuffle_seed: int | None = None,
     shuffle_buffer_size: int | None = None,
     clip: bool = True,
+    transform: np.ndarray | None = None,
 ) -> Iterator[tuple[np.ndarray, pd.DataFrame | None]]:
     """Yield shifted, scaled (and by default non-negative) embedding batches with optional provenance.
 
@@ -122,6 +127,8 @@ def iter_embedding_batches(
             together with `shuffle_seed`, ignored otherwise.
         clip: Clip negatives to zero (NMF's non-negativity transform). Off
             for semi-NMF, which factors the signed embeddings directly.
+        transform: The output metric's T (`metric_transform`), applied last -
+            rows come out as T (z - shift) / scale. None leaves them as is.
 
     Yields:
         Tuples of (rows, metadata), where rows has shape
@@ -138,6 +145,8 @@ def iter_embedding_batches(
         rows = (raw - shift) / scale
         if clip:
             rows = np.maximum(rows, 0.0)
+        if transform is not None:
+            rows = rows @ transform.T
 
         metadata = None
         if metadata_columns:
@@ -172,6 +181,61 @@ def select_shift(method: str, center: bool, stats_path: Path, percentile_column:
     if center:
         return load_mean(stats_path)
     return np.zeros_like(load_scale(stats_path))
+
+
+def tile_uniform(metadata: pd.DataFrame, random_state: int) -> np.ndarray:
+    """A seeded pseudo-uniform [0, 1) value per tile from its (slide_id, x, y)."""
+    hashes = pd.util.hash_pandas_object(
+        metadata[["slide_id", "x", "y"]], index=False, hash_key=f"{random_state:016d}"[-16:]
+    )
+    return hashes.to_numpy() / 2.0**64
+
+
+def metric_transform(
+    rows: np.ndarray, shift: np.ndarray, config: DictConfig
+) -> tuple[np.ndarray, np.ndarray]:
+    """The heads' output metric for a fit: `(T, T^-T)` from shifted sample rows.
+
+    Fitting on T (z - mu) instead of z - mu makes the factorization minimise
+    the error of what the heads read (explainability.model.output_metric)
+    rather than of the whole embedding, much of which (stain, scanner,
+    tissue type) no head looks at. Atoms come back to the embedding space as
+    `atoms_fit @ T^-T`, the second return value; codes must be solved in the
+    T space too (`ConceptAutoencoder.encode` does, given transform.npy).
+    Needs the signed, unscaled rows of a semi-NMF fit - T mixes dimensions,
+    so neither NMF's clipped non-negative rows nor a per-dimension scale fit
+    with it.
+    """
+    if config.method != "semi_nmf":
+        raise ValueError("metric.enabled needs method=semi_nmf")
+    models = {
+        head: load_full_model(config.checkpoints[head].checkpoint, config.embed_dim)
+        for head in HEADS
+    }
+    transform = output_metric(
+        rows + shift, models, config.metric.attention_weight, config.metric.ridge
+    )
+    print(f"Output metric T from {len(rows)} tiles.", flush=True)
+    return transform, np.linalg.inv(transform).T
+
+
+def metric_sample(
+    dataset: ray.data.Dataset, n_rows: int, shift: np.ndarray, config: DictConfig, seed: int
+) -> np.ndarray:
+    """About `metric.n_tiles` shifted tiles, picked uniformly by a seeded hash of (slide_id, x, y)."""
+    fraction = config.metric.n_tiles / n_rows
+    chunks = []
+    for rows, metadata in iter_embedding_batches(
+        dataset,
+        config.nmf.batch_size,
+        shift,
+        np.ones_like(shift),
+        metadata_columns=("slide_id", "x", "y"),
+        clip=False,
+    ):
+        assert metadata is not None
+        chunks.append(rows[tile_uniform(metadata, seed) < fraction])
+    return np.concatenate(chunks)
 
 
 def gauge_fix_dictionary(h: np.ndarray) -> np.ndarray:
@@ -226,7 +290,11 @@ def fit_nmf_online(
 
 
 def fit_semi_nmf_online(
-    dataset: ray.data.Dataset, config: DictConfig, shift: np.ndarray, scale: np.ndarray
+    dataset: ray.data.Dataset,
+    config: DictConfig,
+    shift: np.ndarray,
+    scale: np.ndarray,
+    transform: np.ndarray | None = None,
 ) -> np.ndarray:
     """Online semi-NMF (W >= 0, H signed) over shuffled passes of the shifted, scaled, signed embeddings.
 
@@ -239,7 +307,8 @@ def fit_semi_nmf_online(
     batch (Ding et al.'s recommended semi-NMF init).
 
     Returns:
-        H in the scaled fit space, shape `(n_components, embed_dim)`.
+        H in the scaled (and with `transform`, T-mapped) fit space, shape
+        `(n_components, embed_dim)`.
     """
     rng = np.random.default_rng(config.nmf.random_state)
     k = config.n_components
@@ -253,6 +322,7 @@ def fit_semi_nmf_online(
             shuffle_seed=config.nmf.random_state + epoch,
             shuffle_buffer_size=config.nmf.shuffle_buffer_size,
             clip=False,
+            transform=transform,
         ):
             if h is None:
                 h = kmeans_init(rows, k, config.nmf.random_state)
@@ -299,16 +369,27 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # from the parquet footers, no column data decoded).
     n_rows = dataset.count()
 
+    transform = inverse = None
+    if config.metric.enabled:
+        if config.nmf.scale_power != 0:
+            raise ValueError("metric.enabled needs nmf.scale_power=0")
+        sample = metric_sample(dataset, n_rows, shift, config, config.nmf.random_state)
+        transform, inverse = metric_transform(sample, shift, config)
+        del sample
+
     if config.method == "nmf":
         h_fit = fit_nmf_online(dataset, config, shift, scale)
     else:
-        h_fit = fit_semi_nmf_online(dataset, config, shift, scale)
+        h_fit = fit_semi_nmf_online(dataset, config, shift, scale, transform)
 
     # Recover H_k = H~_k * d: the dictionary was fit on scaled embeddings, so
     # its raw coefficients are per unit of (dimension j / scale[j]) - this
     # multiplies that back out into the original (shifted-only) embedding
-    # space. Must happen *before* gauge-fixing: gauge-fixing normalizes row
-    # norms, and this recovery changes those norms.
+    # space (and T^-T maps atoms fit under the output metric back). Must
+    # happen *before* gauge-fixing: gauge-fixing normalizes row norms, and
+    # this recovery changes those norms.
+    if inverse is not None:
+        h_fit = h_fit @ inverse
     h = (h_fit * scale[None, :]).astype(np.float32)
     if config.nmf.gauge_fix:
         h = gauge_fix_dictionary(h)
@@ -316,8 +397,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # Transform: one clean pass of *shift-only* (unscaled - H is no longer in
     # the scaled fit space) embeddings against the final H. One row per tile,
     # so W's rows are the tile-level concept weights phi_i directly, with
-    # h_i ~= shift + phi_i @ H.
+    # h_i ~= shift + phi_i @ H. Under the output metric both sides are mapped
+    # by T, exactly as ConceptAutoencoder.encode does.
     unscaled = np.ones_like(scale)
+    h_codes = h if transform is None else h @ transform.T
     w_path = output_dir / "w.f32.npy"
     w = np.lib.format.open_memmap(
         w_path, mode="w+", dtype=np.float32, shape=(n_rows, config.n_components)
@@ -331,8 +414,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         unscaled,
         metadata_columns=("slide_id", "x", "y"),
         clip=config.method == "nmf",
+        transform=transform,
     ):
-        w_batch = nnls_batch(rows, h, config.nmf.nnls_iter)
+        w_batch = nnls_batch(rows, h_codes, config.nmf.nnls_iter)
         w[offset : offset + w_batch.shape[0]] = w_batch
         metadata_chunks.append(metadata)
         offset += w_batch.shape[0]
@@ -349,6 +433,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # reconstruction h_i ~= shift + phi_i @ H without re-resolving the
     # token_statistics run this fit used.
     np.save(output_dir / "shift.npy", shift)
+    if transform is not None:
+        np.save(output_dir / "transform.npy", transform)
 
     manifest = {
         "w": {"path": str(w_path), "shape": list(w.shape), "dtype": str(w.dtype)},
@@ -361,6 +447,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "scale_columns": "p0.75 - p0.25 (IQR)",
         "gauge_fixed": config.nmf.gauge_fix,
         "epochs": config.nmf.epochs,
+        "metric": OmegaConf.to_container(config.metric),
     }
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
@@ -371,6 +458,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # Small (one value per dimension) - logged so the dictionary is complete in
     # mlflow: concept_completeness.py / concept_gallery.py read only from there.
     logger.log_artifact(str(output_dir / "shift.npy"))
+    if transform is not None:
+        logger.log_artifact(str(output_dir / "transform.npy"))
     logger.log_artifact(str(manifest_path))
 
 
