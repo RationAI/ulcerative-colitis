@@ -1,7 +1,11 @@
 """Q2 and Q3 - which concepts matter for which class, and which attract each model's attention.
 
 Notation as in explainability/concepts.py (after arXiv:2609.34750). Example
-tiles per concept: the `n_tiles` highest-v_k tiles, at most one per slide, read
+tiles per concept: the `n_tiles` tiles with the highest share v_k / sum_l v_il
+(among tiles whose total code reaches `min_total_quantile`, so a share of almost
+nothing doesn't count) - fits under the output metric share a factor that moves
+every v_k together, so raw v_k would rank the same tiles for all concepts -
+at most one per slide, read
 from the WSIs exactly as preprocessing/embeddings.py embedded them.
 
 **Q2 - concept importance per output class.** The tile-logit head through the
@@ -101,6 +105,7 @@ from explainability.tiles import (
 )
 from explainability.tree_view import (
     TILE_CSS,
+    code_share,
     jpeg_base64,
     render_tree_html,
     select_node_tiles,
@@ -140,12 +145,15 @@ def conditional_difference(values: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return values[mask].mean(axis=0) - values[~mask].mean(axis=0)
 
 
-def select_tiles(v: np.ndarray, keys: pd.DataFrame, n_tiles: int) -> pd.DataFrame:
-    """Top-`n_tiles` tiles per concept by v_k, at most one per slide."""
+def select_tiles(
+    v: np.ndarray, keys: pd.DataFrame, n_tiles: int, min_total_quantile: float
+) -> pd.DataFrame:
+    """Top-`n_tiles` tiles per concept by share of the code, at most one per slide."""
     frames = []
-    share = v / np.maximum(v.sum(axis=1, keepdims=True), 1e-12)
+    share = code_share(v)
+    eligible = v.sum(axis=1) >= np.quantile(v.sum(axis=1), min_total_quantile)
     for k in range(v.shape[1]):
-        top = np.argsort(-v[:, k])
+        top = np.argsort(-(share[:, k] * eligible))
         frame = keys.iloc[top].assign(v=v[top, k], share=share[top, k])
         frame = frame.drop_duplicates("slide_id").head(n_tiles)
         frames.append(frame.assign(concept=k, rank=np.arange(len(frame))))
@@ -356,9 +364,8 @@ small {{ color: #555; }}
 </style></head><body>
 <h1>{html.escape(title)}</h1>
 {render_completeness(completeness)}
-<p><b>Example tiles</b>: highest concept code v<sub>k</sub>, one per slide, captioned with the
-slide's name - click to open the tile in xOpat (hover: position, v<sub>k</sub>, share of the
-tile's total code).</p>
+<p><b>Example tiles</b>: highest share of the tile's total concept code, one per slide, captioned with the
+slide's name - click to open the tile in xOpat (hover: position, v<sub>k</sub>, share).</p>
 <p><b>Separation</b> (per output): how much of the logit gap between slides of that class and
 the rest flows through the concept, using the exact slide attribution
 &phi;<sub>kc</sub>(s) = v&#772;<sub>sk</sub> a<sub>kc</sub> with the model's real attention -
@@ -491,7 +498,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     slide_table = load_embedding_slides(split_dirs)
     selected = with_slide_links(
-        select_tiles(v, keys, config.n_tiles), slide_table, config.xopat_tiles_across
+        select_tiles(v, keys, config.n_tiles, config.min_total_quantile),
+        slide_table,
+        config.xopat_tiles_across,
     )
     tiles = read_tiles(selected, slide_table)
     images = [png_bytes(tile) for tile in tiles]
@@ -521,6 +530,7 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "institutions": config.institutions,
         "n_components": n_components,
         "n_tiles_per_concept": config.n_tiles,
+        "min_total_quantile": config.min_total_quantile,
         "n_slides": len(slides),
         "slide_additivity": slide_additivity.to_dict(orient="records"),
         "attention_additivity": attention_additivity.to_dict(orient="records"),
@@ -535,7 +545,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     tree = dictionary.tree
     if tree is not None:
         node_tiles = with_slide_links(
-            select_node_tiles(v, keys, tree, config.n_tiles), slide_table, config.xopat_tiles_across
+            select_node_tiles(v, keys, tree, config.n_tiles, config.min_total_quantile),
+            slide_table,
+            config.xopat_tiles_across,
         )
         node_images = [jpeg_base64(tile) for tile in read_tiles(node_tiles, slide_table)]
         (output_dir / "tree.html").write_text(

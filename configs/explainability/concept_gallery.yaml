@@ -28,8 +28,11 @@ embed_dim: 1280
 # (h.parquet, manifest.json, shift.npy, tree.parquet).
 dictionary_uri: ???
 
-# Example tiles per concept (highest phi_k, at most one per slide).
+# Example tiles per concept (highest share of the tile's code, at most one per slide).
 n_tiles: 8
+# Only tiles whose total code reaches this quantile can be example tiles - a high
+# share of a tiny code says nothing about the concept.
+min_total_quantile: 0.5
 # How many tiles fit across the xOpat viewer a clicked tile opens in, centred on it.
 xopat_tiles_across: 4
 

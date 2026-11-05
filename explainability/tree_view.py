@@ -5,8 +5,10 @@ naming top-down - coarse groups first, then their subtypes - is how a
 pathologist reads tissue, and marking a split as "don't split" (children not
 meaningfully different) is direct expert feedback on the tree's stopping rule.
 
-A node's example tiles: the highest summed weight over its descendant leaves,
-`sum_{l below n} v_il` (for a leaf, just its own v_il), at most one per slide -
+A node's example tiles: the highest summed share of the code over its
+descendant leaves, `sum_{l below n} v_il / sum_l v_il` (for a leaf, just its own
+share), among tiles whose total code reaches `min_total_quantile`, at most one
+per slide -
 so the view needs only tree.parquet plus the tiles' concept codes, and works
 for trees fit before node atoms were saved.
 
@@ -43,15 +45,26 @@ def descendant_components(tree: pd.DataFrame) -> dict[int, list[int]]:
     return {int(node_id): collect(int(node_id)) for node_id in tree["node_id"]}
 
 
+def code_share(v: np.ndarray) -> np.ndarray:
+    """Each concept's share of the tile's total code, v_k / sum_l v_l, shape `v.shape`."""
+    return v / np.maximum(v.sum(axis=1, keepdims=True), 1e-12)
+
+
 def select_node_tiles(
-    v: np.ndarray, keys: pd.DataFrame, tree: pd.DataFrame, n_tiles: int
+    v: np.ndarray,
+    keys: pd.DataFrame,
+    tree: pd.DataFrame,
+    n_tiles: int,
+    min_total_quantile: float,
 ) -> pd.DataFrame:
-    """Top-`n_tiles` tiles per non-root node by summed descendant-leaf code, one per slide."""
+    """Top-`n_tiles` tiles per non-root node by summed descendant-leaf share, one per slide."""
     frames = []
+    share = code_share(v)
+    eligible = v.sum(axis=1) >= np.quantile(v.sum(axis=1), min_total_quantile)
     for node_id, components in descendant_components(tree).items():
         if node_id == 0 or not components:
             continue
-        score = v[:, components].sum(axis=1)
+        score = share[:, components].sum(axis=1) * eligible
         top = np.argsort(-score)
         frame = keys.iloc[top].assign(score=score[top]).drop_duplicates("slide_id").head(n_tiles)
         frames.append(frame.assign(node_id=node_id, rank=np.arange(len(frame))))
