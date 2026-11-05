@@ -97,8 +97,15 @@ from explainability.tiles import (
     load_embeddings_dataset,
     resolve_embedding_split_dirs,
     select_sources,
+    with_slide_links,
 )
-from explainability.tree_view import jpeg_base64, render_tree_html, select_node_tiles
+from explainability.tree_view import (
+    TILE_CSS,
+    jpeg_base64,
+    render_tree_html,
+    select_node_tiles,
+    tile_link,
+)
 
 
 HEADS = ("neutrophils", "nancy_low", "nancy_high")
@@ -313,10 +320,11 @@ def render_html(
     body = []
     for k in sorted(concept_class["concept"].unique()):
         imgs = "".join(
-            f'<img src="data:image/png;base64,{base64.b64encode(images[i]).decode()}" '
-            f'title="{html.escape(str(selected.at[i, "slide_id"]))} '
-            f'({selected.at[i, "x"]}, {selected.at[i, "y"]}) '
-            f'v={selected.at[i, "v"]:.3g} share={selected.at[i, "share"]:.2f}">'
+            tile_link(
+                f"data:image/png;base64,{base64.b64encode(images[i]).decode()}",
+                selected.loc[i],
+                f'v={selected.at[i, "v"]:.3g} share={selected.at[i, "share"]:.2f}',
+            )
             for i in selected.index[selected["concept"] == k]
         )
         cells = []
@@ -343,13 +351,14 @@ body {{ font-family: system-ui, sans-serif; margin: 16px; background: #fff; colo
 table {{ border-collapse: collapse; }}
 th, td {{ border: 1px solid #ccc; padding: 4px 6px; text-align: center; vertical-align: middle; }}
 td.tiles {{ text-align: left; white-space: nowrap; }}
-td.tiles img {{ width: 96px; height: 96px; margin: 1px; }}
+{TILE_CSS.format(size=96)}
 small {{ color: #555; }}
 </style></head><body>
 <h1>{html.escape(title)}</h1>
 {render_completeness(completeness)}
-<p><b>Example tiles</b>: highest concept code v<sub>k</sub>, one per slide (hover: slide,
-position, v<sub>k</sub>, share of the tile's total code).</p>
+<p><b>Example tiles</b>: highest concept code v<sub>k</sub>, one per slide, captioned with the
+slide's name - click to open the tile in xOpat (hover: position, v<sub>k</sub>, share of the
+tile's total code).</p>
 <p><b>Separation</b> (per output): how much of the logit gap between slides of that class and
 the rest flows through the concept, using the exact slide attribution
 &phi;<sub>kc</sub>(s) = v&#772;<sub>sk</sub> a<sub>kc</sub> with the model's real attention -
@@ -480,8 +489,11 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     print(slide_additivity.to_string(index=False), flush=True)
     print(attention_additivity.to_string(index=False), flush=True)
 
-    selected = select_tiles(v, keys, config.n_tiles)
-    tiles = read_tiles(selected, load_embedding_slides(split_dirs))
+    slide_table = load_embedding_slides(split_dirs)
+    selected = with_slide_links(
+        select_tiles(v, keys, config.n_tiles), slide_table, config.xopat_tiles_across
+    )
+    tiles = read_tiles(selected, slide_table)
     images = [png_bytes(tile) for tile in tiles]
     for i, image in enumerate(images):
         name = f"concept{selected.at[i, 'concept']}_rank{selected.at[i, 'rank']}.png"
@@ -522,10 +534,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     # Whole-tree view for the pathologist when the dictionary is an nmf_tree.py fit.
     tree = dictionary.tree
     if tree is not None:
-        node_tiles = select_node_tiles(v, keys, tree, config.n_tiles)
-        node_images = [
-            jpeg_base64(tile) for tile in read_tiles(node_tiles, load_embedding_slides(split_dirs))
-        ]
+        node_tiles = with_slide_links(
+            select_node_tiles(v, keys, tree, config.n_tiles), slide_table, config.xopat_tiles_across
+        )
+        node_images = [jpeg_base64(tile) for tile in read_tiles(node_tiles, slide_table)]
         (output_dir / "tree.html").write_text(
             render_tree_html(tree, node_tiles, node_images, f"Concept tree - {dictionary.fit_dir.name}")
         )

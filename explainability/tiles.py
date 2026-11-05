@@ -1,5 +1,7 @@
+import json
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import quote
 
 import pandas as pd
 import ray.data
@@ -8,6 +10,10 @@ from omegaconf import DictConfig
 
 
 log = logging.getLogger(__name__)
+
+XOPAT_BASE_URL = "https://xopat.rationai.cloud.trusted.e-infra.cz/v3/"
+XOPAT_PROTOCOL = "wsi_service"  # the slide protocol registered on that deployment
+XOPAT_MOUNT_ROOT = "/mnt"  # the image server addresses slides relative to it
 
 
 def resolve_embedding_split_dirs(
@@ -82,3 +88,63 @@ def load_embedding_slides(split_dirs: list[Path]) -> pd.DataFrame:
         ignore_index=True,
     )
 
+
+def xopat_url(
+    path: str,
+    x: int,
+    y: int,
+    tile_extent_x: int,
+    tile_extent_y: int,
+    extent_x: int,
+    tiles_across: float,
+) -> str:
+    """XOpat v3 link opening the slide centred on a tile, `tiles_across` tiles wide.
+
+    The session is the one `XopatSession.from_slide` of RationAI/ReportFast
+    builds, written out here because importing that package pulls a web
+    framework into every job. `x`, `y` and both extents are in pixels of the
+    same pyramid level (slides.parquet's `level`), so their ratios are the
+    OpenSeadragon viewport coordinates, where the slide's width is 1 at any
+    level - `y` too is divided by the width. Zoom z shows 1/z of that width.
+    """
+    data_id = str(PurePosixPath(path).relative_to(XOPAT_MOUNT_ROOT))
+    name = PurePosixPath(path).stem
+    session = {
+        "params": {
+            "viewport": {
+                "zoomLevel": extent_x / (tiles_across * tile_extent_x),
+                "point": {
+                    "x": (x + tile_extent_x / 2) / extent_x,
+                    "y": (y + tile_extent_y / 2) / extent_x,
+                },
+            }
+        },
+        "data": [{"dataID": data_id, "protocol": XOPAT_PROTOCOL}],
+        "background": [{"dataReference": 0, "name": name, "visualizationIndex": 0}],
+        "visualizations": [{"name": name, "shaders": {}}],
+        "plugins": {},
+    }
+    payload = json.dumps(session, separators=(",", ":"), ensure_ascii=False)
+    return f"{XOPAT_BASE_URL}#{quote(payload)}"
+
+
+def with_slide_links(
+    tiles: pd.DataFrame, slides: pd.DataFrame, tiles_across: float
+) -> pd.DataFrame:
+    """`tiles` with each tile's `slide_name` and `xopat_url`, from the slides table."""
+    info = slides.set_index("id").loc[tiles["slide_id"]]
+    return tiles.assign(
+        slide_name=[PurePosixPath(path).stem for path in info["path"]],
+        xopat_url=[
+            xopat_url(path, x, y, width, height, extent_x, tiles_across)
+            for path, x, y, width, height, extent_x in zip(
+                info["path"],
+                tiles["x"],
+                tiles["y"],
+                info["tile_extent_x"],
+                info["tile_extent_y"],
+                info["extent_x"],
+                strict=True,
+            )
+        ],
+    )

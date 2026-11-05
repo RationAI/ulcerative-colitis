@@ -10,8 +10,8 @@ A node's example tiles: the highest summed weight over its descendant leaves,
 so the view needs only tree.parquet plus the tiles' concept codes, and works
 for trees fit before node atoms were saved.
 
-The page is a single HTML file (tiles embedded as JPEG): nested, collapsible
-nodes, a label and comment field per node and a "don't split" box per
+The page is a single HTML file (tiles embedded as JPEG, each captioned with its
+slide and linked to it in xOpat): nested, collapsible nodes, a label and comment field per node and a "don't split" box per
 internal node. Entries are kept in the browser's local storage while
 editing and exported with "Download labels (CSV)".
 """
@@ -58,10 +58,32 @@ def select_node_tiles(
     return pd.concat(frames, ignore_index=True)
 
 
+def tile_link(image_src: str, tile: pd.Series, hover: str = "") -> str:
+    """A tile image captioned with its slide's name, opening it in xOpat on click.
+
+    `tile` is a row of `with_slide_links`, `hover` extra tooltip text.
+    """
+    name = html.escape(str(tile["slide_name"]))
+    tooltip = html.escape(f"{tile['slide_name']} ({tile['x']}, {tile['y']}) {hover}".strip())
+    return (
+        f'<a class="tile" href="{html.escape(str(tile["xopat_url"]))}" target="_blank" '
+        f'rel="noopener" title="{tooltip}"><img src="{image_src}"><span>{name}</span></a>'
+    )
+
+
 def jpeg_base64(tile: np.ndarray, quality: int = 90) -> str:
     buffer = io.BytesIO()
     Image.fromarray(tile).save(buffer, format="JPEG", quality=quality)
     return base64.b64encode(buffer.getvalue()).decode()
+
+
+TILE_CSS = """
+a.tile {{ display: inline-block; width: {size}px; margin: 1px; vertical-align: top;
+  color: inherit; text-decoration: none; white-space: normal; }}
+a.tile img {{ display: block; width: {size}px; height: {size}px; }}
+a.tile span {{ display: block; font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }}
+a.tile:hover img {{ outline: 2px solid #2a78d6; }}
+"""
 
 
 SCRIPT = """
@@ -121,9 +143,7 @@ def render_tree_html(
         if pd.notna(gain) and not is_leaf:
             details += f" &middot; split explains {gain:.1%} held out"
         imgs = "".join(
-            f'<img src="data:image/jpeg;base64,{images[i]}" '
-            f'title="{html.escape(str(node_tiles.at[i, "slide_id"]))} '
-            f'({node_tiles.at[i, "x"]}, {node_tiles.at[i, "y"]})">'
+            tile_link(f"data:image/jpeg;base64,{images[i]}", node_tiles.loc[i])
             for i in tiles_of.get(node_id, [])
         )
         nosplit = (
@@ -145,14 +165,14 @@ def render_tree_html(
 body {{ font-family: system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }}
 details {{ border-left: 2px solid #ccc; margin: 6px 0 6px 12px; padding-left: 10px; }}
 summary {{ cursor: pointer; padding: 2px 0; }}
-.tiles img {{ width: 112px; height: 112px; margin: 1px; }}
+{TILE_CSS.format(size=112)}
 .form input.label {{ width: 260px; }} .form input.comment {{ width: 420px; }}
 small {{ color: #555; }}
 button {{ margin: 8px 0; padding: 6px 12px; }}
 </style><script>{SCRIPT}</script></head><body>
 <h1>{html.escape(title)}</h1>
-<p>Each node shows the tiles that most strongly carry it (one per slide; hover for the slide and
-position). Internal nodes group everything below them. Please give each node a label, top-down,
+<p>Each node shows the tiles that most strongly carry it (one per slide; click a tile to open it in
+xOpat). Internal nodes group everything below them. Please give each node a label, top-down,
 and tick <i>don't split</i> where the two children are not meaningfully different. Entries are
 kept in this browser while you work; use the button to export them.</p>
 <button onclick="download()">Download labels (CSV)</button>
