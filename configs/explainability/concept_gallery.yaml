@@ -36,6 +36,13 @@ min_total_quantile: 0.5
 # How many tiles fit across the xOpat viewer a clicked tile opens in, centred on it.
 xopat_tiles_across: 4
 
+# pathologist.html: size of the push, in SDs over slides of the concept's mean
+# share. Large enough to read, small enough that adding and subtracting agree.
+effect_step_sds: 0.25
+# Concepts whose largest effect on a grade stays under this many percentage
+# points are folded away at the end of pathologist.html.
+minor_effect_points: 1.5
+
 # Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
 # FISTA iterations of the encoder E - same as the fit's own nnls_iter.
@@ -51,9 +58,11 @@ metadata:
     Q2/Q3 - example tiles per concept; per output class the exact slide
     attributions phi_kc = vbar_sk a_kc summarised as class separation (ground
     truth and predicted); per model attention enrichment and occlusion
-    attributions with their additivity error. Dictionary: ${dictionary_uri}.
+    attributions with their additivity error; pathologist.html with each
+    concept's effect on the final Nancy grade. Dictionary: ${dictionary_uri}.
   hyperparams:
     split: ${split}
     institutions: ${institutions}
     dictionary_uri: ${dictionary_uri}
     n_tiles: ${n_tiles}
+    effect_step_sds: ${effect_step_sds}

@@ -52,6 +52,9 @@ the matching concept_completeness.py run - found in mlflow by its logged
 `dictionary_uri`, `split` and `institutions` params (the newest finished one)
 and read from its `manifest.json` artifact. Run it first; nothing is
 recomputed here, and the panel says so if no matching run exists.
+
+Alongside gallery.html, pathologist.html shows the same tiles with five numbers
+per concept instead of these tables - see explainability/pathologist_view.py.
 """
 
 import base64
@@ -90,11 +93,17 @@ from explainability.model import (
     attention_scores,
     centred_classifier,
     class_mask,
+    ensemble_labels,
     load_full_model,
     logits_to_prob,
     nancy_to_target,
     predicted_labels,
     tile_logits,
+)
+from explainability.pathologist_view import (
+    cell_colour,
+    concept_effects,
+    render_pathologist_html,
 )
 from explainability.tiles import (
     load_embedding_slides,
@@ -217,13 +226,6 @@ def find_completeness(
     print(f"Q1 panel from concept_completeness run {run_id}", flush=True)
     path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="manifest.json")
     return json.loads(Path(path).read_text())
-
-
-def cell_colour(value: float, scale: float) -> str:
-    """Red for positive, blue for negative, intensity relative to `scale` (the column's max |value|)."""
-    alpha = 0.0 if scale <= 0 or not np.isfinite(value) else min(abs(value) / scale, 1.0) * 0.6
-    rgb = "214, 39, 40" if value > 0 else "31, 119, 180"
-    return f"rgba({rgb}, {alpha:.3f})"
 
 
 def render_completeness(manifest: dict[str, Any] | None) -> str:
@@ -410,7 +412,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
 
     key_chunks, v_chunks = [], []
     readouts: dict[str, dict[str, list[np.ndarray]]] = {
-        head: {"s": [], "u": [], "u_hat": [], "occlusion": []} for head in HEADS
+        head: {"s": [], "u": [], "u_hat": [], "occlusion": [], "s_hat": [], "pre_hat": []}
+        for head in HEADS
     }
     for keys, z in iter_tiles(load_embeddings_dataset(split_dirs), config.batch_size):
         v = autoencoder.encode(z)
@@ -421,6 +424,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
             readouts[head]["u"].append(attention_scores(z, model).astype(np.float32))
             readouts[head]["u_hat"].append(u_hat.astype(np.float32))
             readouts[head]["occlusion"].append(occlusion.astype(np.float32))
+            readouts[head]["s_hat"].append(tile_logits(z_hat, model).astype(np.float32))
+            readouts[head]["pre_hat"].append(
+                attention_preactivation(z_hat, model).astype(np.float32)
+            )
         key_chunks.append(keys)
         v_chunks.append(v)
     keys = pd.concat(key_chunks, ignore_index=True)
@@ -439,6 +446,8 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
     attention_rows: list[dict[str, Any]] = []
     additivity_rows: list[dict[str, Any]] = []
     attention_additivity_rows: list[dict[str, Any]] = []
+    slide_probs: dict[str, np.ndarray] = {}
+    decoded: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for head, model in models.items():
         r = {name: np.concatenate(chunks) for name, chunks in readouts[head].items()}
         theta, b = centred_classifier(model)
@@ -450,7 +459,9 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         phi = v_bar[:, :, None] * a[None]  # (S, K, C)
         concept_part = offset + phi.sum(axis=1)
         y_gt = nancy_to_target(nancy_index, head)
-        y_pred = predicted_labels(logits_to_prob(logits, num_classes))
+        slide_probs[head] = logits_to_prob(logits, num_classes)
+        decoded[head] = (r["s_hat"], r["pre_hat"])
+        y_pred = predicted_labels(slide_probs[head])
 
         for c in range(num_classes):
             gt = class_mask(y_gt, c, num_classes)
@@ -518,6 +529,17 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         render_html(concept_class, concept_attention, slide_additivity, attention_additivity,
                     selected, images, title, completeness)
     )
+    effects = concept_effects(
+        v, autoencoder.dictionary, decoded, models, slides, ensemble_labels(slide_probs),
+        config.effect_step_sds,
+    )
+    (output_dir / "pathologist.html").write_text(
+        render_pathologist_html(
+            effects, selected, [jpeg_base64(tile) for tile in tiles],
+            f"Concepts (K = {n_components})", config.minor_effect_points, config.effect_step_sds,
+        )
+    )
+    effects.to_parquet(output_dir / "concept_effect.parquet", index=False)
     concept_class.to_parquet(output_dir / "concept_class.parquet", index=False)
     concept_attention.to_parquet(output_dir / "concept_attention.parquet", index=False)
     slide_additivity.to_parquet(output_dir / "slide_additivity.parquet", index=False)
@@ -531,13 +553,16 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "n_components": n_components,
         "n_tiles_per_concept": config.n_tiles,
         "min_total_quantile": config.min_total_quantile,
+        "effect_step_sds": config.effect_step_sds,
+        "minor_effect_points": config.minor_effect_points,
         "n_slides": len(slides),
         "slide_additivity": slide_additivity.to_dict(orient="records"),
         "attention_additivity": attention_additivity.to_dict(orient="records"),
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
-    for name in ("gallery.html", "concept_class.parquet", "concept_attention.parquet",
+    for name in ("gallery.html", "pathologist.html", "concept_effect.parquet",
+                 "concept_class.parquet", "concept_attention.parquet",
                  "slide_additivity.parquet", "attention_additivity.parquet", "manifest.json"):
         logger.log_artifact(str(output_dir / name))
 
