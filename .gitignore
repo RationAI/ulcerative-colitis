@@ -181,6 +181,8 @@ lightning_logs/
 # Project
 /data
 playground.ipynb
+# Plots exported into the repository root
+/*.png
 
 # Per-job launchers (local, one file per submitted job)
 /jobs/

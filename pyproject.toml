@@ -23,6 +23,7 @@ dependencies = [
     "ratiopath>=1.4.2",
     "rich>=15.0.0",
     "scikit-learn>=1.8.0",
+    "report-fast",
 ]
 
 [project.optional-dependencies]
@@ -40,3 +41,4 @@ rationai-masks = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/
 rationai-tiling = { git = "https://gitlab.ics.muni.cz/rationai/digital-pathology/libraries/tiling.git" }
 rationai-kube-jobs = { git = "ssh://git@gitlab.ics.muni.cz/rationai/infrastructure/kube-jobs" }
 rationai-sdk = { git = "https://github.com/RationAI/rationai-sdk-python.git" }
+report-fast = { git = "https://github.com/RationAI/ReportFast" }

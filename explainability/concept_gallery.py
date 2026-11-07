@@ -54,7 +54,9 @@ and read from its `manifest.json` artifact. Run it first; nothing is
 recomputed here, and the panel says so if no matching run exists.
 
 Alongside gallery.html, pathologist.html shows the same tiles with five numbers
-per concept instead of these tables - see explainability/pathologist_view.py.
+per concept instead of these tables - see explainability/pathologist_view.py -
+and links them to xOpat sessions with concept masks - see
+explainability/concept_masks.py.
 """
 
 import base64
@@ -79,6 +81,12 @@ from rationai.mlkit.lightning.loggers import MLFlowLogger
 from ratiopath.tiling.read_slide_tiles import read_slide_tiles
 from ray.data.expressions import col
 
+from explainability.concept_masks import (
+    MASKS_ARTIFACT,
+    row_urls,
+    share_scale,
+    write_masks,
+)
 from explainability.concepts import (
     SlideIndex,
     iter_tiles,
@@ -533,9 +541,23 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         v, autoencoder.dictionary, decoded, models, slides, ensemble_labels(slide_probs),
         config.effect_step_sds,
     )
+    if logger.run_id is None:
+        raise ValueError("MLflow logger has no run - can't address the concept masks")
+    masked = selected[selected["concept"].isin(list(config.mask_concepts or range(n_components)))]
+    low, high = share_scale(code_share(v), config.mask_low_quantile, config.mask_high_quantile)
+    write_masks(
+        code_share(v), keys, masked, slide_table, low, high, config.mask_downsample, output_dir
+    )
+    logger.log_artifacts(str(output_dir / MASKS_ARTIFACT), MASKS_ARTIFACT)
+    linked = selected.copy()
+    for concept, row in masked.groupby("concept"):
+        linked.loc[row.index, "xopat_url"] = row_urls(
+            row, int(concept), n_components, slide_table, logger.run_id, logger.experiment_id,
+            config.xopat_tiles_across,
+        )
     (output_dir / "pathologist.html").write_text(
         render_pathologist_html(
-            effects, selected, [jpeg_base64(tile) for tile in tiles],
+            effects, linked, [jpeg_base64(tile) for tile in tiles],
             f"Concepts (K = {n_components})", config.minor_effect_points, config.effect_step_sds,
         )
     )
@@ -555,6 +577,10 @@ def main(config: DictConfig, logger: MLFlowLogger) -> None:
         "min_total_quantile": config.min_total_quantile,
         "effect_step_sds": config.effect_step_sds,
         "minor_effect_points": config.minor_effect_points,
+        "mask_concepts": list(masked["concept"].unique().tolist()),
+        "mask_downsample": config.mask_downsample,
+        "mask_low": low.tolist(),
+        "mask_high": high.tolist(),
         "n_slides": len(slides),
         "slide_additivity": slide_additivity.to_dict(orient="records"),
         "attention_additivity": attention_additivity.to_dict(orient="records"),

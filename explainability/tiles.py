@@ -1,19 +1,17 @@
-import json
 import logging
 from pathlib import Path, PurePosixPath
-from urllib.parse import quote
+from typing import Any
 
 import pandas as pd
 import ray.data
 from mlflow.artifacts import download_artifacts
 from omegaconf import DictConfig
+from report_fast import XopatSession
 
 
 log = logging.getLogger(__name__)
 
-XOPAT_BASE_URL = "https://xopat.rationai.cloud.trusted.e-infra.cz/v3/"
-XOPAT_PROTOCOL = "wsi_service"  # the slide protocol registered on that deployment
-XOPAT_MOUNT_ROOT = "/mnt"  # the image server addresses slides relative to it
+XOPAT_PROTOCOL = "wsi_service"  # the slide protocol registered on the deployment
 
 
 def resolve_embedding_split_dirs(
@@ -89,6 +87,25 @@ def load_embedding_slides(split_dirs: list[Path]) -> pd.DataFrame:
     )
 
 
+def tile_viewport(
+    x: int, y: int, tile_extent_x: int, tile_extent_y: int, extent_x: int, tiles_across: float
+) -> dict[str, Any]:
+    """XOpat viewport centred on a tile, `tiles_across` tiles wide.
+
+    `x`, `y` and both extents are in pixels of the same pyramid level
+    (slides.parquet's `level`), so their ratios are the OpenSeadragon viewport
+    coordinates, where the slide's width is 1 at any level - `y` too is divided
+    by the width. Zoom z shows 1/z of that width.
+    """
+    return {
+        "zoomLevel": extent_x / (tiles_across * tile_extent_x),
+        "point": {
+            "x": (x + tile_extent_x / 2) / extent_x,
+            "y": (y + tile_extent_y / 2) / extent_x,
+        },
+    }
+
+
 def xopat_url(
     path: str,
     x: int,
@@ -98,34 +115,12 @@ def xopat_url(
     extent_x: int,
     tiles_across: float,
 ) -> str:
-    """XOpat v3 link opening the slide centred on a tile, `tiles_across` tiles wide.
-
-    The session is the one `XopatSession.from_slide` of RationAI/ReportFast
-    builds, written out here because importing that package pulls a web
-    framework into every job. `x`, `y` and both extents are in pixels of the
-    same pyramid level (slides.parquet's `level`), so their ratios are the
-    OpenSeadragon viewport coordinates, where the slide's width is 1 at any
-    level - `y` too is divided by the width. Zoom z shows 1/z of that width.
-    """
-    data_id = str(PurePosixPath(path).relative_to(XOPAT_MOUNT_ROOT))
-    name = PurePosixPath(path).stem
-    session = {
-        "params": {
-            "viewport": {
-                "zoomLevel": extent_x / (tiles_across * tile_extent_x),
-                "point": {
-                    "x": (x + tile_extent_x / 2) / extent_x,
-                    "y": (y + tile_extent_y / 2) / extent_x,
-                },
-            }
-        },
-        "data": [{"dataID": data_id, "protocol": XOPAT_PROTOCOL}],
-        "background": [{"dataReference": 0, "name": name, "visualizationIndex": 0}],
-        "visualizations": [{"name": name, "shaders": {}}],
-        "plugins": {},
-    }
-    payload = json.dumps(session, separators=(",", ":"), ensure_ascii=False)
-    return f"{XOPAT_BASE_URL}#{quote(payload)}"
+    """XOpat v3 link opening the slide centred on a tile, `tiles_across` tiles wide."""
+    viewport = tile_viewport(x, y, tile_extent_x, tile_extent_y, extent_x, tiles_across)
+    session = XopatSession.from_slide(
+        path, name=PurePosixPath(path).stem, protocol=XOPAT_PROTOCOL, params={"viewport": viewport}
+    )
+    return session.url()
 
 
 def with_slide_links(

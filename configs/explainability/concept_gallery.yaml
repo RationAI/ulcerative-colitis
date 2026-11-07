@@ -43,6 +43,16 @@ effect_step_sds: 0.25
 # points are folded away at the end of pathologist.html.
 minor_effect_points: 1.5
 
+# xOpat concept masks. Concept rows to build them for, null for all (the slides
+# of those rows get all K masks).
+mask_concepts: null
+# Masks are this many times smaller than the tiles' level: 9 is one pyramid level
+# smaller than level 2, well under a tile stride.
+mask_downsample: 9
+# Quantiles of each concept's share over all tiles that fix its 8-bit scale.
+mask_low_quantile: 0.5
+mask_high_quantile: 0.999
+
 # Tiles per streaming batch (each batch is encoded and decoded in memory).
 batch_size: 32768
 # FISTA iterations of the encoder E - same as the fit's own nnls_iter.
