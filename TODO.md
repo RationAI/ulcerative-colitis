@@ -60,8 +60,10 @@ concept, gallery slides only (about 158 slides at K = 24, 109 at K = 16), and lo
 treated like any other tile. Masks are limited to tile resolution: one value every 112 level-2 px,
 about 175 µm. Write them with `ratiopath`, not `rationai-masks`, which is being deprecated.
 
-- [ ] Run all concepts for both K. `pathologist.html` will grow to about 17 MB at K = 24, because
-      each link carries the row's session, unless links are built in JavaScript on click.
+- [x] Run all concepts for both K. `pathologist.html` is about 24 MB at K = 24 and 12 MB at K = 16,
+      because each link carries the row's session. If that's slow, build the links in JavaScript
+      on click.
+- [ ] Rerun both K with overlay opacity 0.5, so the links in `pathologist.html` pick it up.
 - [ ] Mark level 2 white holes on the masks. xOpat can show level 0 tissue there, which the model
       never saw.
 

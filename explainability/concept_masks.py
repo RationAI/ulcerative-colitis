@@ -33,6 +33,7 @@ MASK_THREADS = 8
 HUE_START = 0.98
 HUE_RANGE = 0.72
 GOLDEN_RATIO = 0.618034
+OVERLAY_OPACITY = 0.5  # keeps the tissue under a mask readable
 
 
 def mask_artifact(concept: int, slide_name: str) -> str:
@@ -169,7 +170,12 @@ def row_urls(
             )
             index = session.add_layer(
                 {
-                    **heatmap_layer(mask, name=f"Concept {k}", color=concept_colour(k)),
+                    **heatmap_layer(
+                        mask,
+                        name=f"Concept {k}",
+                        color=concept_colour(k),
+                        opacity=OVERLAY_OPACITY,
+                    ),
                     "visible": k == concept,
                 },
                 visualization=visualization,
