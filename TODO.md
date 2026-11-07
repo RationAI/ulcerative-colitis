@@ -60,9 +60,6 @@ concept, gallery slides only (about 158 slides at K = 24, 109 at K = 16), and lo
 treated like any other tile. Masks are limited to tile resolution: one value every 112 level-2 px,
 about 175 µm. Write them with `ratiopath`, not `rationai-masks`, which is being deprecated.
 
-- [ ] Pilot one concept row (K = 24, concept 4), and check by eye that the overlay aligns with the
-      tissue. The server reads `mflow/86/<run>/artifacts/...` TIFFs, but that doesn't prove
-      alignment.
 - [ ] Run all concepts for both K. `pathologist.html` will grow to about 17 MB at K = 24, because
       each link carries the row's session, unless links are built in JavaScript on click.
 - [ ] Mark level 2 white holes on the masks. xOpat can show level 0 tissue there, which the model
@@ -70,13 +67,11 @@ about 175 µm. Write them with `ratiopath`, not `rationai-masks`, which is being
 
 ### Moving between the slides of a concept row
 
-xOpat's `slide-info` plugin is live on our deployment and steps through a session's slides, so one
-session per concept row should work. Found by reading the source, not yet tried in a browser.
+One session per concept row works: the pilot showed the overlays, all 8 slides in the Slide
+Switcher, and switching between them with each slide's own masks.
 
-- [ ] Test in the pilot: Shift+] and Shift+[ or the Slide Switcher panel, with
-      `visualizationIndex` keeping each slide's own masks.
-- [ ] Test where the view lands after a switch. `params.viewport` is per viewer, not per slide, so
-      the next slide probably won't centre on its tile.
+- [ ] After a switch the view doesn't centre on the slide's tile, because `params.viewport` is per
+      viewer, not per slide. Ask the xOpat maintainers for a per-background viewport.
 - [ ] Ask the xOpat maintainers for on-screen buttons. `_createControlButtons` in
       `plugins/slide-info/slide-info.mjs` has them commented out, with a todo about multiple viewers.
 

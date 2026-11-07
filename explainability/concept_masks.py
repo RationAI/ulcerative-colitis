@@ -12,8 +12,10 @@ xOpat's slide switching moves along the row. Every slide carries all K masks,
 with only the row's concept visible.
 """
 
+import colorsys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -27,11 +29,24 @@ from explainability.tiles import XOPAT_PROTOCOL, tile_viewport
 
 MASKS_ARTIFACT = "masks"
 MASK_THREADS = 8
+# Hues red through blue: H&E's purples and pinks would hide an overlay.
+HUE_START = 0.98
+HUE_RANGE = 0.72
+GOLDEN_RATIO = 0.618034
 
 
 def mask_artifact(concept: int, slide_name: str) -> str:
     """Path of a mask under the run's artifacts, and under the local masks directory's parent."""
     return f"{MASKS_ARTIFACT}/concept_{concept:02d}/{slide_name}.tiff"
+
+
+def concept_colour(concept: int) -> tuple[float, float, float]:
+    """RGB in 0..1 of a concept's overlay, the same on every slide.
+
+    Consecutive concepts land far apart in hue, and alternate strong and pale.
+    """
+    hue = (HUE_START + HUE_RANGE * (concept * GOLDEN_RATIO % 1)) % 1
+    return colorsys.hsv_to_rgb(hue, 1.0 if concept % 2 == 0 else 0.55, 1.0)
 
 
 def share_scale(
@@ -152,10 +167,15 @@ def row_urls(
             mask = artifact_data_id(
                 mask_artifact(k, str(tile.slide_name)), run_id, experiment_id
             )
-            session.add_layer(
-                {**heatmap_layer(mask, name=f"Concept {k}"), "visible": k == concept},
+            index = session.add_layer(
+                {
+                    **heatmap_layer(mask, name=f"Concept {k}", color=concept_colour(k)),
+                    "visible": k == concept,
+                },
                 visualization=visualization,
             )
+            # The deployment's default for overlays, iipimage, refuses mlflow artifacts.
+            session.data[cast("int", index)]["protocol"] = XOPAT_PROTOCOL
         viewports.append(
             tile_viewport(
                 tile.x,
