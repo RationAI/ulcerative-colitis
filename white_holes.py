@@ -1,26 +1,25 @@
 """One-off check: white holes over tissue at pyramid levels 1 and 2 of CZI slides.
 
-Some CZI slides show white rectangles over real tissue at level 2 (smaller ones at
-level 1) while level 0 and the coarser levels show the tissue. A hole may also be
-in more than one level, so each checked level is compared with every other level
-from 1 to 4 (downsamples 3, 9, 27, 81): a cell is a hole where any other level
-shows content there and the checked level is blank. Level 0 is left out, it
+Some CZI slides show white rectangles over real tissue at some pyramid levels while
+other levels show the tissue. This hurts the models in two ways: tissue tiled at a
+level with a hole reaches the model as white, and tissue under a level-3 hole is
+left out of the tissue mask (made at level 3) and so never tiled at all.
+
+Each checked level is compared with every other level from 1 to 4 (downsamples 3,
+9, 27, 81; slides without level 4 use the others): a cell is a hole where another
+level shows content there and the checked level is blank. Level 0 is left out, it
 costs 81 times level 2 to read; a hole present in all of levels 1 to 4 is missed.
 
 Levels are compared on a grid of cells 81 level-0 px wide (27 level-1 px, 9
-level-2 px, 1 level-4 px). A level shows content in a cell when under half of it
-is blank, and a cell is blank at the checked level when at least 90% of it is.
-Blank means near-white (all channels >= 250) or transparent, so glass inside a
-scanned area counts as content. Holes narrower than 3 cells are dropped: they are
-the coarse levels' blur at tissue edges.
-
-The preprocessing tissue masks (made at level 3) say where tissue is. Levels 3 and
-4 are read whole, levels 1 and 2 only near tissue, and holes are looked for only
-there. The masks are not used to find holes: a mask made from a level 3 that
-shares a hole leaves that tissue out. Holes are counted inside the mask
-(`hole_tissue_cells`, the basis of `tissue_lost`) and in a margin around it
-(`hole_margin_cells`). A slide without a mask falls back to content at level 3 or
-4 as its tissue, with `has_mask` false.
+level-2 px, 1 level-4 px), about 14 um. In each level a cell is
+    blank      at least 90% near-white (all channels >= 250) or transparent
+    content    under half blank: tissue, glass inside a scanned area, or pen
+    stained    content whose mean colour has saturation >= 0.1 - tissue, not
+               glass (on six slides: >= 99% of mask cells, <= 0.6% of glass)
+Tissue is a cell stained at any level, so it does not depend on the mask. Holes
+narrower than 3 cells are dropped: they are the coarse levels' blur at edges.
+Levels 3 and 4 are read whole, levels 1 and 2 only near stained cells of levels 3
+and 4 or the mask.
 
 Slides and tiles come from the tiling tables, so the tiles counted are the ones the
 models got: every Nancy slide (all institutions and splits) at level 2, and every
@@ -30,12 +29,21 @@ any of them is a hole and hit when at least half are.
 
 Output under `--output-dir`:
     rows/       one parquet per slide, so a restarted run skips finished slides
+    grids/      one npz per slide: the mask, tissue, per-level content and stained
+                cells, and per checked level the holes, for later questions
     tissue_masks/, tiling/   the downloaded masks and tiling tables
-    holes.parquet   one row per slide and checked level: tissue and hole cells,
-                largest connected hole, hole cells shown by each other level
-                (`seen_at_L*`), and the level's tiles touched and hit
-    previews/   for slides with a large hole, top to bottom: level 3, the checked
-                level, and the checked level with holes in red
+    holes.parquet   one row per slide and checked level, columns:
+        tissue_cells, hole_cells, hole_tissue_cells, tissue_lost
+            tissue, all holes, holes over tissue, and their share of tissue
+        largest_tissue_hole_cells, n_tissue_holes
+        seen_at_L*      hole tissue cells stained at each other level
+        mask_cells, hole_mask_cells     the mask, and holes over tissue inside it
+        mask_missed_cells, mask_missed_fraction
+            tissue outside the mask (grown by 2 cells), same for both levels
+        n_tiles, tiles_touched, tiles_hit
+    previews/   for slides with a large tissue hole or large tissue the mask
+                missed, top to bottom: level 3, the checked level, and the checked
+                level with holes over tissue in red and missed tissue in blue
 
 Delete this script once the result is recorded in TODO.md.
 """
@@ -90,9 +98,11 @@ COARSE = (27, 81)  # downsamples of levels 3 and 4, read whole
 WHITE = 250
 CONTENT_MAX_BLANK = 0.5  # a level shows content in a cell
 HOLE_MIN_BLANK = 0.9  # the checked level is blank in a cell
+STAIN_MIN_SATURATION = 0.1  # content that is tissue, not glass
+MASK_SLACK_CELLS = 2  # mask edge tolerance when looking for tissue it missed
 BLOCK_CELLS = 64  # cells per side of one read of a fine level
-MARGIN_CELLS = 10  # around the tissue mask, about 140 um
-PREVIEW_MIN_CELLS = 100  # largest hole that earns a preview, about 140 um square
+MARGIN_CELLS = 10  # read fine levels this far around tissue, about 140 um
+PREVIEW_MIN_CELLS = 100  # largest region that earns a preview, about 140 um square
 PREVIEW_WIDTH = 1600
 TILE_HIT = 0.5  # share of a tile's area over a hole that counts it as hit
 
@@ -116,6 +126,17 @@ def cell_mean(
     return full.reshape(shape[0], size, shape[1], size, *values.shape[2:]).mean(
         axis=(1, 3)
     )
+
+
+def saturation(rgb: np.ndarray) -> np.ndarray:
+    top = rgb.max(axis=-1)
+    return (top - rgb.min(axis=-1)) / np.maximum(top, 1.0)
+
+
+def largest_region(cells: np.ndarray) -> tuple[int, int]:
+    """(number of connected regions, cells in the largest)."""
+    labels, n = ndimage.label(cells)
+    return n, int(np.bincount(labels.ravel())[1:].max()) if n else 0
 
 
 def level_index(slide: OpenSlide, downsample: float) -> int:
@@ -218,9 +239,14 @@ def read_tissue_mask(task: dict[str, Any], grid: tuple[int, int]) -> np.ndarray 
 
 
 def save_preview(
-    path: Path, reference: np.ndarray, checked: np.ndarray, holes: np.ndarray
+    path: Path,
+    reference: np.ndarray,
+    checked: np.ndarray,
+    holes: np.ndarray,
+    missed: np.ndarray,
 ) -> None:
     marked = checked.copy()
+    marked[missed] = (0, 90, 255)
     marked[holes] = (255, 0, 0)
     gap = np.zeros((4, reference.shape[1], 3), dtype=np.float32)
     image = Image.fromarray(
@@ -257,55 +283,83 @@ def check_slide(task: dict[str, Any]) -> None:
         return
     rows = []
     start = time.monotonic()
+    opening = np.ones((3, 3), dtype=bool)
     try:
         with OpenSlide(task["path"]) as slide:
             width, height = slide.dimensions
             grid = (-(-height // CELL), -(-width // CELL))
-            levels = {d: level_index(slide, d) for d in FINE + COARSE}
+            present = [round(d) for d in slide.level_downsamples]
+            levels = {d: present.index(d) for d in FINE + COARSE if d in present}
             share, rgb = {}, {}
-            for downsample in COARSE:
+            for downsample in (d for d in COARSE if d in levels):
                 share[downsample], rgb[downsample] = read_whole(slide, downsample, grid)
-            tissue = read_tissue_mask(task, grid)
-            has_mask = tissue is not None
-            if tissue is None:
-                tissue = np.logical_or.reduce(
-                    [share[d] < CONTENT_MAX_BLANK for d in COARSE]
-                )
-            near = ndimage.binary_dilation(tissue, iterations=MARGIN_CELLS)
-            blocks = to_blocks(near)
+            stained = {
+                d: (share[d] < CONTENT_MAX_BLANK)
+                & (saturation(rgb[d]) >= STAIN_MIN_SATURATION)
+                for d in share
+            }
+            mask = read_tissue_mask(task, grid)
+            has_mask = mask is not None
+            if mask is None:
+                mask = np.zeros(grid, dtype=bool)
+            seed = np.logical_or.reduce([*stained.values(), mask])
+            blocks = to_blocks(ndimage.binary_dilation(seed, iterations=MARGIN_CELLS))
             searched = to_cells(blocks, grid)
-            for downsample in FINE:
+            for downsample in (d for d in FINE if d in levels):
                 share[downsample], rgb[downsample] = read_blocks(
                     slide, downsample, grid, blocks
                 )
             content = {d: share[d] < CONTENT_MAX_BLANK for d in share}
+            stained = {
+                d: content[d] & (saturation(rgb[d]) >= STAIN_MIN_SATURATION)
+                for d in share
+            }
+            tissue = np.logical_or.reduce(list(stained.values()))
+            missed = ndimage.binary_opening(
+                tissue & ~ndimage.binary_dilation(mask, iterations=MASK_SLACK_CELLS),
+                structure=opening,
+            )
+            _, largest_missed = largest_region(missed)
+            grids = {
+                "mask": mask,
+                "tissue": tissue,
+                "missed": missed,
+                **{f"content_L{levels[d]}": content[d] for d in content},
+                **{f"stained_L{levels[d]}": stained[d] for d in stained},
+            }
             for level in sorted(task["levels"]):
-                checked = round(slide.level_downsamples[level])
+                checked = present[level]
                 others = [d for d in content if d != checked]
-                holes = (
+                holes = ndimage.binary_opening(
                     np.logical_or.reduce([content[d] for d in others])
                     & (share[checked] >= HOLE_MIN_BLANK)
-                    & searched
+                    & searched,
+                    structure=opening,
                 )
-                holes = ndimage.binary_opening(
-                    holes, structure=np.ones((3, 3), dtype=bool)
+                tissue_holes = holes & np.logical_or.reduce(
+                    [stained[d] for d in others]
                 )
-                labels, n = ndimage.label(holes)
-                largest = int(np.bincount(labels.ravel())[1:].max()) if n else 0
+                grids[f"holes_L{level}"] = holes
+                n_tissue_holes, largest = largest_region(tissue_holes)
                 row = {
                     **task["info"],
                     "level": level,
+                    "levels": ",".join(str(levels[d]) for d in sorted(levels)),
                     "has_mask": has_mask,
                     "tissue_cells": int(tissue.sum()),
                     "hole_cells": int(holes.sum()),
-                    "hole_tissue_cells": int((holes & tissue).sum()),
-                    "hole_margin_cells": int((holes & near & ~tissue).sum()),
-                    "tissue_lost": float((holes & tissue).sum() / max(tissue.sum(), 1)),
-                    "n_holes": n,
-                    "largest_hole_cells": largest,
+                    "hole_tissue_cells": int(tissue_holes.sum()),
+                    "tissue_lost": float(tissue_holes.sum() / max(tissue.sum(), 1)),
+                    "n_tissue_holes": n_tissue_holes,
+                    "largest_tissue_hole_cells": largest,
+                    "mask_cells": int(mask.sum()),
+                    "hole_mask_cells": int((tissue_holes & mask).sum()),
+                    "mask_missed_cells": int(missed.sum()),
+                    "mask_missed_fraction": float(missed.sum() / max(tissue.sum(), 1)),
+                    "largest_mask_missed_cells": largest_missed,
                     "error": "",
                 } | {
-                    f"seen_at_L{levels[d]}": int((holes & content[d]).sum())
+                    f"seen_at_L{levels[d]}": int((tissue_holes & stained[d]).sum())
                     for d in others
                 }
                 tiling = task["levels"][level]
@@ -321,13 +375,17 @@ def check_slide(task: dict[str, Any]) -> None:
                     "tiles_hit": hit,
                 }
                 rows.append(row)
-                if largest >= PREVIEW_MIN_CELLS:
+                if max(largest, largest_missed) >= PREVIEW_MIN_CELLS:
                     save_preview(
                         task["output_dir"] / "previews" / f"{task['key']}_L{level}.png",
-                        rgb[27],
+                        rgb[27] if 27 in rgb else rgb[min(rgb)],
                         rgb[checked],
-                        holes,
+                        tissue_holes,
+                        missed,
                     )
+            grids_path = task["output_dir"] / "grids" / f"{task['key']}.npz"
+            grids_path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(grids_path, **grids)
     except Exception:
         rows = [{**task["info"], "level": -1, "error": traceback.format_exc(limit=3)}]
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -341,7 +399,11 @@ def check_slide(task: dict[str, Any]) -> None:
             f"L{r['level']} tissue lost {r.get('tissue_lost', float('nan')):.1%}"
             for r in rows
         )
-        + (" ERROR" if rows[0]["error"] else ""),
+        + (
+            " ERROR"
+            if rows[0]["error"]
+            else f", mask missed {rows[0]['mask_missed_fraction']:.1%}"
+        ),
         flush=True,
     )
 
@@ -444,24 +506,31 @@ def main() -> None:
         f"without a tissue mask: {int((~checked['has_mask']).sum())} rows", flush=True
     )
     for (dataset, level), group in checked.groupby(["dataset", "level"]):
-        affected = group[group["largest_hole_cells"] >= PREVIEW_MIN_CELLS]
+        affected = group[group["largest_tissue_hole_cells"] >= PREVIEW_MIN_CELLS]
+        missed = group[group["largest_mask_missed_cells"] >= PREVIEW_MIN_CELLS]
+        tissue = max(group["tissue_cells"].sum(), 1)
         print(
-            f"{dataset} L{level}: {len(group)} slides, {len(affected)} with a hole of "
-            f">= {PREVIEW_MIN_CELLS} cells, tissue lost overall "
-            f"{group['hole_tissue_cells'].sum() / max(group['tissue_cells'].sum(), 1):.2%}",
+            f"{dataset} L{level}: {len(group)} slides, {len(affected)} with a tissue "
+            f"hole of >= {PREVIEW_MIN_CELLS} cells, tissue lost overall "
+            f"{group['hole_tissue_cells'].sum() / tissue:.2%}; {len(missed)} where "
+            f"the mask missed >= {PREVIEW_MIN_CELLS} cells, overall "
+            f"{group['mask_missed_cells'].sum() / tissue:.2%}; tiles hit "
+            f"{int(group['tiles_hit'].sum())} of {int(group['n_tiles'].sum())}",
             flush=True,
         )
         columns = [
             "slide_name",
+            "source",
             "tissue_lost",
-            "largest_hole_cells",
-            "hole_margin_cells",
+            "largest_tissue_hole_cells",
+            "mask_missed_fraction",
+            "tiles_hit",
+            "n_tiles",
         ]
         columns += [c for c in group if c.startswith("seen_at_")]
-        columns += [c for c in ("source", "tiles_hit", "n_tiles") if c in group]
         print(
-            affected.sort_values("tissue_lost", ascending=False)[columns]
-            .head(40)
+            group.sort_values("tissue_lost", ascending=False)[columns]
+            .head(30)
             .to_string(),
             flush=True,
         )
