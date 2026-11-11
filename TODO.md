@@ -1,31 +1,57 @@
 # TODO
 
 Open work on the concept explainability of the Nancy model (branch `feature/explainability`).
-Last updated 2026-11-06.
+Last updated 2026-11-11.
 
-## Data: white holes at level 2
+## Data: white holes in the CZI pyramids
 
-Some CZI slides have white rectangles over real tissue at level 2, while level 0 shows the
-tissue and level 1 has smaller holes. Tiles and embeddings are read at level 2, so the model saw
-white in those places. OpenSlide and wsi-service return the same pixels.
+Some CZI slides have white rectangles over real tissue at levels 1 to 3, while other levels show
+the tissue. OpenSlide and wsi-service return the same pixels. This hurts the models in two ways:
+tissue tiled at a level with a hole reaches the model as white, and tissue under a level-3 hole is
+left out of the tissue mask (made at level 3) and so never tiled.
 
-| Slide | White at level 2 | Level 1 | Level 0 |
-|---|---|---|---|
-| 9656_24_HE | 95% | 7% | 0% |
-| 2256_23_HE | 97% | 16% | 0% |
-| 46382_24 | 65% | 7% | 0% |
+Scanned on 2026-11-10 by `white_holes.py` (job `uc-white-holes`): every Nancy slide at level 2 and
+every tiled dysplasia slide at levels 1 and 2, compared with the other levels 1 to 4. Results in
+`/mnt/projects/inflammatory_bowel_disease/ulcerative_colitis/white_holes/` (`holes.parquet`,
+`mask_missed_by_hole.parquet`, per-slide `grids/` and `previews/`). Level 0 was not read, so a
+hole in all of levels 1 to 4 would be missed. Level 3 alone would have missed half the Nancy hole
+tissue.
 
-These are three of five blank gallery tiles checked in `test_preliminary`, picked because they
-were blank, so they say nothing about how common this is. Two others (7198_22_HE_01, 646_21) are
-white at every level, so they have a different cause.
+| | Slides | Tissue hole of 100+ cells | Lose 1%+ / 5%+ of tissue | Tissue lost | Tiles half over a hole | Mask missed tissue to a level-3 hole |
+|---|---|---|---|---|---|---|
+| FTN | 1,339 | 169 | 87 / 14 | 0.32% | 1,039 | 0.22% |
+| IKEM (incl. validation) | 2,316 | 224 | 82 / 8 | 0.14% | 852 | 0.10% |
+| KNL_PATOS | 176 | 21 | 8 / 2 | 0.83% | 433 | 0.81% |
+| Nancy, all | 3,831 | 414 | 177 / 24 | 0.23% | 2,324 of 2.24 M | 0.18% |
+| Dysplasia L2 / L1 | 229 | 32 / 15 | 9 / 0 at L2 | 0.23% / 0.08% | 112 / 133 | 0.18% |
 
-- [ ] **Scan all slides in all splits as a job:** compare white at level 2 with level 0 on
-      low-resolution versions, and report the affected slides and the tissue lost.
-- [ ] **Read one affected slide with a second CZI reader** to find out whether the files' lower
-      levels are incomplete or OpenSlide's Zeiss reader mishandles them.
-- [ ] Decide what to do from those two results. If few slides are affected, document it. If many
-      are, regenerate level 2, redo the embeddings and consider retraining the heads.
-- [ ] Find out what the two slides that are white at every level have in common.
+A cell is 81 level-0 px, about 14 um. `mask_missed_fraction` in `holes.parquet` also counts pale
+pink mucus and mounting medium that the mask rightly excluded; use `mask_missed_by_hole.parquet`
+(missed tissue where level 3 is blank) for the hole part. Worst slides: 5503_25_A_HE11 (13% lost,
+11% never tiled), 20673_25 and 4262_21 (about 20% never tiled), 3572_24, 43205_24, 5716_24_HE,
+18749_24 (10 to 12% lost).
+
+- [x] Scan all slides in all splits as a job.
+- [x] Read affected slides with a second CZI reader (pylibCZIrw and aicspylibczi, 10 spots).
+      The files are fine. The holes sit where the rectangles of two scenes overlap: one scene
+      stores tissue there, the other white glass, at every level. The reader paints one over the
+      other, and OpenSlide puts the white scene on top at some levels. libCZI got the tissue in 9
+      of 10 spots but the white scene in the 10th (5201_25_A_HE01), so neither reader is safe.
+- [x] Patch the OpenSlide fork in the images (iewchen `zeiss-czi-jxr-simd-gray`). It draws with
+      SATURATE, so the first tile drawn wins whatever scene it is from. The patch makes the pure
+      white padding transparent and fills white behind the tiles at the end. Tested on the 10
+      spots: holes filled at levels 1 and 2, only padding and its seam pixels change, same speed.
+- [x] Push the patch to RationAI/openslide, branch `czi-scene-overlap`, commit `5db4e1c`.
+- [x] Get the images rebuilt against `5db4e1c` (`cerit.io/rationai/base:cuda-3.0.1`) and rerun
+      `white_holes.py` (job `uc-white-holes-patched`, results in `white_holes_patched/`). All
+      4,289 slide-levels: 0 hole cells, 0 tiles hit, 0 errors (before: 999,179 hole tissue cells,
+      2,569 tiles hit). Masks and tiling there are still the old ones, so mask-missed is unchanged.
+- [ ] Delete `white_holes.py` once nothing else needs it.
+- [ ] Decide whether to re-tile and re-embed the affected slides with it.
+- [ ] Decide what to do. Overall loss is under 1%, but about 25 slides lose 5% or more, and
+      KNL_PATOS (the cross-centre test) is hit hardest.
+- [ ] Find out what the two slides that are white at every level (7198_22_HE_01, 646_21) have in
+      common.
 - [ ] List the slides behind the blank top tiles in the K = 16 and K = 24 galleries.
 
 Do not filter blank tiles out of the galleries. They are how this was found.
@@ -63,7 +89,7 @@ about 175 µm. Write them with `ratiopath`, not `rationai-masks`, which is being
 - [x] Run all concepts for both K. `pathologist.html` is about 24 MB at K = 24 and 12 MB at K = 16,
       because each link carries the row's session. If that's slow, build the links in JavaScript
       on click.
-- [ ] Rerun both K with overlay opacity 0.5, so the links in `pathologist.html` pick it up.
+- [x] Rerun both K with overlay opacity 0.5, so the links in `pathologist.html` pick it up.
 - [ ] Mark level 2 white holes on the masks. xOpat can show level 0 tissue there, which the model
       never saw.
 
